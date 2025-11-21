@@ -1,0 +1,27 @@
+name: acid_develop
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - jupyterlab
+  - pip
+  - numpy
+  - matplotlib
+  - pandas
+  - scipy
+  - tifffile
+  - scikit-image
+  - scikit-learn
+  - dask
+  - numba
+  - pytorch
+  - torchvision
+  - torchaudio
+  - napari
+  - pip:
+    - roifile
+    - cellpose
+    - bioio
+    - bioio-nd2

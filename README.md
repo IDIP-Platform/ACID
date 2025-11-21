@@ -384,26 +384,29 @@ __PROCESSED FILE NAME__\
 The file nef_translocation_develop.yml can be used for creating the environment containg script dependencies during the project development. The file nef_translocation_neo.yml file has been used to create the python environment on a computer workstation used for running the analysis, with gpu support, at the Infectious Diseases Imaging Platform of the CIID.
 
 The following module versions are used:
-- python==3.12.11
-- jupyterlab==4.4.7
-- pip==25.2
+- python==3.12.12
+- jupyterlab==4.5.0
+- pip==25.3
 - numpy==2.2.6
-- matplotlib==3.10.6
-- pandas==2.3.2
-- scipy==1.16.2
+- matplotlib==3.10.8
+- scipy==1.16.3
+- pandas==2.2.3
+- dask==2025.11.0
+- numba==0.62.1
+- tifffile==2025.10.16
+- statsmodels==0.15.5
 - scikit-image==0.25.2
-- tifffile==2025.9.9
 - scikit-learn==1.7.2
-- imageio==2.37.0
-- napari==0.5.0
-- roifile==2025.5.10
-- cellpose==4.0.6
-- opencv==4.12.0.88
-- bioio==3.0.0
-- bioio-nd2==1.5.0
+- seaborn==0.13.2
 - pytorch==2.5.1
 - torchvision==0.20.1
 - torchaudio==2.5.1
+- napari==0.6.6
+- pycytominer==1.2.4
+- roifile==2025.5.10
+- cellpose==4.0.7
+- bioio==3.0.0
+- bioio-nd2==1.5.0
 
 
 # Notes:

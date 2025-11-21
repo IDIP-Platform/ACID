@@ -9,17 +9,20 @@ dependencies:
   - pip
   - numpy
   - matplotlib
-  - pandas
   - scipy
-  - tifffile
-  - scikit-image
-  - scikit-learn
+  - pandas
   - dask
   - numba
+  - tifffile
+  - statsmodels
+  - scikit-image
+  - scikit-learn
+  - seaborn
   - pytorch
   - torchvision
   - torchaudio
   - napari
+  - pycytominer
   - pip:
     - roifile
     - cellpose

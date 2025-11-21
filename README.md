@@ -1,53 +1,53 @@
-**Project name**: nef_translocation
+**Project name**: ACID
 
 Authors: Alessandro Ulivi (alessandro.ulivi.89@gmail.com)
 
-Creation (yyyy/mm/dd): 2025/09/16
+Creation (yyyy/mm/dd): 2025/11/21
 
-Status: ongoing (2025/11/07)
+Status: ongoing (2025/11/21)
 
 # Description:
 **Background and scope**\
 The project is carried out at the Center for Integrative Infectious Disease Research in Heidelberg (abbreviated to CIID; https://ciid-heidelberg.de/).
 
-The goal of the project is to analyse the [...].
+The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected and non-treated and infected and treated with different compounds. The projects aims at establishing a fully automated pipeline of image processing, image quantification and data analysis.
 
-Samples are [...] cells transfected with plamids expressing one of the following options: [...].
+Samples are (...) cells.
 
-In addition to gfp expression, each sample is stained with DAPI and with [...]
+The following conditions were analysed:
+- uninfected cells treated with (...). Negative control.
+- infected cells treated with (...). Positive control.
+- uninfected cells treated with NITD-688.
+- uninfected cells treated with JNJ-A07.
+- uninfected cells treated with JNJ-1802.
+- infected cells treated with NITD-688.
+- infected cells treated with JNJ-A07.
+- infected cells treated with JNJ-1802.
 
-Samples were imaged at a Nikon Ti2 microscope equipped with CrestOptics X-Light V3 spinning disc using a Plan Apo Lambda D 100x Oil/1,45/0,13 objective at the Infectious Diseases Imaging Platform of CIID (https://www.idip-heidelberg.org/crest). Images are single planes. The pixel size is 0.065x0.065 micron. The frame size in pixel is 2720x2720 pixels.
-
-Samples are imaged live at the Nikon Ti2 microscope, despite the fact that single timepoints are acquired.
 
 **Imaging strategy and raw file structure:**
-Multiple fields of view are acquired per sample. Fields of view are multi-channel, single plane, single timepoints. Two strategies have been used:
+Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a (...) objective at the Infectious Diseases Imaging Platform of CIID (https://www.idip-heidelberg.org/crest). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every (...). Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.
 
-- automatic multi-point acquisition, each point corresponding to a field of view. The output of this acquisition are files containing sub-files. Each sub-file corresponding to a field of view.
+At the end of the time-lapse imaging, the samples were fixed and stained by adapting Cell Painting protocol (Bray et al., Nature Protocols, 2016, "Cell Painting, a high-content image-based assay for morphological profiling using multiplexed fluorescent dyes", DOI https://doi.org/10.1038/nprot.2016.105) to the project. Stained samples were re-acquired at the same microscope and with the same imaging conditions. The same 49 fields of view per condition were re-acquired.
 
-- Manually selected fields of view. The output of this acquisition are files corresponding to individual field of views.
+The following structures (staining and imaged channel) are acquired:
+- nucleus (Hoechst, channel 1).
+- Endoplasmic reticulum (concanavalin A fused with 488 fluorophore, channel 2).
+- Actin (phalloidin fused with fluorophore 568, channel 3).
+- Nonstructural protein 3 (NS3, marker of cell infection) (anti-NS3 fused with fluorophore 647, channel 4).
+- Full cells in transmitted light (channel 5).
 
-In the scripts, fields of views are also called "scenes", to comply with the bioio module nomenclature. A naming standardization is programmed.
+Three independent experiments were carried out. Their names are:
+- Experiment A07.2
+- Experiment A07.3
+- Experiment A07.4.
+
+Each imaged field of view is a single planes. The pixel size is 0.325x0.325 micron. The frame size in pixel is 1024x1024 pixels.
+
 
 # Project organization
 **Analysis strategy**\
-The result of the analysis is the measurement of fluorescence intensity levels, per each channel and per individual cells, in the cytosol and in the nucleus of individual cells.
-
-To this aim, cells and nuclei are independently segmented using CellPose (Stringer et al., 2020, Nat. Methods, "Cellpose: a generalist algorithm for cellular segmentation") version 4.0.6 (also known as CellPose-SAM, Pachitariu et al., 2025, bioXiv, "Cellpose-SAM: superhuman generalization for cellular segmentation").
-
-For cell segmenation both the f-actin channel and the nuclear channel are used. While the signal from only nucleid acid staining (Hoechst) is used for nuclear segmentation.
-
-Cytosol segmentation masks are obtained by subtracting the nuclei segmentation from the cell segmentation. NOTE: cytosol segmentation masks are not the pure subtraction of nuclei segmentation masks (obtained from cellpose) from cell segmentation masks (obtained from cellpose), instead, they are obtained after some preprocessing/filtering of cells and nuclei from the respective segmentation masks (see detailed description below - points 3.1 and 3.2).
-
-Intensity measurements are quantified from segmentation masks using skimage.measure.regionprops function (https://scikit-image.org/docs/0.25.x/api/skimage.measure.html#skimage.measure.regionprops). The quantification is carried out only on a subset of cells/nuclei present in the saved nuclei and cell segmentation mask (see detailed description below - point 3.). This subset corresponds to the object present in the cytosol segmentation mask.
-
-From the 2025/11/07 an option is included in the part2 notebook to also save the nucleus and cell segmentation masks after preprocessing/filtering (see detailed description below - point 3.).
-
-Channels are very mildly gaussian smoothed before intensity measurements. This is done to calmierate the effect on noise on measurements as max and min intensity. The effect of smoothing has been check for not altering significantly the average (mean and median) intensity values.
-
-Local background correction is not performed as it is evaluated non necessary by inspecting the average projection of single-experiment datasets. Such projections don't show prominent patterns of uneven illumination.
-
-A background value is calculated, per individual field of view and invidivual channel, by taking the median value of all non-segmented pixels in a combination of both the cell segmentation mask and the nucleus segmentation mask. Such value is reported in a dedicated column of the output dataframe and it can be used for correcting intensity measurements for the camera offset.
+At the start of the project (2025/11/21) only the fixed sample data are analysed.
 
 
 **Input data**\

@@ -27,9 +27,9 @@ The following conditions were analysed:
 Data collection was carried on under grant (...) as a collaboration between the Infectious Diseases Imaging Platform of CIID (abbreviated in IDIP; https://www.idip-heidelberg.org) and the group of Prof. Dr. Christian Klein of Institute of Pharmacy and Molecular Biology (abbreviated in IPMB) at the Univeristy of Heidelberg (https://www.ipmb.uni-heidelberg.de/en/about-us/head-of-the-institute). The current project is carried on within the SHIELD consortium (Horizon grand agreement n. 101191794).
 
 **Imaging strategy and raw file structure:**
-Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a (...) objective at the Infectious Diseases Imaging Platform of CIID (https://www.idip-heidelberg.org/crest). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every (...). Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.
+Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a (...) objective at IDIP (https://www.idip-heidelberg.org/crest). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every (...). Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.
 
-At the end of the time-lapse imaging, the samples were fixed and stained by adapting Cell Painting protocol (Bray et al., Nature Protocols, 2016, "Cell Painting, a high-content image-based assay for morphological profiling using multiplexed fluorescent dyes", DOI https://doi.org/10.1038/nprot.2016.105) to the project. Stained samples were re-acquired at the same microscope and with the same imaging conditions. The same 49 fields of view per condition were re-acquired.
+At the end of the time-lapse imaging, the samples were fixed and stained by adapting the Cell Painting protocol (Bray et al., Nature Protocols, 2016, "Cell Painting, a high-content image-based assay for morphological profiling using multiplexed fluorescent dyes", DOI https://doi.org/10.1038/nprot.2016.105) to the project. Stained samples were re-acquired at the same microscope and with the same imaging conditions. The same 49 fields of view per condition were re-acquired.
 
 The following structures (staining and imaged channel) are acquired:
 - nucleus (Hoechst, channel 1).
@@ -49,6 +49,10 @@ Each imaged field of view is a single planes. The pixel size is 0.325x0.325 micr
 # Project organization
 **Analysis strategy**\
 At the start of the project (2025/11/21) only the fixed sample data are analysed.
+
+The raw files are pre-processed to extract individual fields of view and save them as independent raw files.
+
+A 70%-30% train-test split is then carried out. As conditions are balanced, no stratification is used for the split (as of 2025/11/25). The following steps are implemented only using the 70% train data. As of 2025/11/25, it is foreseen only a possible exception concerning the estimation of the background function. It is foreseen as possible that a suitable function can't be estimated using the the 30% test data and, if this will be the case, the background function calculated on the 70% train data will be used instead. This might simulate a future situation when a single background function is saved and applied to all data, rather than calculated per each experiment.
 
 
 **Input data**\

@@ -54,6 +54,8 @@ The raw files are pre-processed to extract individual fields of view and save th
 
 A 70%-30% train-test split is then carried out. As conditions are balanced, no stratification is used for the split (as of 2025/11/25). The following steps are implemented only using the 70% train data. As of 2025/11/25, it is foreseen only a possible exception concerning the estimation of the background function. It is foreseen as possible that a suitable function can't be estimated using the the 30% test data and, if this will be the case, the background function calculated on the 70% train data will be used instead. This might simulate a future situation when a single background function is saved and applied to all data, rather than calculated per each experiment.
 
+As of 2025/11/25 a train-validate sub-split is not foreseen for the development of the pipeline until feature extraction (included). This is done because the initial approach will attempt using relatively standard procedures for image processing, segmentation and quantification, without ad hoc fine-tuning. The result will be evaluated qualitatively and different steps tuned accordingly. This approach might change if, for example, a fine-tuning of segmentation models will be required. In such case, a validation set will be created for the fine-tuned model evaluation. Note that a train-validate sub-split is foreseen upfront for analyses downstream to feature extration.
+
 
 **Input data**\
 Input data are raw files collected from the Nikon Ti2 microscope. Files have .nd2 extension (proprietary Nikon format).

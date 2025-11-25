@@ -10,7 +10,7 @@ Status: ongoing (2025/11/25)
 **Background and scope**\
 The project is carried out at the Center for Integrative Infectious Disease Research in Heidelberg (abbreviated to CIID; https://ciid-heidelberg.de/).
 
-The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected and non-treated and infected and treated with different compounds. The projects aims at establishing a fully automated pipeline of image processing, image quantification and data analysis.
+The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected with Dengue virus and non-treated, and infected with Dengue virus and treated with different compounds. The projects aims at establishing a fully automated pipeline of image processing, image quantification and data analysis.
 
 Samples are (...) cells.
 
@@ -24,6 +24,7 @@ The following conditions were analysed:
 - infected cells treated with JNJ-A07.
 - infected cells treated with JNJ-1802.
 
+Data collection was carried on under grant (...) as a collaboration between the Infectious Diseases Imaging Platform of CIID (abbreviated in IDIP; https://www.idip-heidelberg.org) and the group of Prof. Dr. Christian Klein of Institute of Pharmacy and Molecular Biology (abbreviated in IPMB) at the Univeristy of Heidelberg (https://www.ipmb.uni-heidelberg.de/en/about-us/head-of-the-institute). The current project is carried on within the SHIELD consortium (Horizon grand agreement n. 101191794).
 
 **Imaging strategy and raw file structure:**
 Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a (...) objective at the Infectious Diseases Imaging Platform of CIID (https://www.idip-heidelberg.org/crest). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every (...). Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.

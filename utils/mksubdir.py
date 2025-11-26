@@ -80,31 +80,21 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
                secondary_output_parent:os.PathLike=os.getcwd(),
                secondary_output_return_exist:bool=False,
                seconary_output_overwrite_dir:bool=False,
-               metadata_name:str='metadata',
+               metadata_name:str='proc_metadata',
                metadata_parent:os.PathLike=os.getcwd(),
                metadata_return_exist:bool=False,
                metadata_overwrite_dir:bool=False,
-               original_name:str='original',
-               original_return_exist:bool=False,
-               original_overwrite_dir:bool=False,
-               proc_file_info_name:str='proc_file_info',
-               proc_file_info_return_exist:bool=False,
-               proc_file_info_overwrite_dir:bool=False,
                fov_name:str='fov',
                fov_parent:os.PathLike=os.getcwd(),
                fov_return_exist:bool=False,
-               fov_overwrite_dir:bool=False,
-               segmentation_name:str='seg',
-               segmentation_parent:os.PathLike=os.getcwd(),
-               segmentation_return_exist:bool=False,
-               segmentation_overwrite_dir:bool=False)-> tuple:
+               fov_overwrite_dir:bool=False)-> tuple:
     """
-    Creates a series of specified folders and sub-folders. Returns all the folders which have been created
+    Creates a series of specified folders. Returns all the folders which have been created
     as os.Path objects.
 
-    This function was created in the context of the Nef_CellLoc project to create folders where to
+    This function was created in the context of the ACID project to create folders where to
     save output files. It allows to make the main notebook much more readable. It is probably only
-    useful for the Nef_CellLoc project.
+    useful for the ACID project.
 
     Inputs:
     - secondary_output_name.str. Optional. Default 'secondary_output'. The parameter to pass to mk_subdir subdir_name
@@ -119,7 +109,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     - seconary_output_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
     argument for creating the secondary_output folder.
 
-    - metadata_name. str. Optional. Default 'metadata'. The parameter to pass to mk_subdir subdir_name
+    - metadata_name. str. Optional. Default 'proc_metadata'. The parameter to pass to mk_subdir subdir_name
     argument for creating the metadata folder.
     
     - metadata_parent. os.PathLike. Optional. Default os.getcwd(). The parameter to pass to mk_subdir parent_dir
@@ -130,24 +120,6 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     
     - metadata_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
     argument for creating the metadata folder.
-    
-    - original_name. str. Optional. Default 'original'. The parameter to pass to mk_subdir subdir_name
-    argument for creating the original folder.
-    
-    - original_return_exist. bool. Optional. Default False. The parameter to pass to mk_subdir return_exist
-    argument for creating the original folder.
-    
-    - original_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
-    argument for creating the original folder.
-    
-    - proc_file_info_name. str. Optional. Default 'proc_file_info'. The parameter to pass to mk_subdir subdir_name
-    argument for creating the proc_file_info folder.
-    
-    - proc_file_info_return_exist. bool. Optional. Default False. The parameter to pass to mk_subdir return_exist
-    argument for creating the proc_file_info folder.
-    
-    - proc_file_info_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
-    argument for creating the proc_file_info folder.
     
     - fov_name. str. Optional. Default 'fov'. The parameter to pass to mk_subdir subdir_name
     argument for creating the fov folder.
@@ -161,18 +133,6 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     - fov_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
     argument for creating the fov folder.
 
-    - segmentation_name. str. Optional. Default 'seg'. The parameter to pass to mk_subdir subdir_name
-    argument for creating the segmentation folder.
-    
-    - segmentation_parent. os.PathLike. Optional. Default os.getcwd(). The parameter to pass to mk_subdir parent_dir
-    argument for creating the segmentation folder.
-    
-    - segmentation_return_exist. bool. Optional. Default False. The parameter to pass to mk_subdir return_exist
-    argument for creating the segmentation folder.
-    
-    - segmentation_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
-    argument for creating the segmentation folder.
-
     Outputs.
     The following directory tree is created:
     - secondary_output_parent
@@ -180,14 +140,9 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     
     - metadata_parent
         - metadata_name
-            - original_name
-            - proc_file_name
     
     - fov_parent
         - fov_name
-    
-    - segmentation_parent
-        - segmentation_name
 
     
     The logic of the creation depends on the parameters passed to overwrite_dir.
@@ -195,10 +150,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     IN ADDITION: a tuple is returned.
     - position 0. The full path of seconary_output as an os.Path object.
     - position 1. The full path of metadata as an os.Path object.
-    - position 2. The full path of original as an os.Path object.
-    - position 3. The full path of proc_file_info as an os.Path object.
-    - position 4. The full path of fov as an os.Path object.
-    - position 5. The full path of segmentation as an os.Path object.
+    - position 2. The full path of fov as an os.Path object.
 
     If return_exist is set to True, for the corresponding position a tuple is returned instead of the
     the directory. The tuple has the full path as os.Path object in position 0 and True/False in position
@@ -221,22 +173,6 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
 
     metadata_directory = os.path.join(metadata_parent,metadata_name)
 
-    # Create a original subfolder in metadata directory - don't modify the following lines
-    mk_subdir(subdir_name=original_name,
-            parent_dir=metadata_directory,
-            return_exist=original_return_exist,
-            overwrite_dir=original_overwrite_dir)
-
-    original_metadata_directory = os.path.join(metadata_directory,original_name)
-
-    # Create a proc_file_info subfolder in metadata directory - don't modify the following lines
-    mk_subdir(subdir_name=proc_file_info_name,
-            parent_dir=metadata_directory,
-            return_exist=proc_file_info_return_exist,
-            overwrite_dir=proc_file_info_overwrite_dir)
-
-    proc_file_info_metadata_directory = os.path.join(metadata_directory,"proc_file_info")
-
 
     # Create a fov (fields_of_views) subfolder in output directory - don't modify the following lines
     mk_subdir(subdir_name=fov_name,
@@ -245,15 +181,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
             overwrite_dir=fov_overwrite_dir)
 
     fov_directory = os.path.join(fov_parent,fov_name)
-
-    # Create a segmentation subfolder in output directory - don't modify the following lines
-    mk_subdir(subdir_name=segmentation_name,
-            parent_dir=segmentation_parent,
-            return_exist=segmentation_return_exist,
-            overwrite_dir=segmentation_overwrite_dir)
-
-    segmentation_directory = os.path.join(segmentation_parent,segmentation_name)
-
-    return secondary_output_path, metadata_directory, original_metadata_directory, proc_file_info_metadata_directory, fov_directory, segmentation_directory
+    
+    return secondary_output_path, metadata_directory, fov_directory
 
     

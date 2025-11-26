@@ -1,8 +1,9 @@
 import os
 
 def listdirNHF(path:os.PathLike,
-               target:str|None=None,
-               exclude:str|None=None) -> list:
+               target:str|list|None=None,
+               exclude:str|list|None=None,
+               hidden_file_signature:str=".") -> list:
     """
     Returns files in a given directory as a list, avoding hidden files. Hidden files are identified because the start with a "."
 
@@ -13,34 +14,83 @@ def listdirNHF(path:os.PathLike,
 
     Output. List.  
     """
-    # return an error if a variable different than None and different than a string is passed to target
+    # return an error if a variable different than None or a string or a list of strings is passed to target
     if target != None:
-        assert isinstance(target, str), "target should be either None or a string"
-    
-    # return an error if a variable different than None and different than a string is passed to exclude
+        assert (isinstance(target, str) or isinstance(target, list)), "target should be either None or a string or a list"
+        
+        if isinstance(target, list):
+            assert all([isinstance(sub_target, str) for sub_target in target]), "if a list, target should be a list of strings"
+
+    # return an error if a variable different than None or a string or a list of strings is passed to exclude
     if exclude != None:
-        assert isinstance(exclude, str), "exclude should be either None or a string"
+        assert (isinstance(exclude, str) or isinstance(exclude, list)), "exclude should be either None or a string or a list"
+
+        if isinstance(exclude, list):
+            assert all([isinstance(sub_exclude, str) for sub_exclude in exclude]), "if a list, exclude should be a list of strings"
 
     # iterate through the files in the input directory. Exclude hidden files. Include files in a list
-    file_list = [f for f in os.listdir(path) if not f.startswith(".")]
+    file_list = [f for f in os.listdir(path) if not f.startswith(hidden_file_signature)]
 
-    # if target is provided, filter files for the presence of the string
+    # if target is provided
     if target != None:
-        target_files = [f2 for f2 in file_list if target in f2]
+        # if a single string is provided as target, filter files for the presence of the string
+        if isinstance(target, str):
+            target_files = [f2 for f2 in file_list if target in f2]
+        
+        # if a list of strings is provided as target
+        else:
+            # initialize target_file list, to store files containing target string
+            target_files = []
+
+            # iterate through non-hidden files
+            for f4 in file_list:
+
+                # iterate through the target strings
+                for tf in target:
+
+                    # if the target string is in the non-hidden file
+                    if tf in f4:
+
+                        # add the non-hidden file to the collection list if it hasn't been added already
+                        if f4 not in target_files:
+                            target_files.append(f4)
     else:
         target_files = file_list
     
     # if exclude is provided, filter files for the presence of the string
     if exclude != None:
-        keep_files = [f3 for f3 in file_list if exclude not in f3]
+
+        # if a single string is provided as exclude, filter files for the presence of the string
+        if isinstance(exclude, str):
+            keep_files = [f3 for f3 in file_list if exclude not in f3]
+        
+        # if a list of strings is provided as exclude
+        else:
+
+            # initialiye keep_files list, to store files to keep as they don't contain the string to exclude
+            keep_files = []
+
+            # iterate through non-hidden files
+            for f5 in file_list:
+
+                # iterate through the exclude strings
+                for ef in exclude:
+
+                    # if the exclude string is not in the non-hidden file
+                    if ef not in f5:
+
+                        # add the non-hidden file to the collection list if it hasn't been added already
+                        if f5 not in keep_files:
+                            keep_files.append(f5)
+
     else:
         keep_files = file_list
     
     # combine target_list and keep_list
     combined_files = []
-    for f4 in target_files:
-        if f4 in keep_files:
-            combined_files.append(f4)
+    for f6 in target_files:
+        if f6 in keep_files:
+            combined_files.append(f6)
 
 
     #return combined_files

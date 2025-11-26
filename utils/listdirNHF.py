@@ -66,22 +66,28 @@ def listdirNHF(path:os.PathLike,
         
         # if a list of strings is provided as exclude
         else:
-
+            print("here")
             # initialiye keep_files list, to store files to keep as they don't contain the string to exclude
             keep_files = []
 
             # iterate through non-hidden files
             for f5 in file_list:
+                
+                # initialize a variable to decide whether to keep the file
+                keep_this_file = True
 
                 # iterate through the exclude strings
                 for ef in exclude:
-
-                    # if the exclude string is not in the non-hidden file
-                    if ef not in f5:
-
-                        # add the non-hidden file to the collection list if it hasn't been added already
-                        if f5 not in keep_files:
-                            keep_files.append(f5)
+                    
+                    # if the exclude string is in the non-hidden file, exclude the non-hidden file
+                    if ef in f5:
+                        keep_this_file = False
+                    
+                # keep the file if non ot the exclude string was in it
+                if keep_this_file:
+                    # add the non-hidden file to the collection list if it hasn't been added already
+                    if f5 not in keep_files:
+                        keep_files.append(f5)
 
     else:
         keep_files = file_list

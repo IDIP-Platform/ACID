@@ -5,12 +5,15 @@ def listdirNHF(path:os.PathLike,
                exclude:str|list|None=None,
                hidden_file_signature:str=".") -> list:
     """
-    Returns files in a given directory as a list, avoding hidden files. Hidden files are identified because the start with a "."
+    Returns files in a given directory as a list, avoding hidden files.
+    Hidden files are identified because the start with a hidden_file_signature
 
     Inputs:
     - path. os.PathLike. The path to the directory whose objects have to be listed.
     - target. str or None. Optional. If str, only files containing the indicated string will be returned.
     - exclude. str or None. Optional. If str, files containing the indicated string will be excluded.
+
+    NOTE: in case of conflict, exlcude has always priority to target.
 
     Output. List.  
     """
@@ -66,7 +69,7 @@ def listdirNHF(path:os.PathLike,
         
         # if a list of strings is provided as exclude
         else:
-            print("here")
+            
             # initialiye keep_files list, to store files to keep as they don't contain the string to exclude
             keep_files = []
 

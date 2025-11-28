@@ -1,1 +1,1 @@
-all = []
+all = ["format_str"]

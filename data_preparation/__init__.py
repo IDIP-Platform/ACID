@@ -1,1 +1,1 @@
-all = ["format_str"]
+all = ["format_str", "map_category"]

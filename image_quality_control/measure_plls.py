@@ -2,7 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fft2, fftshift
 from scipy.stats import linregress
-
+try:
+    from numba import njit, prange
+    NUMBA_AVAILABLE = True
+except ImportError:
+    NUMBA_AVAILABLE = False
 
 # ---------------------------------------------------------------------
 # Utility: Determine which plots user wants (Option C API)
@@ -17,6 +21,41 @@ def _normalize_plot_arg(plot):
     # assume iterable
     return set(plot)
 
+# -------------------------------------------------------------------
+# NUMBA-ACCELERATED RADIAL BINNING
+# -------------------------------------------------------------------
+@njit(parallel=True, cache=True)
+def radial_binning_numba(power, r_int, max_r):
+    """
+    Fast radial binning using Numba parallel loops.
+    
+    Parameters
+    ----------
+    power : 2D array (float32 or float64)
+        Power spectrum (|FFT|^2).
+    r_int : 2D int array
+        Precomputed integer radii for each pixel.
+    max_r : int
+        Maximum radius + 1.
+    
+    Returns
+    -------
+    radial_sum : 1D array
+    radial_count : 1D array
+    """
+
+    h, w = power.shape
+    radial_sum = np.zeros(max_r, dtype=np.float64)
+    radial_count = np.zeros(max_r, dtype=np.int64)
+
+    # Parallel raster scan
+    for y in prange(h):
+        for x in range(w):
+            r = r_int[y, x]
+            radial_sum[r] += power[y, x]
+            radial_count[r] += 1
+
+    return radial_sum, radial_count
 
 # ---------------------------------------------------------------------
 # Main public function
@@ -150,19 +189,25 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         plt.colorbar()
         plt.show()
 
-    # ----- Build radial distances -----
+    # ----- Build radial distances (integer radii) -----
     h, w = image.shape
     cy, cx = h // 2, w // 2
     y, x = np.ogrid[:h, :w]
     r = np.sqrt((x - cx)**2 + (y - cy)**2)
+    r_int = r.astype(np.int32)
+    max_r = r_int.max() + 1
 
-    # Flatten
-    r_flat = r.astype(int).ravel()
-    p_flat = power.ravel()
+    # ----- Radial binning (Numba or fallback) -----
+    if NUMBA_AVAILABLE:
+        if verbose >= 2:
+            print("[PLLS-2D] Using Numba-accelerated radial binning.")
+        radial_sum, radial_count = radial_binning_numba(power, r_int, max_r)
+    else:
+        if verbose >= 2:
+            print("[PLLS-2D] Using NumPy fallback radial binning.")
+        radial_sum = np.bincount(r_int.ravel(), weights=power.ravel())
+        radial_count = np.bincount(r_int.ravel())
 
-    # Radial average
-    radial_sum = np.bincount(r_flat, weights=p_flat)
-    radial_count = np.bincount(r_flat)
     radial_power = radial_sum / np.maximum(radial_count, 1)
 
     freqs = np.arange(len(radial_power))

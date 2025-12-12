@@ -218,18 +218,22 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         radial_count = np.bincount(r_int.ravel())
 
     radial_power = radial_sum / np.maximum(radial_count, 1)
-
     freqs = np.arange(len(radial_power))
 
-    # Mask zeros
+    # Mask zeros in power (optional)
     valid_mask = (radial_power > 0) if mask_zero else np.ones_like(radial_power, bool)
-    freqs = freqs[valid_mask]
-    radial_power = radial_power[valid_mask]
+
+    # Exclude zero frequency (DC component)
+    valid_mask &= (freqs > 0)
+
+    # Apply mask
+    freqs_fit = freqs[valid_mask]
+    radial_power_fit = radial_power[valid_mask]
 
     # ----- Radial plot -----
     if "radial" in plots:
         plt.figure(figsize=(5, 4))
-        plt.plot(freqs, radial_power)
+        plt.plot(freqs_fit, radial_power_fit)
         plt.title(f"Radial Power Spectrum - {title}")
         plt.xlabel("Frequency (radius)")
         plt.ylabel("Power")
@@ -237,10 +241,15 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         plt.show()
 
     # ----- Regression -----
-    log_freqs = np.log(freqs)
-    log_power = np.log(radial_power)
+    log_freqs = np.log(freqs_fit)
+    log_power = np.log(radial_power_fit)
 
-    slope, intercept, _, _, _ = linregress(log_freqs, log_power)
+    # ----- Regression -----
+    # don't calculate the linear regression is the sample is too small
+    if len(log_freqs) < 2:
+        slope, intercept = np.nan, np.nan
+    else:
+        slope, intercept, _, _, _ = linregress(log_freqs, log_power)
 
     if verbose >= 2:
         print(f"[PLLS-2D] slope = {slope:.4f}, intercept = {intercept:.4f}")
@@ -261,4 +270,4 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         plt.legend()
         plt.show()
 
-    return slope, intercept, freqs, radial_power
+    return slope, intercept, freqs_fit, radial_power_fit

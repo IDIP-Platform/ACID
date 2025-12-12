@@ -1,1 +1,1 @@
-all = ["test_compute_plls"]
+all = ["test_compute_plls", "measure_blur_effect", "measure_laplacian_var"]

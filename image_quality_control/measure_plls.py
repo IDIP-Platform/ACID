@@ -94,7 +94,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
     freqs_out : ndarray or list
     powers_out : ndarray or list
     """
-
+    
     # Interpret plotting selection
     plots = _normalize_plot_arg(plot)
 
@@ -112,8 +112,12 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         slope, intercept, freqs, power = _plls_2d(
             image, mask_zero, verbose, plots, title="Image"
         )
-
-        return slope, intercept, freqs, power
+        
+        if return_details:
+            return np.array(slope), np.array(intercept), freqs, power
+        
+        else:
+            return np.array(slope)
 
     # ===============================
     # Case B: axis specified → per-slice processing
@@ -140,7 +144,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         plot_indices = set(plot_slices)
     else:
         raise ValueError("Invalid value for plot_slices")
-
+    
     # Loop over slices
     for i in range(num_slices):
 
@@ -168,8 +172,10 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
 
     if return_details:
         return np.array(slopes), np.array(intercepts), freqs_out, powers_out
+        
     else:
         return np.array(slopes)
+        
 
 
 # ---------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import numpy as np
-from compute_plls import compute_plls  # adjust path if needed
+from image_quality_control.measure_plls import compute_plls
 
 
 def run_all_tests():

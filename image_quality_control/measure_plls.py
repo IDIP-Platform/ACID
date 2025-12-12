@@ -66,6 +66,17 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
     Compute the Power Log-Log Slope (PLLS) for image sharpness assessment,
     with optional debugging plots.
 
+    Returns the power-law log-log slope (PLLS) of the image's Fourier spectrum.
+
+    Conceptually:
+
+    Sharp, in-focus images have more high-frequency content, so the slope is more negative.
+
+    Blurry or out-of-focus images have suppressed high frequencies, so the slope is closer to zero.
+
+    This means one can use PLLS as a focus score: lower slope → better focus, higher slope → blurry.
+
+    
     Parameters
     ----------
     image : ndarray

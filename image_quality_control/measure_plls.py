@@ -61,7 +61,7 @@ def radial_binning_numba(power, r_int, max_r):
 # Main public function
 # ---------------------------------------------------------------------
 def compute_plls(image, axis=None, mask_zero=True, verbose=0,
-                 plot=False, plot_slices="first"):
+                 plot=False, plot_slices="first", return_details=False):
     """
     Compute the Power Log-Log Slope (PLLS) for image sharpness assessment,
     with optional debugging plots.
@@ -166,7 +166,10 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         freqs_out.append(freqs)
         powers_out.append(power)
 
-    return np.array(slopes), np.array(intercepts), freqs_out, powers_out
+    if return_details:
+        return np.array(slopes), np.array(intercepts), freqs_out, powers_out
+    else:
+        return np.array(slopes)
 
 
 # ---------------------------------------------------------------------

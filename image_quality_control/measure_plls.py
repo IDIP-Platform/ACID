@@ -5,6 +5,43 @@ from scipy.stats import linregress
 try:
     from numba import njit, prange
     NUMBA_AVAILABLE = True
+
+    # -------------------------------------------------------------------
+    # NUMBA-ACCELERATED RADIAL BINNING
+    # -------------------------------------------------------------------
+    @njit(parallel=True, cache=True)
+    def radial_binning_numba(power, r_int, max_r):
+        """
+        Fast radial binning using Numba parallel loops.
+        
+        Parameters
+        ----------
+        power : 2D array (float32 or float64)
+            Power spectrum (|FFT|^2).
+        r_int : 2D int array
+            Precomputed integer radii for each pixel.
+        max_r : int
+            Maximum radius + 1.
+        
+        Returns
+        -------
+        radial_sum : 1D array
+        radial_count : 1D array
+        """
+
+        h, w = power.shape
+        radial_sum = np.zeros(max_r, dtype=np.float64)
+        radial_count = np.zeros(max_r, dtype=np.int64)
+
+        # Parallel raster scan
+        for y in prange(h):
+            for x in range(w):
+                r = r_int[y, x]
+                radial_sum[r] += power[y, x]
+                radial_count[r] += 1
+
+        return radial_sum, radial_count
+
 except ImportError:
     NUMBA_AVAILABLE = False
 
@@ -21,41 +58,6 @@ def _normalize_plot_arg(plot):
     # assume iterable
     return set(plot)
 
-# -------------------------------------------------------------------
-# NUMBA-ACCELERATED RADIAL BINNING
-# -------------------------------------------------------------------
-@njit(parallel=True, cache=True)
-def radial_binning_numba(power, r_int, max_r):
-    """
-    Fast radial binning using Numba parallel loops.
-    
-    Parameters
-    ----------
-    power : 2D array (float32 or float64)
-        Power spectrum (|FFT|^2).
-    r_int : 2D int array
-        Precomputed integer radii for each pixel.
-    max_r : int
-        Maximum radius + 1.
-    
-    Returns
-    -------
-    radial_sum : 1D array
-    radial_count : 1D array
-    """
-
-    h, w = power.shape
-    radial_sum = np.zeros(max_r, dtype=np.float64)
-    radial_count = np.zeros(max_r, dtype=np.int64)
-
-    # Parallel raster scan
-    for y in prange(h):
-        for x in range(w):
-            r = r_int[y, x]
-            radial_sum[r] += power[y, x]
-            radial_count[r] += 1
-
-    return radial_sum, radial_count
 
 # ---------------------------------------------------------------------
 # Main public function

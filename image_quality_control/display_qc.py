@@ -2,6 +2,7 @@ import os
 import tifffile
 import numpy as np
 import pandas as pd
+import napari
 
 def high_low_QC_fov(metadata_df,
                     qc_clm,
@@ -31,3 +32,35 @@ def high_low_QC_fov(metadata_df,
     img_high = img_high.take(indices=int(qc_clm.split(sep=ch_measurement_sep)[-1]), axis=channel_ax)
             
     return img_low, img_high, fov_row_low, fov_row_high
+
+
+def display_qc(metadata_df,
+               napari_viewer,
+               qc_clm_collection,
+               fov_clm,
+               ch_measurement_sep,
+               fov_dir,
+               channel_ax):
+
+    # try to visualize fields of view with min-max QCs in napari
+    try:
+        for col in qc_clm_collection:
+            print(col)
+            # get images with highest and lowest QC values
+            img_low, img_high, fov_row_low, fov_row_high = high_low_QC_fov(metadata_df,
+                                                                        qc_clm=col,
+                                                                        fov_clm=fov_clm,
+                                                                        ch_measurement_sep=ch_measurement_sep,
+                                                                        fov_dir=fov_dir,
+                                                                        channel_ax=channel_ax)
+            print(img_low.shape, img_high.shape)
+
+            # visualize using napari
+            napari_viewer.add_image(img_low, name=f"lowest {col}: {fov_row_low}")
+            napari_viewer.add_image(img_high, name=f"highest {col}: {fov_row_high}")
+
+            # return napari_viewer
+
+    # print message if visualization fails
+    except:
+        print("could not visualize fields of view with min-max QCs in napari")

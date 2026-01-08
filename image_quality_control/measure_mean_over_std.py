@@ -14,6 +14,7 @@ def mean_over_std(
         image (np.ndarray): n-dimensional array representing the image. Must be numeric.
         axis (int or None, optional): Axis along which to compute the ratio.
             If None, computes over the entire array. Default is None.
+            If an integer is provided, the function returns ratios **per slice along that axis**.
         null_val (float or int, optional): Value to return if the standard deviation is zero or NaN.
             Default is np.nan.
         inf_val (float or int, optional): Value to replace +inf/-inf in the image before computation.
@@ -58,14 +59,19 @@ def mean_over_std(
         # Replace all +inf or -inf values with the user-specified inf_val
         img[np.isposinf(img) | np.isneginf(img)] = inf_val
 
+    # Handle axis: if an integer axis is passed, compute over all other axes
+    if axis is not None and isinstance(axis, int):
+        axes_to_reduce = tuple(i for i in range(img.ndim) if i != axis)
+    else:
+        raise ValueError("Axis must be an integer or None.")
+
     # Compute the mean along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures that calculations are performed in float64
-    mean_val = np.nanmean(img, axis=axis, dtype=np.float64)
-    print("mean val", mean_val.shape)
+    mean_val = np.nanmean(img, axis=axes_to_reduce, dtype=np.float64)
+    
     # Compute the standard deviation along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures numerical stability
-    std_val = np.nanstd(img, axis=axis, dtype=np.float64)
-    print("std val", std_val.shape)
+    std_val = np.nanstd(img, axis=axes_to_reduce, dtype=np.float64)
 
     # Handle the case when axis=None (i.e., compute over the entire array)
     if axis is None:

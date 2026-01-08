@@ -61,10 +61,11 @@ def mean_over_std(
     # Compute the mean along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures that calculations are performed in float64
     mean_val = np.nanmean(img, axis=axis, dtype=np.float64)
-
+    print("mean val", mean_val.shape)
     # Compute the standard deviation along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures numerical stability
     std_val = np.nanstd(img, axis=axis, dtype=np.float64)
+    print("std val", std_val.shape)
 
     # Handle the case when axis=None (i.e., compute over the entire array)
     if axis is None:

@@ -2,14 +2,17 @@ import os
 import pandas as pd
 import tifffile
 
-def get_ch_number(df:pd.DataFrame,
-                  fov_dir:os.PathLike,
-                  fov_clm:str='ome_tif_file_name',
-                  channel_axis: int=0,
-                  null_value:float|None=None)->int:
+def get_ch_number_shape(df:pd.DataFrame,
+                        fov_dir:os.PathLike,
+                        fov_clm:str='ome_tif_file_name',
+                        channel_axis: int=0,
+                        null_value:float|None=None)->int:
     """
-    Get the number of channels in the images indicated in the dataframe.
+    Get the number of channels and the shape of individual channels in the images indicated in the dataframe.
     
+    Assumes that all images in the dataframe have the same number of channels and that all channels have the
+    same shape.
+
      Parameters:
         df: pandas DataFrame containing the metadata information, including the file names of the fields of view.
         fov_dir: path to the directory containing the fields of view.
@@ -37,29 +40,43 @@ def get_ch_number(df:pd.DataFrame,
                 # read the field of view
                 fov = tifffile.imread(os.path.join(fov_dir, str(df.iloc[i, :][fov_clm])))
 
+                # signal that a file has been found
+                file_found = True
+
+            except:
+                # signal that a file hasn't been found
+                file_found = False
+
+            
+            if file_found:
                 # get the number of channels
                 ch_number = fov.shape[channel_axis]
 
                 # print the number of channels found
                 print(f"number of channels found: {ch_number}")
 
-                # signal that a file has been found
-                file_found = True
+                # get the channels' shape
+                ch_shape = tuple([fov.shape[i] for i in range(len(fov.shape)) if i not channel_axis])
+
+                # print the channels's shape
+                print((f"shape of channels: {ch_shape}"))
             
             # except block to handle cases where the file cannot be read
-            except:
+            else:
                 pass
         
-        # return null value if no valid image files are found and print a message
+        # if the end of the dataframe is reached
         else:
 
             # print a message indicating no valid image files were found
             print("No valid image files found in the dataframe.")
 
-            # return null value
-            return null_value
+            # assign ch_number and ch_shape to null values
+            ch_number = null_value
+            ch_shape = null_value
 
         # increment index
         i += 1
     
-    return ch_number
+    return ch_number, ch_shape
+

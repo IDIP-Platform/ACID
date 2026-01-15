@@ -56,7 +56,7 @@ def get_ch_number_shape(df:pd.DataFrame,
                 print(f"number of channels found: {ch_number}")
 
                 # get the channels' shape
-                ch_shape = tuple([fov.shape[i] for i in range(len(fov.shape)) if i not channel_axis])
+                ch_shape = tuple([fov.shape[i] for i in range(len(fov.shape)) if i!=channel_axis])
 
                 # print the channels's shape
                 print((f"shape of channels: {ch_shape}"))

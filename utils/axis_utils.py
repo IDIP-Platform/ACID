@@ -2,16 +2,16 @@ import os
 import pandas as pd
 import tifffile
 
-def get_ch_number_shape(df:pd.DataFrame,
-                        fov_dir:os.PathLike,
-                        fov_clm:str='ome_tif_file_name',
-                        channel_axis: int=0,
-                        null_value:float|None=None)->int:
+def get_fov_ch_shape(df:pd.DataFrame,
+                     fov_dir:os.PathLike,
+                     fov_clm:str='ome_tif_file_name',
+                     channel_axis: int=0,
+                     null_value:float|None=None)->int:
     """
-    Get the number of channels and the shape of individual channels in the images indicated in the dataframe.
+    Get the shape of fields of view, the number of channels and
+    the shape of individual channels in the images indicated in the dataframe.
     
-    Assumes that all images in the dataframe have the same number of channels and that all channels have the
-    same shape.
+    Assumes that all images in the dataframe have the same shape (and number of channels).
 
      Parameters:
         df: pandas DataFrame containing the metadata information, including the file names of the fields of view.
@@ -49,6 +49,12 @@ def get_ch_number_shape(df:pd.DataFrame,
 
             
             if file_found:
+                # get fov shape
+                fov_shape = fov.shape
+
+                # print the shape of fov
+                print(f"field of view shape: {fov_shape}")
+
                 # get the number of channels
                 ch_number = fov.shape[channel_axis]
 
@@ -71,12 +77,13 @@ def get_ch_number_shape(df:pd.DataFrame,
             # print a message indicating no valid image files were found
             print("No valid image files found in the dataframe.")
 
-            # assign ch_number and ch_shape to null values
+            # assign fov_shape ch_number and ch_shape to null values
+            fov_shape = null_value
             ch_number = null_value
             ch_shape = null_value
 
         # increment index
         i += 1
     
-    return ch_number, ch_shape
+    return fov_shape, ch_number, ch_shape
 

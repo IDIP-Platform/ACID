@@ -246,6 +246,95 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         return np.array(slopes)
         
 
+# # ---------------------------------------------------------------------
+# # Internal: Compute PLLS for a single 2D image + optional plots
+# # ---------------------------------------------------------------------
+# def _plls_2d(image, mask_zero, verbose, plots, title=""):
+#     """
+#     Compute PLLS for one 2D image.
+#     """
+
+#     # ----- FFT -----
+#     fft_img = fftshift(fft2(image))
+#     power = np.abs(fft_img)**2
+
+#     # ----- FFT plot -----
+#     if "fft" in plots:
+#         plt.figure(figsize=(5, 4))
+#         plt.imshow(np.log10(1 + np.abs(fft_img)), cmap="magma")
+#         plt.title(f"FFT magnitude (log) - {title}")
+#         plt.colorbar()
+#         plt.show()
+
+#     # ----- Build radial distances (integer radii) -----
+#     h, w = image.shape
+#     cy, cx = h // 2, w // 2
+#     y, x = np.ogrid[:h, :w]
+#     r = np.sqrt((x - cx)**2 + (y - cy)**2)
+#     r_int = r.astype(np.int32)
+#     max_r = min((cy,cx))
+
+#     # ----- Radial binning (Numba or fallback) -----
+#     if NUMBA_AVAILABLE:
+#         if verbose >= 2:
+#             print("[PLLS-2D] Using Numba-accelerated radial binning.")
+#         radial_sum, radial_count = radial_binning_numba(power, r_int, max_r)
+#     else:
+#         if verbose >= 2:
+#             print("[PLLS-2D] Using NumPy fallback radial binning.")
+#         radial_sum = np.bincount(r_int.ravel(), weights=power.ravel())
+#         radial_count = np.bincount(r_int.ravel())
+
+#     # Avoid division by zero and keep frequencies within valid bounds
+#     valid_indices = np.where((radial_count > 0) & (np.arange(len(radial_sum)) > 0))[0]
+#     valid_indices = valid_indices[valid_indices < max_r]
+    
+#     radial_power_fit = radial_sum[valid_indices] / radial_count[valid_indices]
+#     freqs_fit = valid_indices.astype(float)
+
+#     # ----- Radial plot -----
+#     if "radial" in plots:
+#         plt.figure(figsize=(5, 4))
+#         plt.plot(freqs_fit, radial_power_fit)
+#         plt.title(f"Radial Power Spectrum - {title}")
+#         plt.xlabel("Frequency (radius)")
+#         plt.ylabel("Power")
+#         plt.grid(True)
+#         plt.show()
+
+#     # ----- Regression -----
+#     log_freqs = np.log(freqs_fit)
+#     log_power = np.log(radial_power_fit)
+
+#     # ----- Regression -----
+#     # don't calculate the linear regression is the sample is too small
+#     if len(log_freqs) < 2:
+#         slope, intercept = np.nan, np.nan
+#     else:
+#         slope, intercept, _, _, _ = linregress(log_freqs, log_power)
+
+#     if verbose >= 2:
+#         print(f"[PLLS-2D] slope = {slope:.4f}, intercept = {intercept:.4f}")
+
+#     # ----- Log-log regression plot -----
+#     if "loglog" in plots:
+#         plt.figure(figsize=(5, 4))
+#         plt.scatter(log_freqs, log_power, s=10, label="data")
+#         plt.plot(
+#             log_freqs,
+#             intercept + slope * log_freqs,
+#             label=f"fit (slope={slope:.3f})",
+#         )
+#         plt.title(f"Log–Log Spectrum + Regression - {title}")
+#         plt.xlabel("log(freq)")
+#         plt.ylabel("log(power)")
+#         plt.grid(True)
+#         plt.legend()
+#         plt.show()
+
+#     return slope, intercept, freqs_fit, radial_power_fit
+
+
 # ---------------------------------------------------------------------
 # Internal: Compute PLLS for a single 2D image + optional plots
 # ---------------------------------------------------------------------
@@ -272,8 +361,7 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
     y, x = np.ogrid[:h, :w]
     r = np.sqrt((x - cx)**2 + (y - cy)**2)
     r_int = r.astype(np.int32)
-    # max_r = r_int.max() + 1
-    max_r = min((cy,cx))
+    max_r = r_int.max() + 1
 
     # ----- Radial binning (Numba or fallback) -----
     if NUMBA_AVAILABLE:
@@ -286,35 +374,28 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         radial_sum = np.bincount(r_int.ravel(), weights=power.ravel())
         radial_count = np.bincount(r_int.ravel())
 
-    # radial_power = radial_sum / np.maximum(radial_count, 1)
+    radial_power = radial_sum / np.maximum(radial_count, 1)
     
-    # # this seems to be the difference with, for example, CellProfiler,
-    # # and the reason why the present implementation has a higher
-    # # plls (milder slope) when images are blurried
-    # # and lower plls (sharper slope) when images are sharper
-    # # in this implementation freq goes from
-    # # 0 to a positive integer. In an implementation
-    # # following the radial_power freq would
-    # # indeed indicate the frequencies (from 0...low frequencies)
-    # # to a positive number (... higher frequencies)
-    # freqs = np.arange(len(radial_power))
+    # this seems to be the difference with, for example, CellProfiler,
+    # and the reason why the present implementation has a higher
+    # plls (milder slope) when images are blurried
+    # and lower plls (sharper slope) when images are sharper
+    # in this implementation freq goes from
+    # 0 to a positive integer. In an implementation
+    # following the radial_power freq would
+    # indeed indicate the frequencies (from 0...low frequencies)
+    # to a positive number (... higher frequencies)
+    freqs = np.arange(len(radial_power))
 
-    # # Mask zeros in power (optional)
-    # valid_mask = (radial_power > 0) if mask_zero else np.ones_like(radial_power, bool)
+    # Mask zeros in power (optional)
+    valid_mask = (radial_power > 0) if mask_zero else np.ones_like(radial_power, bool)
 
-    # # Exclude zero frequency (DC component)
-    # valid_mask &= (freqs > 0)
+    # Exclude zero frequency (DC component)
+    valid_mask &= (freqs > 0)
 
-    # Avoid division by zero and keep frequencies within valid bounds
-    valid_indices = np.where((radial_count > 0) & (np.arange(len(radial_sum)) > 0))[0]
-    valid_indices = valid_indices[valid_indices < max_r]
-    
-    radial_power_fit = radial_sum[valid_indices] / radial_count[valid_indices]
-    freqs_fit = valid_indices.astype(float)
-
-    # # Apply mask
-    # freqs_fit = freqs[valid_mask]
-    # radial_power_fit = radial_power[valid_mask]
+    # Apply mask
+    freqs_fit = freqs[valid_mask]
+    radial_power_fit = radial_power[valid_mask]
 
     # ----- Radial plot -----
     if "radial" in plots:
@@ -358,107 +439,3 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
 
     return slope, intercept, freqs_fit, radial_power_fit
 
-
-# # ---------------------------------------------------------------------
-# # Internal: Compute PLLS for a single 2D image + optional plots
-# # ---------------------------------------------------------------------
-# def _plls_2d(image, mask_zero, verbose, plots, title=""):
-#     """
-#     Compute PLLS for one 2D image.
-#     """
-
-#     # ----- FFT -----
-#     fft_img = fftshift(fft2(image))
-#     power = np.abs(fft_img)**2
-
-#     # ----- FFT plot -----
-#     if "fft" in plots:
-#         plt.figure(figsize=(5, 4))
-#         plt.imshow(np.log10(1 + np.abs(fft_img)), cmap="magma")
-#         plt.title(f"FFT magnitude (log) - {title}")
-#         plt.colorbar()
-#         plt.show()
-
-#     # ----- Build radial distances (integer radii) -----
-#     h, w = image.shape
-#     cy, cx = h // 2, w // 2
-#     y, x = np.ogrid[:h, :w]
-#     r = np.sqrt((x - cx)**2 + (y - cy)**2)
-#     r_int = r.astype(np.int32)
-#     max_r = r_int.max() + 1
-
-#     # ----- Radial binning (Numba or fallback) -----
-#     if NUMBA_AVAILABLE:
-#         if verbose >= 2:
-#             print("[PLLS-2D] Using Numba-accelerated radial binning.")
-#         radial_sum, radial_count = radial_binning_numba(power, r_int, max_r)
-#     else:
-#         if verbose >= 2:
-#             print("[PLLS-2D] Using NumPy fallback radial binning.")
-#         radial_sum = np.bincount(r_int.ravel(), weights=power.ravel())
-#         radial_count = np.bincount(r_int.ravel())
-
-#     radial_power = radial_sum / np.maximum(radial_count, 1)
-    
-#     # this seems to be the difference with, for example, CellProfiler,
-#     # and the reason why the present implementation has a higher
-#     # plls (milder slope) when images are blurried
-#     # and lower plls (sharper slope) when images are sharper
-#     # in this implementation freq goes from
-#     # 0 to a positive integer. In an implementation
-#     # following the radial_power freq would
-#     # indeed indicate the frequencies (from 0...low frequencies)
-#     # to a positive number (... higher frequencies)
-#     freqs = np.arange(len(radial_power))
-
-#     # Mask zeros in power (optional)
-#     valid_mask = (radial_power > 0) if mask_zero else np.ones_like(radial_power, bool)
-
-#     # Exclude zero frequency (DC component)
-#     valid_mask &= (freqs > 0)
-
-#     # Apply mask
-#     freqs_fit = freqs[valid_mask]
-#     radial_power_fit = radial_power[valid_mask]
-
-#     # ----- Radial plot -----
-#     if "radial" in plots:
-#         plt.figure(figsize=(5, 4))
-#         plt.plot(freqs_fit, radial_power_fit)
-#         plt.title(f"Radial Power Spectrum - {title}")
-#         plt.xlabel("Frequency (radius)")
-#         plt.ylabel("Power")
-#         plt.grid(True)
-#         plt.show()
-
-#     # ----- Regression -----
-#     log_freqs = np.log(freqs_fit)
-#     log_power = np.log(radial_power_fit)
-
-#     # ----- Regression -----
-#     # don't calculate the linear regression is the sample is too small
-#     if len(log_freqs) < 2:
-#         slope, intercept = np.nan, np.nan
-#     else:
-#         slope, intercept, _, _, _ = linregress(log_freqs, log_power)
-
-#     if verbose >= 2:
-#         print(f"[PLLS-2D] slope = {slope:.4f}, intercept = {intercept:.4f}")
-
-#     # ----- Log-log regression plot -----
-#     if "loglog" in plots:
-#         plt.figure(figsize=(5, 4))
-#         plt.scatter(log_freqs, log_power, s=10, label="data")
-#         plt.plot(
-#             log_freqs,
-#             intercept + slope * log_freqs,
-#             label=f"fit (slope={slope:.3f})",
-#         )
-#         plt.title(f"Log–Log Spectrum + Regression - {title}")
-#         plt.xlabel("log(freq)")
-#         plt.ylabel("log(power)")
-#         plt.grid(True)
-#         plt.legend()
-#         plt.show()
-
-#     return slope, intercept, freqs_fit, radial_power_fit

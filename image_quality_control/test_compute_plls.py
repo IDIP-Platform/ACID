@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 from image_quality_control.measure_plls import compute_plls
 
 
@@ -216,3 +218,67 @@ def run_all_tests():
         run_test(tf.__name__, tf)
 
     print("\nAll tests completed successfully ✅")
+
+
+
+def plls_vs_blur(
+    image,
+    plls_func,
+    sigmas,
+    return_values=False,
+    plls_func_kwargs={},
+):
+    """
+    Apply progressively stronger Gaussian blur to an image,
+    compute PLLS for each blur level, and plot PLLS vs blur strength.
+
+    Parameters
+    ----------
+    image : 2D numpy array
+        Input image (grayscale).
+    plls_func : callable
+        Function that computes PLLS.
+        Must return (slope, intercept, freqs, power).
+    sigmas : array-like
+        Gaussian blur sigmas to apply (in pixels).
+    mask_zero : bool, optional
+        Passed to PLLS function.
+    return_values : bool, optional
+        If True, return sigmas and slopes.
+
+    Returns
+    -------
+    sigmas, slopes : arrays (optional)
+    """
+
+    slopes = []
+
+    for sigma in sigmas:
+        # Apply Gaussian blur
+        if sigma == 0:
+            blurred = image.copy()
+        else:
+            blurred = gaussian_filter(image, sigma=sigma)
+
+        # Compute PLLS
+        slope, _, _, _ = plls_func(blurred,**plls_func_kwargs)
+        slopes.append(slope)
+
+    slopes = np.array(slopes)
+
+    # ----- Plot -----
+    plt.figure(figsize=(6, 4))
+    plt.plot(sigmas, slopes, marker="o")
+    plt.xlabel("Gaussian blur σ (pixels)")
+    plt.ylabel("PLLS (slope)")
+    plt.title("PLLS vs blur strength")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    plt.savefig(r'C:\Users\aless\OneDrive\Desktop\Ale\lab\CIID_IDIP\others\MIDAscience_bioimage_consultation\20260120_IDIP_MIDAscience_meeting\plls_vs_blur_test.png')
+
+    if return_values:
+        return np.array(sigmas), slopes
+
+

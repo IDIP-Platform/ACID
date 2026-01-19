@@ -45,6 +45,37 @@ try:
 except ImportError:
     NUMBA_AVAILABLE = False
 
+
+
+"""
+The Power Spectral Density (PSD) of image intensity reveals how image brightness
+(power) is distributed across different spatial frequencies, indicating patterns,
+textures, or noise, with high frequencies showing fine details/edges and low frequencies
+showing large areas/smoothness, calculated by transforming intensity data
+(e.g., via FFT) to the frequency domain, squaring amplitudes, and often radially
+averaging for isotropic analysis, which helps characterize surface roughness, detect
+defects, or analyze texture in fields like optics and microscopy.
+
+
+How it's calculated (General Steps):
+1) Transform to Frequency Domain: Use a Fast Fourier Transform (FFT) on the image's
+intensity data (e.g., grayscale values) to get its frequency components.
+
+2) Calculate Power: Square the magnitude of the FFT results (or use specific formulas
+for one-sided vs. two-sided spectra).
+
+3) Normalize: Divide by the frequency resolution (bin width) to get power density,
+making results comparable across different sample sizes.
+
+4) Radial Averaging (Optional): For isotropic (direction-independent) analysis,
+average the power at pixels equidistant from the center to get power vs. radial
+frequency.
+
+"""
+
+
+
+
 # ---------------------------------------------------------------------
 # Utility: Determine which plots user wants (Option C API)
 # ---------------------------------------------------------------------

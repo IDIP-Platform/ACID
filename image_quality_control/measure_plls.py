@@ -128,11 +128,11 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
 
     Conceptually:
 
-    Sharp, in-focus images have more high-frequency content, so the slope is more negative.
+    Sharp, in-focus images have more high-frequency content, so the slope is LESS negative.
 
-    Blurry or out-of-focus images have suppressed high frequencies, so the slope is closer to zero.
+    Blurry or out-of-focus images have suppressed high frequencies, so the slope is MORE NEGATIVE.
 
-    This means one can use PLLS as a focus score: lower slope → better focus, higher slope → blurry.
+    This means one can use PLLS as a focus score: higher plls → better focus, lower plls → blurry.
 
     
     Parameters
@@ -245,7 +245,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
     else:
         return np.array(slopes)
         
-
+# # GEMINI IMPLEMENTATION
 # # ---------------------------------------------------------------------
 # # Internal: Compute PLLS for a single 2D image + optional plots
 # # ---------------------------------------------------------------------

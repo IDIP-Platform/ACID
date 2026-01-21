@@ -324,7 +324,7 @@ __PROCESSED FILE NAME__\
 # Dependencies:
 The file acid_develop.yml can be used for creating the environment containg script dependencies during the project development. The file acid_neo.yml has been used to create the python environment on a computer workstation used for running the analysis, with gpu support, at the Infectious Diseases Imaging Platform of the CIID (the workstation is ...).
 
-The following module versions are used:
+The following module versions are used for acid_develop environment:
 - python==3.12.12
 - jupyterlab==4.5.0
 - pip==25.3
@@ -349,6 +349,7 @@ The following module versions are used:
 - bioio==3.0.0
 - bioio-nd2==1.5.0
 
+As of 2026/01/21 the acid_neo environment hasn't been tested yet.
 
 # Notes:
 

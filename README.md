@@ -349,6 +349,8 @@ The following module versions are used for acid_develop environment:
 - bioio==3.0.0
 - bioio-nd2==1.5.0
 
+The file acid_develop_20260121.txt is the explicit list of the acid_develop environment created on the 2026/01/21.
+
 As of 2026/01/21 the acid_neo environment hasn't been tested yet.
 
 # Notes:

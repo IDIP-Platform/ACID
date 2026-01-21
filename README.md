@@ -4,7 +4,7 @@ Authors: Alessandro Ulivi (alessandro.ulivi.89@gmail.com)
 
 Creation (yyyy/mm/dd): 2025/11/21
 
-Status: ongoing (2026/01/19)
+Status: ongoing (2026/01/21)
 
 # Description:
 **Background and scope**\
@@ -83,93 +83,50 @@ NOTE: the pipeline was conceptualized and built in a situation where:
 - Situations different than the above, including edge cases of segmentation masks with no cells or images containing detrimental artifacts, haven't been evaluated.
 
 **Output data**\
+**NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
+
 The pipeline generates the following directory tree and output files within the output_data_directory:
 
 - output_data_directory:
-    - [date]_nef_translocation_glob_measurements.csv
+    - [date]_ACID_glob_measurements.csv
     - fov:
-        - file1_selected_image1.ome.tif
-        - file1_selected_image2.ome.tif
-        - file1_selected_image3.ome.tif
-        - file2_selected_image1.ome.tif
-        - file2_selected_image2.ome.tif
-        - file2_selected_image3.ome.tif
-        - file3_selected_image1.ome.tif
-        - file3_selected_image2.ome.tif
-        - file3_selected_image3.ome.tif
-        - fileN_selected_imageM.ome.tif
+        - file1_field_of_view1.ome.tif
+        - file1_field_of_view2.ome.tif
+        - file1_field_of_view3.ome.tif
+        - file1_string.xml
+        - file2_field_of_view1.ome.tif
+        - file2_field_of_view2.ome.tif
+        - file2_field_of_view3.ome.tif
+        - file2_string.xml
+        - file3_field_of_view1.ome.tif
+        - file3_field_of_view2.ome.tif
+        - file3_field_of_view3.ome.tif
+        - file3_string.xml
+        - fileN_field_of_viewM.ome.tif
+        - fileN_string.xml
         ...
     - seg:
-        - file1_selected_image1_Cl.ome.tif
-        - file1_selected_image1_Ct.ome.tif
-        - file1_selected_image1_Nc.ome.tif
-        - file1_selected_image2_Cl.ome.tif
-        - file1_selected_image2_Ct.ome.tif
-        - file1_selected_image2_Nc.ome.tif
-        - file1_selected_image3_Cl.ome.tif
-        - file1_selected_image3_Ct.ome.tif
-        - file1_selected_image3_Nc.ome.tif
-        - file2_selected_image1_Cl.ome.tif
-        - file2_selected_image1_Ct.ome.tif
-        - file2_selected_image1_Nc.ome.tif
-        - file2_selected_image2_Cl.ome.tif
-        - file2_selected_image2_Ct.ome.tif
-        - file2_selected_image2_Nc.ome.tif
-        - file2_selected_image3_Cl.ome.tif
-        - file2_selected_image3_Ct.ome.tif
-        - file2_selected_image3_Nc.ome.tif
-        - file3_selected_image1_Cl.ome.tif
-        - file3_selected_image1_Ct.ome.tif
-        - file3_selected_image1_Nc.ome.tif
-        - file3_selected_image2_Cl.ome.tif
-        - file3_selected_image2_Ct.ome.tif
-        - file3_selected_image2_Nc.ome.tif
-        - file3_selected_image3_Cl.ome.tif
-        - file3_selected_image3_Ct.ome.tif
-        - file3_selected_image3_Nc.ome.tif
-        - fileN_selected_imageM_Cl.ome.tif
-        - fileN_selected_imageM_Ct.ome.tif
-        - fileN_selected_imageM_Nc.ome.tif
+        - file1_field_of_view1.ome.tif
+        - file1_field_of_view2.ome.tif
+        - file1_field_of_view3.ome.tif
+        - file2_field_of_view1.ome.tif
+        - file2_field_of_view2.ome.tif
+        - file2_field_of_view3.ome.tif
+        - file3_field_of_view1.ome.tif
+        - file3_field_of_view2.ome.tif
+        - file3_field_of_view3.ome.tif
+        - fileN_field_of_viewM.ome.tif
         ...
-        
-        NOTE: from 2025/11/07 an option is introduced to also save:
-        - file1_selected_image1_Cl_F.ome.tif
-        - file1_selected_image1_Nc_F.ome.tif
-        - file1_selected_image2_Cl_F.ome.tif
-        - file1_selected_image2_Nc_F.ome.tif
-        - file1_selected_image3_Cl_F.ome.tif
-        - file1_selected_image3_Nc_F.ome.tif
-        - file2_selected_image1_Cl_F.ome.tif
-        - file2_selected_image1_Nc_F.ome.tif
-        - file2_selected_image2_Cl_F.ome.tif
-        - file2_selected_image2_Nc_F.ome.tif
-        - file2_selected_image3_Cl_F.ome.tif
-        - file2_selected_image3_Nc_F.ome.tif
-        - file3_selected_image1_Cl_F.ome.tif
-        - file3_selected_image1_Nc_F.ome.tif
-        - file3_selected_image2_Cl_F.ome.tif
-        - file3_selected_image2_Nc_F.ome.tif
-        - file3_selected_image3_Cl_F.ome.tif
-        - file3_selected_image3_Nc_F.ome.tif
-        - fileN_selected_imageM_Cl_F.ome.tif
-        - fileN_selected_imageM_Nc_F.ome.tif
-        ...
-
     - metadata:
-        - original:
-            - file1_string.xml
-            - file2_string.xml
-            - file3_string.xml
-            - fileN_string.xml
-        
-        - proc_file_info:
-            - [date]_NefCellLoc_metadata.csv
+        - [date]_ACID_metadata_part[notebook_progressive_number].csv
+    -background:
+        - [...]
 
 In addition, a directory named "secondary_output" is created inside the working directory. Inside secondary_output are saved hyperparameters per each run of the pipeline.
 
 
 OUTPUT DATA DESCRIPTION
-- [date]_nef_translocation_glob_measurements.csv. Comma-separated table with intensity measurements of nuclei and cytosols. The file includes all measurements per each field of view (also called scene) of each raw file. Rows are individual cells. Columns are:
+- [date]_ACID_glob_measurements.csv. Comma-separated table with intensity measurements of nuclei and cytosols. The file includes all measurements per each field of view (also called scene) of each raw file. Rows are individual cells. Columns are:
 
     - raw_file_name. The name of the .nd2 raw file saved at the Nikon Ti2 microscope and the field of views (either multi-points or single positions). It is the input to the pipeline and it is saved in the input_data_directory.
 
@@ -229,52 +186,37 @@ OUTPUT DATA DESCRIPTION
 
     - dims_order. The order of the dimension in the ome.tif file. 'T'=time, 'C'='channel', 'Z'='z_dimension', 'Y'='y_dimension', 'X'='x_dimension'.
 
-    - 'segmentation_date_yymmdd_Nc_Cl'. The date of the segmentation of nuclei and cells. This is done in the second main loop of part 1 notebook. Step 2.2 below.
+    - 'segmentation_date_yymmdd'. The date of the segmentation. This is done in the second main loop of part [...] notebook. Step [...] below.
 
-    - 'cell_segmentation'. The name of the saved cell segmentation file.
-
-    - 'nucleus_segmentation'. The name of the saved nucleus segmentation file.
-
-    - 'cytosol_segmentation'. The name of the saved cytosol segmentation file.
-
-    - 'segmentation_date_yymmdd_Ct'. The date of the segmentation of cytosol. This is done in the main loop of part 2 notebook. Step 3.2 below.
+    - 'segmentation_name'. The name of the saved segmentation file.
 
     - label. The value of the label for the cell whose measurements are in the row. The label unequivocally identifies the cell in the cytosol segmentation mask, while it might be different for the nucleus and cell masks.
 
-    - (Nc/Ct)_area. The area of the nucleus/cytosol for a measured cell, in number of pixels.
+    - area. The area of a measured cell, in number of pixels.
 
-    - (Nc/Ct)_centroid-N. The N-coordinate of the centroid of the nucleus/cytosol for a measured cell. [...TO BE CHECKED...When the segmentation mask is 2D as in the present project, this corresponds to the Y coordinate and starts from the top-left corner of the image...].
+    - centroid-N. The N-coordinate of the centroid a measured cell. [...TO BE CHECKED...When the segmentation mask is 2D as in the present project, this corresponds to the Y coordinate and starts from the top-left corner of the image...].
 
-    - (Nc/Ct)_centroid-M. The M-coordinate of the centroid of the nucleus/cytosol for a measured cell. [...TO BE CHECKED...When the segmentation mask is 2D as in the present project, this corresponds to the X coordinate and starts from the top-left corner of the image...].
+    - centroid-M. The M-coordinate of the centroid for a measured cell. [...TO BE CHECKED...When the segmentation mask is 2D as in the present project, this corresponds to the X coordinate and starts from the top-left corner of the image...].
 
-    - (Nc/Ct)_intensity_mean-(channel). The mean intensity value of the the nucleus/cytosol for a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
+    - intensity_mean-(channel). The mean intensity value of a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
 
-    - (Nc/Ct)_intensity_max-(channel). The max intensity value of the the nucleus/cytosol for a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
+    - intensity_max-(channel). The max intensity value of a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
 
-    - (Nc/Ct)_intensity_min-(channel). The min intensity value of the the nucleus/cytosol for a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
+    - intensity_min-(channel). The min intensity value of a measured cell in a given channel. The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
 
     - background_offset-(channel). The median value of the background pixels in a given field of view and for a given channel. Background pixels are all the pixels not present in the nucleus segmentation or in the cell segmentation masks (aka, pixels which are not present in neither or the masks). The channel position correspond to the order of the channels in the input image. The structure corresponding to each channel can be found in the corresponding column.
 
 
 - fov. Directory containing individual fields of view extracted from the .nd2 raw file (Nikon proprietary file format) and saved as ome.tif files (free file format with standardized metadata). Fields of views from multiple .nd2 raw files are pooled together in the fov directory.
 
-- seg. Directory containing the segmentation masks of each individual field of view extracted from the .nd2 raw file. 3 masks are always saved per each selected image:
-    - the nuclei segementation from cellpose (suffix _Nc)
-    - the cell segmentation from cellpose (suffix _Cl)
-    - the cytosol segmentation obtained from the subtraction of the nuclei segmentation mask from the cell segmentation mask, after nuclei and cells preprocessing/filtering (suffix _Ct).
+- seg. Directory containing the segmentation masks of each individual field of view extracted from the .nd2 raw file.
 
-   From 2025/11/07 it as also possible to save:
-   - the nuclei segementation after preprocessing/filtering (suffix _Nc_F)
-   - the cell segementation after preprocessing/filtering (suffix _Cl_F)
-   
-   The segmentation masks of the selected images from multiple .nd2 files are pooled together in the seg directory.
-
-- metadata
-    - orginal. Directory containing the original xml metadata extracted from each .nd2 raw file and transformed into a string.
-    - proc_file_info. Directory containg a csv file with information about the metadata and the processing of individual output files. The file has the following name structure {date_in_format_yymmdd}_nef_translocation_metadata.csv
+- metadata. Directory containg a csv file with information about the metadata and the processing of individual output files. The file has the following name structure {date_in_format_yymmdd}_ACID_metadata_part{notebook_progressive_number}.csv
 
 
 **Analysis steps**:\
+**NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
+
 1) EXTRACTION OF SELECTED IMAGES AND METADATA
 
     1.1) extraction of origiginal xml metadata and saving in the output_data_directory->metadata->original directory.
@@ -340,22 +282,26 @@ NOTE: from here one the 'metadata_df' table is used to link field of views (also
 
 
 # Run the analysis:
+**NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
+
 The part1_raw_to_segmentation.ipynb notebook can be used to run the analysis steps 1 and 2.
 The part2_segmentation_to_measurement.ipynb notebook can be used to run the analysis step 3.
 
 
 **Folders**\
+**NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
+
 The following folders are present:
 
 - utils. Contains scripts of general interest, which are used across different projects and across different steps of the same project.
 
-- image_preparation. Contains scripts used to extract metadata and prepare images for segmentation and feature extraction.
+- data_preparation. Contains scripts used to work on data frames and prepare them for processing and analyses. These include formatting data types, perform a train-test split, clean nan values etc.
 
 - image_processing. Contains scripts used to modify/process the images including filtering and resizing.
 
-- feature_extraction. Contains scripts used to measure cell properties, including channels intensities.
+- image_quality_control. Contains scripts used to calculate and evaluate quality control metrics at a whole-image level.
 
-- image_quality_control. Contains scripts used to perform quality controls on the cells to analyse or exclude.
+- feature_extraction. Contains scripts used to measure cell properties, including channels intensities, cells geometry and texture.
 
 - secondary_output. Contains saved analysis hyperparameters.
 
@@ -363,7 +309,7 @@ The following folders are present:
 **Structure of file name**:\
 __INPUT FILE NAME__\
 
-.nd2 raw file: {donor}_{transfection}_{stiffness}_{stimulation}_{timeofstimulation}.extension
+.nd2 raw file: {cell_line}_{virus}_{treatment}_{total_imaging_time}_{experimental_procedure}_{well}.extension
 
 
 
@@ -371,24 +317,12 @@ __PROCESSED FILE NAME__\
 
 - extracted fields of view (also called scenes) saved in the fov directory
 
-{donor}_{transfection}_{stiffness}_{stimulation}_{timeofstimulation}_{serial_series_number}.ome.tif
-
-{serial_series_number} is a progressive numbers which is give to each sub-file within the raw .nd2 file. When a raw .nd2 file does not have multiple sub-files, a number 0 is still assigned.
-
-
-- cell segmentation masks (saved in seg directory)
-{donor}_{transfection}_{stiffness}_{stimulation}_{timeofstimulation}_{serial_series_number}_Cl.ome.tif
-
-- nucleus segmentation masks (saved in seg directory)
-{donor}_{transfection}_{stiffness}_{stimulation}_{timeofstimulation}_{serial_series_number}_Nc.ome.tif
-
-- cytosol segmentation masks (saved in seg directory)
-{donor}_{transfection}_{stiffness}_{stimulation}_{timeofstimulation}_{serial_series_number}_Ct.ome.tif
+{cell_line}_{virus}_{treatment}_{total_imaging_time}_{experimental_procedure}_{well}_{experiment}_{scene}.ome.tif
 
 
 
 # Dependencies:
-The file nef_translocation_develop.yml can be used for creating the environment containg script dependencies during the project development. The file nef_translocation_neo.yml file has been used to create the python environment on a computer workstation used for running the analysis, with gpu support, at the Infectious Diseases Imaging Platform of the CIID.
+The file acid_develop.yml can be used for creating the environment containg script dependencies during the project development. The file acid_neo.yml has been used to create the python environment on a computer workstation used for running the analysis, with gpu support, at the Infectious Diseases Imaging Platform of the CIID (the workstation is ...).
 
 The following module versions are used:
 - python==3.12.12
@@ -401,7 +335,7 @@ The following module versions are used:
 - dask==2025.11.0
 - numba==0.62.1
 - tifffile==2025.10.16
-- statsmodels==0.15.5
+- statsmodels==0.14.5
 - scikit-image==0.25.2
 - scikit-learn==1.7.2
 - seaborn==0.13.2

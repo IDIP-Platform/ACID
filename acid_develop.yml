@@ -18,6 +18,7 @@ dependencies:
   - scikit-image
   - scikit-learn
   - seaborn
+  - mahotas
   - pytorch
   - torchvision
   - torchaudio
@@ -26,5 +27,6 @@ dependencies:
   - pip:
     - roifile
     - cellpose
+    - opencv-python
     - bioio
     - bioio-nd2

@@ -4,13 +4,13 @@ Authors: Alessandro Ulivi (alessandro.ulivi.89@gmail.com)
 
 Creation (yyyy/mm/dd): 2025/11/21
 
-Status: ongoing (2026/01/30)
+Status: ongoing (2026/02/02)
 
 # Description:
 **Background and scope**\
 The project is carried out at the Center for Integrative Infectious Disease Research in Heidelberg (abbreviated to CIID; https://ciid-heidelberg.de/).
 
-The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected with Dengue virus and non-treated, and infected with Dengue virus and treated with different compounds. The projects aims at establishing a fully automated pipeline of image processing, image quantification and data analysis.
+The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected with Dengue virus and non-treated, and infected with Dengue virus and treated with different compounds. The projects aims at establishing a Python-based pipeline of image processing, image quantification and data analysis.
 
 Samples are (...) cells.
 
@@ -35,7 +35,7 @@ The following structures (staining and imaged channel) were acquired:
 - nucleus (Hoechst, channel 1).
 - Endoplasmic reticulum (concanavalin A fused with 488 fluorophore, channel 2).
 - Actin (phalloidin fused with fluorophore 568, channel 3).
-- Nonstructural protein 3 (NS3, marker of cell infection) (anti-NS3 fused with fluorophore 647, channel 4).
+- Nonstructural protein 3 (NS3, marker of cell infection) (anti-NS3 antibody fused with fluorophore 647, channel 4).
 - Full cells in transmitted light (channel 5).
 
 Three independent experiments were carried out. Their names are:
@@ -52,7 +52,7 @@ At the start of the project (2025/11/21) only the data from fixed samples are an
 
 The raw files are pre-processed to extract individual fields of view and save them as independent raw files in the open access ome.tif format, along with the relevant metadata. NOTE: as the raw files are multi-position, multi-channel, single-plane images, the original/raw xml metadata contain information about all the fields of view. For this reason the original/raw xml metadata are not propagated to each individually saved field of view as their information would be misleading. Instead the choice has been made to propagate to each individually saved field of view only the relevant information, whist saving a separate, open access file the global original/raw metadata.
 
-A 70%-30% train-test split is then carried out. As conditions are balanced, no stratification is used for the split (as of 2025/11/25). All the following steps are implemented only using the 70% train data. As of 2025/11/25, it is foreseen only a possible exception concerning the estimation of the background function. It is foreseen as plausible that a suitable function can't be estimated using the the 30% test data and, if this will be the case, the background function calculated on the 70% train data will be used instead. This might simulate a future situation when a single background function is saved and applied to all data, rather than calculated per each experiment.
+A 70%-30% train-test split is carried out. As conditions are balanced, no stratification is used for the split (as of 2025/11/25). All the following steps are implemented only using the 70% train data. As of 2025/11/25, it is foreseen only a possible exception concerning the estimation of the background function. It is foreseen as plausible that a suitable function can't be estimated using the the 30% test data and, if this will be the case, the background function calculated on the 70% train data will be used instead. This might simulate a future situation when a single background function is saved and applied to all data, rather than calculated per each experiment.
 
 As of 2025/11/25 a train-validate sub-split is not foreseen for the development of the pipeline until feature extraction (included). This is done because the initial approach will attempt using relatively standard procedures for image processing, segmentation and quantification, without ad hoc fine-tuning. The result will be evaluated qualitatively and different steps tuned accordingly. This approach might change if, for example, a fine-tuning of segmentation models will be required. In such case, a validation set will be created for the fine-tuned model evaluation. Note that a train-validate sub-split is foreseen upfront for analyses downstream to feature extration.
 
@@ -63,24 +63,32 @@ Input data are raw files collected from the Nikon Ti2 microscope. Files have .nd
 The following input data and input data organization is expected:
 
 - input_data_directory:
-    - file1.nd2
-    - file2.nd2
-    - file3.nd2
-    - fileN.nd2
-    ...
+    - experiment_directory:
+        - file1.nd2
+        - file2.nd2
+        - file3.nd2
+        - fileN.nd2
+        ...
+    - plate_layout.csv
 
 - output_data_directory
 
-The input_data_directory can contain different files and directories, as long as their names don't contain the ".nd2" string.
+The input_data_directory can contain different files, but expects only one or multiple experiment_directory as sub-directory.
+
+The input_data_directory uses the last saved .csv file as default plate layout file.
+
+The experiment_directory can contain different files and directories, as long as their names don't contain the ".nd2" string.
 
 The output_data_directory can contain files and sub-directories.
 
 NOTE: the pipeline was conceptualized and built in a situation where:
+- more than one experiment_directory was present.
 - more than a .nd2 raw file was present in the input_data_directory.
 - Each .nd2 raw file contained at least a field of view.
 - Each field of view contained at least one segmentable cell.
-- All field of view have 5 channels in the following order: [...] channel-638, channel-749 corresponding to F-actin staining, channel-488 corresponding to gfp signel, channel-405 corresponding to nuclear stainig, channel-DIA corresponding to images acquired using transmitted illumination. Different file structures should be compatible with the scripts, but haven't been tested.
-- Situations different than the above, including edge cases of segmentation masks with no cells or images containing detrimental artifacts, haven't been evaluated.
+- All field of view have 5 channels in the following order: channel-405 corresponding to Hoechst staining, channel-488 corresponding to concanavalin A staining; channel-568 corresponding to phalloidin staining; channel-647 corresponding to anti-NS3 staining, channel-TL corresponding to transmitted light acquisition.
+
+Situations different than the above, including edge cases of segmentation masks with no cells or images containing detrimental artifacts, haven't been evaluated (as of 2026/02/02).
 
 **Output data**\
 **NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
@@ -326,32 +334,34 @@ The file acid_develop.yml can be used for creating the environment containg scri
 
 The following module versions are used for acid_develop environment:
 - python==3.12.12
-- jupyterlab==4.5.0
+- jupyterlab==4.5.3
 - pip==25.3
-- numpy==2.2.6
+- numpy==2.3.5
 - matplotlib==3.10.8
-- scipy==1.16.3
+- scipy==1.17.0
 - pandas==2.2.3
-- dask==2025.11.0
-- numba==0.62.1
-- tifffile==2025.10.16
-- statsmodels==0.14.5
-- scikit-image==0.25.2
-- scikit-learn==1.7.2
+- dask==2026.1.1
+- numba==0.63.1
+- tifffile==2026.1.28
+- statsmodels==0.14.6
+- scikit-image==0.26.0
+- scikit-learn==1.8.0
 - seaborn==0.13.2
+- mahotas==1.4.18
 - pytorch==2.5.1
 - torchvision==0.20.1
 - torchaudio==2.5.1
 - napari==0.6.6
 - pycytominer==1.2.4
-- roifile==2025.5.10
-- cellpose==4.0.7
-- bioio==3.0.0
-- bioio-nd2==1.5.0
+- roifile==2026.1.29
+- cellpose==4.0.8
+- opencv-python==4.13.0.90
+- bioio==3.2.0
+- bioio-nd2==1.6.2
 
-The file acid_develop_20260121.txt is the explicit list of the acid_develop environment created on the 2026/01/21.
+The file 20260202_acid_develop.txt is the explicit list of the acid_develop environment created on the 2026/02/02.
 
-As of 2026/01/21 the acid_neo environment hasn't been tested yet.
+As of 2026/02/02 the acid_neo environment hasn't been tested yet.
 
 # Notes:
 

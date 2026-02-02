@@ -88,8 +88,15 @@ level of intensitis (default 8).
 def name_column(measurement:str,
                  prefix:str|None=None,
                  suffix:str|None=None,
-                 prefix_sep:str='_',
-                 suffix_sep:str='_')->str:
+                 prefix_sep:str|None=None,
+                 suffix_sep:str|None=None)->str:
+    
+    if prefix_sep is None:
+        prefix_sep='_'
+    
+    if suffix_sep is None:
+        suffix_sep:str='_'
+
     if prefix!=None and suffix==None:
         if prefix_sep!=None:
             new_col = f"{prefix}{prefix_sep}{measurement}"
@@ -115,11 +122,11 @@ def name_column(measurement:str,
     return new_col
 
 def measure_haralick_image(image:np.array,
-                           prop:str|Sequence=['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation', 'ASM', 'mean', 'variance', 'std', 'entropy'],
-                           distances:int|float|tuple|list|Sequence=[1],
-                           angles:int|float|tuple|list|Sequence=[0],
-                           graycomtx_kwargs:dict={'levels':8,'symmetric':True,'normed':True},
-                           sep='_') -> pd.Series:
+                           prop:str|Sequence|None=None,
+                           distances:int|float|tuple|list|Sequence|None=None,
+                           angles:int|float|tuple|list|Sequence|None=None,
+                           graycomtx_kwargs:dict|None=None,
+                           sep:str|None=None) -> pd.Series:
     """
     Measure haralick features on an entire image.
 
@@ -138,19 +145,19 @@ def measure_haralick_image(image:np.array,
     Inputs:
     - image: 2D numpy array
     
-    - prop: str or list. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
+    - prop: str, list of str or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation', 'ASM', 'mean', 'variance', 'std', 'entropy'])
     
-    - distances: int, float, tuple, list or sequence. The distance (if int or float) or list of distances to use for haralick
+    - distances: int, float, tuple, list, sequence or None. The distance (if int or float) or list of distances to use for haralick
     features measurement. Optional. Default: [1].
 
-    - angles: int, float, tuple, list or sequence. The angle (if int or float) or list of angles to use for haralick
+    - angles: int, float, tuple, list, sequence or None. The angle (if int or float) or list of angles to use for haralick
     features measurement. Optional. Default: [0].
 
-    - graycomtx_kwargs: dict. Additional arguments to pass to graycomatrix. Optional. Default: {'levels':8,'symmetric':True,'normed':True})
+    - graycomtx_kwargs: dict or None. Additional arguments to pass to graycomatrix. Optional. Default: {'levels':8,'symmetric':True,'normed':True})
     NOTE: 'distances' and 'angles' can't be passed here, use the dedicated arguments instead.
 
-    - sep: str. The separator to use for column names. Optional. Default: '_'.
+    - sep: str or None. The separator to use for column names. Optional. Default: '_'.
 
     Outputs:
     - haralick_measurements: pandas Series. Series with haralick measurements as values and measurement names as index. Measurements
@@ -160,20 +167,44 @@ def measure_haralick_image(image:np.array,
     used, their index is still indicated, as 0, in the measurement name.
 
     """
+
+    # set default properties
+    if prop is None:
+        prop=['contrast', 'dissimilarity', 'homogeneity', 'energy',
+              'correlation', 'ASM', 'mean', 'variance', 'std', 'entropy']
+    else:
+        # if prop is str, store it in a list, for compatibility with following iteration
+        if isinstance(prop,str):
+            prop=[prop]
+    
+    # set default distances
+    if distances is None:
+        distances=[1]
+    else:
+        # if distances are int or float
+        # store distances in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(distances, int) or isinstance(distances,float):
+            distances=[distances]
+    
+    # set default angles
+    if angles is None:
+        angles=[0]
+    
+    else:
+        # if angles are int or float
+        # store angles in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(angles,int) or isinstance(angles,float):
+            angles=[angles]
+    
+    # set default graycomtx_kwargs
+    if graycomtx_kwargs is None:
+        graycomtx_kwargs={'levels':8,'symmetric':True,'normed':True}
+    
+    if sep is None:
+        sep='_'
+
     assert 'distances' not in graycomtx_kwargs, "distances can't be passed to graycomtx_kwargs, use the dedicated argument instead"
     assert 'angles' not in graycomtx_kwargs, "angles can't be passed to graycomtx_kwargs, use the dedicated argument instead"
-
-    # if distances and angles are int or float
-    # store distances and angles in a list, for compatibility with skimage.feature.graycomatrix
-    if isinstance(distances, int) or isinstance(distances,float):
-        distances=[distances]
-    
-    if isinstance(angles,int) or isinstance(angles,float):
-        angles=[angles]
-
-    # if prop is str, stor it in a list, for compatibility with following iteration
-    if isinstance(prop,str):
-        prop=[prop]
 
     # Compute GLCM at different angles/distances
     glcm = graycomatrix(image, 
@@ -238,16 +269,16 @@ def measure_haralick_image(image:np.array,
     return haralick_measurements
 
 def glcm_feature_map(image:np.typing.ArrayLike,
-                     props:str|Sequence='contrast',
-                     distances:int|float|tuple|list|Sequence=[1],
-                     angles:int|float|tuple|list|Sequence=[0],
+                     props:str|Sequence|None=None,
+                     distances:int|float|tuple|list|Sequence|None=None,
+                     angles:int|float|tuple|list|Sequence|None=None,
                      mask:np.typing.ArrayLike|None=None,
                      window_shape:int|tuple=11,
-                     graycomtx_kwargs:dict={'symmetric':True,'normed':True},
-                     pad_kwargs:dict={'mode':'reflect'},
-                     windows_kwargs:dict={},
-                     zeros_kwargs:dict={'dtype':float},
-                     concat_kwargs:dict={})->np.array:
+                     graycomtx_kwargs:dict|None=None,
+                     pad_kwargs:dict|None=None,
+                     windows_kwargs:dict|None=None,
+                     zeros_kwargs:dict|None=None,
+                     concat_kwargs:dict|None=None)->np.array:
     
     """
     Compute a Haralick feature map for one object.
@@ -289,13 +320,13 @@ def glcm_feature_map(image:np.typing.ArrayLike,
     Inputs:
     - image: 2D numpy array. The input image for which the haralick feature map has to be computed.
     
-    - props: str or Sequence. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
+    - props: str, sequence or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: 'contrast'.
     
-    - distances: int, float, tuple, list or sequence. The distance (if int or float) or list of distances to use for haralick
+    - distances: int, float, tuple, list, sequence or None. The distance (if int or float) or list of distances to use for haralick
     features measurement. Optional. Default: [1].
     
-    - angles: int, float, tuple, list or sequence. The angle (if int or float) or list of angles to use for haralick
+    - angles: int, float, tuple, list, sequence or None. The angle (if int or float) or list of angles to use for haralick
     features measurement. Optional. Default: [0].
     
     - mask: 2D numpy array or None. The mask indicating the object/region for which the haralick feature map has to be computed.
@@ -307,19 +338,19 @@ def glcm_feature_map(image:np.typing.ArrayLike,
     angle). For this reason, a warning is printed if any of the window dimensions is smaller than the max distance. Nevertheless,
     the function will still try run, but could lead to errors.
     
-    - graycomtx_kwargs: dict. Additional arguments to pass to graycomatrix. Optional. Default: {'symmetric':True,'normed':True}.
+    - graycomtx_kwargs: dict or None. Additional arguments to pass to graycomatrix. Optional. Default: {'symmetric':True,'normed':True}.
     NOTE: 'distances' and 'angles' can't be passed here, use the dedicated arguments instead.
     
-    - pad_kwargs: dict. Additional arguments to pass to np.pad for image padding before patch extraction. Optional.
+    - pad_kwargs: dict or None. Additional arguments to pass to np.pad for image padding before patch extraction. Optional.
     Default: {'mode':'reflect'}. NOTE: by default, the padding width is set to half of the window size in all dimensions.
     
-    - windows_kwargs: dict. Additional arguments to pass to skimage.util.shape.view_as_windows for patch extraction.
+    - windows_kwargs: dict or None. Additional arguments to pass to skimage.util.shape.view_as_windows for patch extraction.
     Optional. Default: {}.
     
-    - zeros_kwargs: dict. Additional arguments to pass to np.zeros for feature map array initialization. Optional.
+    - zeros_kwargs: dict or None. Additional arguments to pass to np.zeros for feature map array initialization. Optional.
     Default: {'dtype':float}. NOTE: 'a' can't be passed here, as the shape of the array is hard coded.
     
-    - concat_kwargs: dict. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
+    - concat_kwargs: dict or None. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
     per pixel. Optional. Default: {}. NOTE: 'axis' can't be passed here, as it is hard coded to be in position 0.
     
     Outputs:
@@ -330,23 +361,31 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 
     """
     
-    assert 'window_shape' not in windows_kwargs, "window_shape can't be passed to windows_kwargs, use window_shape argument instead"
-    assert 'a' not in zeros_kwargs, "image is the input of numpy zeros array"
-    assert 'distances' not in graycomtx_kwargs, "distances can't be passed to graycomtx_kwargs, use the dedicated argument instead"
-    assert 'angles' not in graycomtx_kwargs, "angles can't be passed to graycomtx_kwargs, use the dedicated argument instead"
-    assert 'axis' not in concat_kwargs, "axis can't be passed to concat kwargs as it is hard coded to be in position 0"
+    # use default properties
+    if props is None:
+        props=['contrast']
+    else:
+        # if prop is str, store it in a list, for compatibility with following iteration
+        if isinstance(props,str):
+            props=[props]
 
-    # if prop is str, store it in a list, for compatibility with following iteration
-    if isinstance(props,str):
-        props=[props]
-
-    # if distances and angles are int or float
-    # store distances and angles in a list, for compatibility with skimage.feature.graycomatrix
-    if isinstance(distances, int) or isinstance(distances,float):
-        distances=[distances]
+    # use default distances
+    if distances is None:
+        distances=[1]
+    else:
+        # if distances are int or float
+        # store distances in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(distances, int) or isinstance(distances,float):
+            distances=[distances]
     
-    if isinstance(angles,int) or isinstance(angles,float):
-        angles=[angles]
+    # use default angles
+    if angles is None:
+        angles=[0]
+    else:
+        # if angles are int or float
+        # store angles in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(angles,int) or isinstance(angles,float):
+            angles=[angles]
 
     # if mask is None, get the entire image as a mask
     if hasattr(mask, "__len__"):
@@ -363,6 +402,22 @@ def glcm_feature_map(image:np.typing.ArrayLike,
     if min(window_shape)<max(distances):
         print(f"WARNING: using a window with at least one dimension of size smaller than the max distance to caluculate could lead to errors. Min window dim: {min(window_shape)}. Max distance: {max(distances)}")
 
+    # use defaults
+    if graycomtx_kwargs is None:
+        graycomtx_kwargs={'symmetric':True,'normed':True}
+
+    if pad_kwargs is None:
+        pad_kwargs={'mode':'reflect'}
+
+    if windows_kwargs is None:
+        windows_kwargs={}
+
+    if zeros_kwargs is None:
+        zeros_kwargs={'dtype':float}
+    
+    if concat_kwargs is None:
+        concat_kwargs={}
+
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
     if 'levels' not in graycomtx_kwargs:
@@ -376,6 +431,14 @@ def glcm_feature_map(image:np.typing.ArrayLike,
     if 'pad_width' not in pad_kwargs:
         pad_kwargs = pad_kwargs.copy()  # to avoid modifying the input dictionary
         pad_kwargs['pad_width']=tuple([(ws//2, ws//2) for ws in window_shape])
+
+
+    assert 'window_shape' not in windows_kwargs, "window_shape can't be passed to windows_kwargs, use window_shape argument instead"
+    assert 'a' not in zeros_kwargs, "image is the input of numpy zeros array"
+    assert 'distances' not in graycomtx_kwargs, "distances can't be passed to graycomtx_kwargs, use the dedicated argument instead"
+    assert 'angles' not in graycomtx_kwargs, "angles can't be passed to graycomtx_kwargs, use the dedicated argument instead"
+    assert 'axis' not in concat_kwargs, "axis can't be passed to concat kwargs as it is hard coded to be in position 0"
+
 
     padded = np.pad(image, **pad_kwargs)
 
@@ -471,16 +534,16 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 
 
 def glcm_object(region,
-                channel_index: int = 0,
-                props:str|Sequence='contrast',
-                distances:int|float|tuple|list|Sequence=[1],
-                angles:int|float|tuple|list|Sequence=[0],
+                channel_index: int = -1,
+                props:str|Sequence|None=None,
+                distances:int|float|tuple|list|Sequence|None=None,
+                angles:int|float|tuple|list|Sequence|None=None,
                 window_shape:int|tuple=11,
-                graycomtx_kwargs:dict={'symmetric': True, 'normed': True},
-                pad_kwargs:dict={'mode': 'reflect'},
-                windows_kwargs:dict={},
-                zeros_kwargs:dict={'dtype': float},
-                concat_kwargs:dict={})->tuple:
+                graycomtx_kwargs:dict|None=None,
+                pad_kwargs:dict|None=None,
+                windows_kwargs:dict|None=None,
+                zeros_kwargs:dict|None=None,
+                concat_kwargs:dict|None=None)->tuple:
     """
     Wrapper for Dask: computes feature map for a region/segmented object in a given channel.
 
@@ -492,6 +555,31 @@ def glcm_object(region,
     position -1, of size 1.
 
     """
+    
+    # set defaults
+    if props is None:
+        props='contrast'
+    
+    if distances is None:
+        distances=[1]
+    
+    if angles is None:
+        angles=[0]
+    
+    if graycomtx_kwargs is None:
+        graycomtx_kwargs={'symmetric': True, 'normed': True}
+    
+    if pad_kwargs is None:
+        pad_kwargs={'mode': 'reflect'}
+    
+    if windows_kwargs is None:
+        windows_kwargs:dict={}
+    
+    if zeros_kwargs is None:
+        zeros_kwargs={'dtype': float}
+    
+    if concat_kwargs is None:
+        concat_kwargs:dict={}
 
     # Get the region/object bounding box for the intensity image
     # (aka - the image for which haralick feature map has to be computed cropped to contain the region/object)
@@ -595,21 +683,21 @@ def glcm_object(region,
 
 def parallel_glcm_feature_map(image:np.array,
                               label_image:np.array,
-                              props:str|Sequence='contrast',
-                              distances:int|float|tuple|list|Sequence=[1],
-                              angles:int|float|tuple|list|Sequence=[0],
+                              props:str|Sequence|None=None,
+                              distances:int|float|tuple|list|Sequence|None=None,
+                              angles:int|float|tuple|list|Sequence|None=None,
                               channel_axis:int|None=-1,
                               window_shape:int|tuple=11,
-                              regionprops_kwargs:dict={},
-                              daskbag_kwargs:dict={'npartitions': 8},
-                              graycomtx_kwargs:dict={'symmetric': True, 'normed': True},
-                              pad_kwargs:dict={'mode': 'reflect'},
-                              windows_kwargs:dict={},
-                              zeros_kwargs:dict={'dtype': float},
-                              concat_kwargs:dict={})->np.array:
+                              regionprops_kwargs:dict|None=None,
+                              daskbag_kwargs:dict|None=None,
+                              graycomtx_kwargs:dict|None=None,
+                              pad_kwargs:dict|None=None,
+                              windows_kwargs:dict|None=None,
+                              zeros_kwargs:dict|None=None,
+                              concat_kwargs:dict|None=None)->np.array:
     """
     Compute a Haralick feature map for all the label objects in a label_image. If the input image has multiple channels,
-    the feature maps are computed per each channel independently.
+    the feature maps can be computed per each channel independently by passing the axis to channel_axis.
 
     === 
     === IMPORTANT NOTE ===
@@ -681,13 +769,13 @@ def parallel_glcm_feature_map(image:np.array,
     has to be computed. Pixels with value 0 are considered background. Positive integers indicate label objects.
     label_image must have the same shape of the input image, minus the channel axis (if present).
 
-    - props: str or Sequence. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
+    - props: str, sequence or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: 'contrast'.
 
-    - distances: int, float, tuple, list or sequence. The distance (if int or float) or list of distances to use for haralick
+    - distances: int, float, tuple, list, sequence or None. The distance (if int or float) or list of distances to use for haralick
     features measurement. Optional. Default: [1].
 
-    - angles: int, float, tuple, list or sequence. The angle (if int or float) or list of angles to use for haralick
+    - angles: int, float, tuple, list, sequence or None. The angle (if int or float) or list of angles to use for haralick
     features measurement. Optional. Default: [0].
 
     - channel_axis: int or None. The axis of the input image corresponding to channels. If None, the input image is assumed
@@ -699,10 +787,10 @@ def parallel_glcm_feature_map(image:np.array,
     angle). For this reason, a warning is printed if any of the window dimensions is smaller than the max distance. Nevertheless,
     the function will still try run, but could lead to errors.
 
-    - regionprops_kwargs: dict. Additional arguments to pass to skimage.measure.regionprops for region properties extraction.
+    - regionprops_kwargs: dict or None. Additional arguments to pass to skimage.measure.regionprops for region properties extraction.
     Optional. Default: {}.
 
-    - daskbag_kwargs: dict. Additional arguments to pass to dask.bag.from_sequence for Dask bag creation. Optional. Default: {'npartitions':8}.
+    - daskbag_kwargs: dict or None. Additional arguments to pass to dask.bag.from_sequence for Dask bag creation. Optional. Default: {'npartitions':8}.
     NOTE: 'npartitions' can be adjusted depending on the number of workers and number of tasks (i.e. number of objects * number of channels).
     A good rule of thumb is to have about 4× the number of workers as npartitions, and about 10 tasks per partition. Thus, a good value for
     npartitions can be calculated as follows:
@@ -712,19 +800,19 @@ def parallel_glcm_feature_map(image:np.array,
                       n_tasks                             # can't exceed total tasks
                         )
     
-    - graycomtx_kwargs: dict. Additional arguments to pass to graycomatrix. Optional. Default: {'symmetric':True,'normed':True}.
+    - graycomtx_kwargs: dict or None. Additional arguments to pass to graycomatrix. Optional. Default: {'symmetric':True,'normed':True}.
     NOTE: 'distances' and 'angles' can't be passed here, use the dedicated arguments instead.
 
-    - pad_kwargs: dict. Additional arguments to pass to np.pad for image padding before patch extraction. Optional.
+    - pad_kwargs: dict or None. Additional arguments to pass to np.pad for image padding before patch extraction. Optional.
     Default: {'mode':'reflect'}. NOTE: by default, the padding width is set to half of the window size in all dimensions.
 
-    - windows_kwargs: dict. Additional arguments to pass to skimage.util.shape.view_as_windows for patch extraction.
+    - windows_kwargs: dict or None. Additional arguments to pass to skimage.util.shape.view_as_windows for patch extraction.
     Optional. Default: {}.
 
-    - zeros_kwargs: dict. Additional arguments to pass to np.zeros for feature map array initialization. Optional.
+    - zeros_kwargs: dict or None. Additional arguments to pass to np.zeros for feature map array initialization. Optional.
     Default: {'dtype':float}. NOTE: 'a' can't be passed here, as the shape of the array is hard coded.
     
-    - concat_kwargs: dict. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
+    - concat_kwargs: dict or None. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
     per pixel. Optional. Default: {}. NOTE: 'axis' can't be passed here, as it is hard coded to be in position 0.
     
 
@@ -744,17 +832,52 @@ def parallel_glcm_feature_map(image:np.array,
     image = image.copy()
     label_image = label_image.copy()
 
-    # if prop is str, store it in a list, for compatibility with following iteration
-    if isinstance(props,str):
-        props=[props]
+    # use default properties
+    if props is None:
+        props=['contrast']
+    else:
+        # if prop is str, store it in a list, for compatibility with following iteration
+        if isinstance(props,str):
+            props=[props]
 
-    # if distances and angles are int or float
-    # store distances and angles in a list, for compatibility with skimage.feature.graycomatrix
-    if isinstance(distances, int) or isinstance(distances,float):
-        distances=[distances]
+    # use default distances
+    if distances is None:
+        distances=[1]
+    else:
+        # if distances are int or float
+        # store distances in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(distances, int) or isinstance(distances,float):
+            distances=[distances]
     
-    if isinstance(angles,int) or isinstance(angles,float):
-        angles=[angles]
+    # use default angles
+    if angles is None:
+        angles=[0]
+    else:
+        # store angles in a list, for compatibility with skimage.feature.graycomatrix
+        if isinstance(angles,int) or isinstance(angles,float):
+            angles=[angles]
+
+    # use defaults
+    if regionprops_kwargs is None:
+        regionprops_kwargs={}
+    
+    if daskbag_kwargs is None:
+        daskbag_kwargs={'npartitions': 8}
+    
+    if graycomtx_kwargs is None:
+        graycomtx_kwargs={'symmetric': True, 'normed': True}
+    
+    if pad_kwargs is None:
+        pad_kwargs={'mode': 'reflect'}
+    
+    if windows_kwargs is None:
+        windows_kwargs={}
+
+    if zeros_kwargs is None:
+        zeros_kwargs={'dtype': float}
+    
+    if concat_kwargs is None:
+        concat_kwargs={}
 
     # move channel axis to the last position, if present - or add an axis of size 1 in the last position of image if no
     # channel axis is present
@@ -763,7 +886,8 @@ def parallel_glcm_feature_map(image:np.array,
     
     else:
         image_with_ch_last = np.expand_dims(image,axis=-1)
-    
+
+
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
     # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
@@ -881,8 +1005,8 @@ def haralick_regionprops_channel(image:np.array,
                                  props:Sequence,
                                  distances:Sequence,
                                  angles:Sequence,
-                                 sep:str="_",
-                                 regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],'separator':'-'},
+                                 sep:str|None=None,
+                                 regionprops_kwargs:dict|None=None,
                                  suffix:str|None=None)->pd.DataFrame:
     """
     Computes regionprops_table for a a stack of haralick feature maps and renames the columns of the
@@ -912,6 +1036,14 @@ def haralick_regionprops_channel(image:np.array,
     See measure_haralick_features (below) for details.
     === === ===
     """
+
+    # use defaults
+    if sep is None:
+        sep="_"
+    
+    if regionprops_kwargs is None:
+        regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                            'separator':'-'}
 
     # measure intensities of hessian eigenvalues
     haralick_measurement_i = pd.DataFrame(regionprops_table(label_image,
@@ -958,23 +1090,23 @@ def haralick_regionprops_channel(image:np.array,
 
 def measure_haralick_features(image:np.array,
                               label_image:np.array,
-                              props:str|Sequence='contrast',
-                              distances:int|float|tuple|list|Sequence=[1],
-                              angles:int|float|tuple|list|Sequence=[0],
+                              props:str|Sequence|None=None,
+                              distances:int|float|tuple|list|Sequence|None=None,
+                              angles:int|float|tuple|list|Sequence|None=None,
                               channel_axis:int|None=-1,
                               window_shape:int|tuple=11,
-                              regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],'separator':'-'},
-                              erosion_kwargs:dict={'footprint':disk(9)},
-                              merge_kwargs:dict={},
-                              glcm_regionprops_kwargs:dict={},
-                              glcm_daskbag_kwargs:dict={'npartitions': 8},
-                              glcm_graycomtx_kwargs:dict={'symmetric': True, 'normed': True},
-                              glcm_pad_kwargs:dict={'mode': 'reflect'},
-                              glcm_windows_kwargs:dict={},
-                              glcm_zeros_kwargs:dict={'dtype': float},
-                              glcm_concat_kwargs:dict={},
+                              regionprops_kwargs:dict|None=None,
+                              erosion_kwargs:dict|None=None,
+                              merge_kwargs:dict|None=None,
+                              glcm_regionprops_kwargs:dict|None=None,
+                              glcm_daskbag_kwargs:dict|None=None,
+                              glcm_graycomtx_kwargs:dict|None=None,
+                              glcm_pad_kwargs:dict|None=None,
+                              glcm_windows_kwargs:dict|None=None,
+                              glcm_zeros_kwargs:dict|None=None,
+                              glcm_concat_kwargs:dict|None=None,
                               erosion_warning:bool=True,
-                              sep:str="_")->pd.DataFrame:
+                              sep:str|None=None)->pd.DataFrame:
     """
     Given an image (2D or 3D multi-channel) and a labelled image (2D, same shape as image excluding channel axis if present),
     the function:
@@ -1049,13 +1181,13 @@ def measure_haralick_features(image:np.array,
     must be 2D and have the same shape of image if image is 2D, or the same shape of image excluding the channel axis if image
     is 3D.
 
-    - props: str or Sequence. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
+    - props: str, sequence or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: 'contrast'.
 
-    - distances: int, float, tuple, list or sequence. The distance (if int or float) or list of distances to use for haralick
+    - distances: int, float, tuple, list, sequence or None. The distance (if int or float) or list of distances to use for haralick
     features measurement. Optional. Default: [1].
 
-    - angles: int, float, tuple, list or sequence. The angle (if int or float) or list of angles to use for haralick
+    - angles: int, float, tuple, list, sequence or None. The angle (if int or float) or list of angles to use for haralick
     features measurement. Optional. Default: [0].
 
     - channel_axis: position of the channel axis in image. If image is 2D, channel_axis must be None. Optional. Default: -1.
@@ -1063,22 +1195,22 @@ def measure_haralick_features(image:np.array,
     - window_shape: int or tuple. The size of the patch to extract around each pixel for GLCM computation. If int, the same
     size is used for all dimensions. Optional. Default: 11.
 
-    - regionprops_kwargs: dict. Additional arguments to pass to skimage.measure.regionprops_table for region properties extraction.
+    - regionprops_kwargs: dict or None. Additional arguments to pass to skimage.measure.regionprops_table for region properties extraction.
     Optional. Default: {'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],'separator':'-'}.
     NOTE: 1) regionprops_kwargs must contain 'properties':'label'. 2) if 'separator' is passed, it must be different from sep.
     3) If 'separator' is passed and it is set to '_', a warning is printed as this can lead to wrong column names. Yet, the function will
     still try to run.
 
-    - erosion_kwargs: dict. Additional arguments to pass to skimage.morphology.erosion for label image erosion.
+    - erosion_kwargs: dict or None. Additional arguments to pass to skimage.morphology.erosion for label image erosion.
     Optional. Default: {'footprint':disk(9)}.
 
-    - merge_kwargs: dict. Additional arguments to pass to pd.merge for merging the region properties measurements
+    - merge_kwargs: dict or None. Additional arguments to pass to pd.merge for merging the region properties measurements
     per each channel into a single dataframe. Optional. Default: {}.
 
-    - glcm_regionprops_kwargs: dict. Additional arguments to pass to the regionprops_kwargs argument of parallel_glcm_feature_map.
+    - glcm_regionprops_kwargs: dict or None. Additional arguments to pass to the regionprops_kwargs argument of parallel_glcm_feature_map.
     Optional. Default: {}.
 
-    - glcm_daskbag_kwargs: dict. Additional arguments to pass daskbag_kwargs argument of parallel_glcm_feature_map.
+    - glcm_daskbag_kwargs: dict or None. Additional arguments to pass daskbag_kwargs argument of parallel_glcm_feature_map.
     These properties are passed to dask.bag.from_sequence for Dask bag creation. Optional. Default: {'npartitions':8}.
     NOTE: 'npartitions' can be adjusted depending on the number of workers and number of tasks (i.e. number of objects * number of channels).
     A good rule of thumb is to have about 4× the number of workers as npartitions, and about 10 tasks per partition. Thus, a good value for
@@ -1089,30 +1221,30 @@ def measure_haralick_features(image:np.array,
                       n_tasks                             # can't exceed total tasks
                         )
     
-    - glcm_graycomtx_kwargs: dict. Additional arguments to pass to graycomtx_kwargs argument of parallel_glcm_feature_map.
+    - glcm_graycomtx_kwargs: dict or None. Additional arguments to pass to graycomtx_kwargs argument of parallel_glcm_feature_map.
     These properties are passed to graycomatrix. Optional. Default: {'symmetric':True,'normed':True}.
     NOTE: 'distances' and 'angles' can't be passed here, use the dedicated arguments instead.
 
-    - glcm_pad_kwargs: dict. Additional arguments to pass to pad_kwargs argument of parallel_glcm_feature_map.
+    - glcm_pad_kwargs: dict or None. Additional arguments to pass to pad_kwargs argument of parallel_glcm_feature_map.
     These properties are passed to np.pad for image padding before patch extraction. Optional.
     Default: {'mode':'reflect'}. NOTE: by default, the padding width is set to half of the window size in all dimensions.
 
-    - glcm_windows_kwargs: dict. Additional arguments to pass to window_shape argument of parallel_glcm_feature_map. These
+    - glcm_windows_kwargs: dict or None. Additional arguments to pass to window_shape argument of parallel_glcm_feature_map. These
     properties are to window_shape passed skimage.util.shape.view_as_windows for patch extraction.
     Optional. Default: {}.
 
-    - glcm_zeros_kwargs: dict. Additional arguments to pass zero_kwargs argument of parallel_glcm_feature_map.
+    - glcm_zeros_kwargs: dict or None. Additional arguments to pass zero_kwargs argument of parallel_glcm_feature_map.
     These properties are passed to np.zeros for feature map array initialization. Optional.
     Default: {'dtype':float}. NOTE: 'a' can't be passed here, as the shape of the array is hard coded.
     
-    - glcm_concat_kwargs: dict. Additional arguments to pass to concat_kwargs of of parallel_glcm_feature_map.
+    - glcm_concat_kwargs: dict or None. Additional arguments to pass to concat_kwargs of of parallel_glcm_feature_map.
     These properties are passed to np.concatenate for concatenating multiple haralick measurements
     per pixel. Optional. Default: {}. NOTE: 'axis' can't be passed here, as it is hard coded to be in position 0.
 
     - erosion_warning: bool. If True, a warning is printed if any label object disappears after erosion.
     Optional. Default: True.
 
-    - sep: str. The separator to use when building the column names of the output dataframe. Optional. Default: '_'.
+    - sep: str or None. The separator to use when building the column names of the output dataframe. Optional. Default: '_'.
     
     
     === === ===
@@ -1133,13 +1265,78 @@ def measure_haralick_features(image:np.array,
     and with multiple label objects.
 
     """
-    assert (isinstance(channel_axis, int) or channel_axis==None), "channel_axis must be either int or None"
-    assert 'properties' in regionprops_kwargs, "properties must be in regionprops_kwargs"
-    assert 'label' in regionprops_kwargs['properties'], "label must be in regionprops_kwargs['properties']"
 
     # Copy image and label
     original_image = image.copy()
     original_label_image = label_image.copy()
+
+    # use default properties
+    if props is None:
+        props=['contrast']
+    else:
+        # if prop is str, store it in a list, for compatibility with following iteration
+        if isinstance(props,str):
+            props=[props]
+
+    # use default distances
+    if distances is None:
+        distances=[1]
+    else:
+        # if distances are int or float
+        # store distances in respective lists, for compatibility with skimage.feature.graycomatrix
+        if isinstance(distances, int) or isinstance(distances,float):
+            distances=[distances]
+    
+    # use default angles
+    if angles is None:
+        angles=[0]
+    else:
+        # if anlges are int or float
+        # store angles in respective lists, for compatibility with skimage.feature.graycomatrix
+        if isinstance(angles,int) or isinstance(angles,float):
+            angles=[angles]
+    
+    # move channel axis to the last position, if present, and change channel_axis accordingly
+    if isinstance(channel_axis, int):
+        original_image = np.moveaxis(original_image, channel_axis, -1)
+        ch_axis = -1
+    else:
+        ch_axis = channel_axis  # None
+    
+    # set defaults
+    if regionprops_kwargs is None:
+        regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                            'separator':'-'}
+    
+    if erosion_kwargs is None:
+        erosion_kwargs={'footprint':disk(9)}
+    
+    if merge_kwargs is None:
+        merge_kwargs={}
+    
+    if glcm_regionprops_kwargs is None:
+        glcm_regionprops_kwargs={}
+    
+    if glcm_daskbag_kwargs is None:
+        glcm_daskbag_kwargs={'npartitions': 8}
+    
+    if glcm_graycomtx_kwargs is None:
+        glcm_graycomtx_kwargs={'symmetric': True, 'normed': True}
+
+    if glcm_pad_kwargs is None:
+        glcm_pad_kwargs={'mode': 'reflect'}
+    
+    if glcm_windows_kwargs is None:
+        lcm_windows_kwargs={}
+    
+    if glcm_zeros_kwargs is None:
+        glcm_zeros_kwargs={'dtype': float}
+    
+    if glcm_concat_kwargs is None:
+        glcm_concat_kwargs={}
+    
+    if sep is None:
+        sep="_"
 
     # ensure that 'separator' is in regionprops_kwargs and that it is different than sep
     # NOTE: by default regionprops_kwargs separator is set to '-'
@@ -1153,25 +1350,6 @@ def measure_haralick_features(image:np.array,
         if regionprops_kwargs['separator']=='_':
             print("WARNING: using '_' as regionprops separator can lead to wrong column names")
 
-    # if prop is str, store it in a list, for compatibility with following iteration
-    if isinstance(props,str):
-        props=[props]
-
-    # if distances and angles are int or float
-    # store distances and angles in respective lists, for compatibility with skimage.feature.graycomatrix
-    if isinstance(distances, int) or isinstance(distances,float):
-        distances=[distances]
-    
-    if isinstance(angles,int) or isinstance(angles,float):
-        angles=[angles]
-    
-    # move channel axis to the last position, if present, and change channel_axis accordingly
-    if isinstance(channel_axis, int):
-        original_image = np.moveaxis(original_image, channel_axis, -1)
-        ch_axis = -1
-    else:
-        ch_axis = channel_axis  # None
-    
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
     # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
@@ -1199,6 +1377,11 @@ def measure_haralick_features(image:np.array,
         glcm_graycomtx_kwargs = glcm_graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
         # set the levels parameter in glcm_graycomtx_kwargs
         glcm_graycomtx_kwargs['levels']=8
+
+    assert (isinstance(channel_axis, int) or channel_axis==None), "channel_axis must be either int or None"
+    assert 'properties' in regionprops_kwargs, "properties must be in regionprops_kwargs"
+    assert 'label' in regionprops_kwargs['properties'], "label must be in regionprops_kwargs['properties']"
+
 
     # calculate haralick feature maps
     # NOTE: the output haralick_feature_map has the same shape of original_image, plus 2 extra dimensions

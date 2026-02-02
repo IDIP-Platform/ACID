@@ -4,10 +4,20 @@ from utils.str_utils import extract_number
 def map_fov_categories(plate_layout_df:pd.DataFrame,
                        well:int,
                        experiment:str,
-                       well_column:str='well',
-                       experiment_column:str='experiment',
-                       treatment_column:str='treatment'):
+                       well_column:str|None=None,
+                       experiment_column:str|None=None,
+                       treatment_column:str|None=None):
     
+    # set defaults
+    if well_column is None:
+        well_column='well'
+    
+    if experiment_column is None:
+        experiment_column='experiment'
+    
+    if treatment_column is None:
+        treatment_column='treatment'
+
     # copy input dataframe
     original_plate_layout_df = plate_layout_df.copy()
 
@@ -17,12 +27,25 @@ def map_fov_categories(plate_layout_df:pd.DataFrame,
 
 def map_fov_categories_df(metadata_df:pd.DataFrame,
                           plate__layout_df:pd.DataFrame,
-                          well__column:str='well',
-                          experiment__column:str='experiment',
-                          treatment__column:str='treatment',
-                          wellasint_column:str="int_well",
+                          well__column:str|None=None,
+                          experiment__column:str|None=None,
+                          treatment__column:str|None=None,
+                          wellasint_column:str|None=None,
                           drop_wellasint_column:bool=True)->pd.DataFrame:
     
+    # set defaults
+    if well__column is None:
+        well__column='well'
+    
+    if experiment__column is None:
+        experiment__column='experiment'
+    
+    if treatment__column is None:
+        treatment__column='treatment'
+    
+    if wellasint_column is None:
+        wellasint_column="int_well"
+
     # copy input dataframes
     original_metadata_df = metadata_df.copy()
     original_plate_layout_df = plate__layout_df.copy()

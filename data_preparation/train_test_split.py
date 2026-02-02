@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 def add_train_test_split_clm(
     df: pd.DataFrame,
     test_size: float = 0.3,
-    is_train_column: str = "is_train",
+    is_train_column: str | None = None,
     train_val: int = 1,
     test_val: int = 0,
     train_test_split_kwargs: dict | None = None,
@@ -52,8 +52,11 @@ def add_train_test_split_clm(
     """
 
     # -------------------------
-    # Default dictionary values
+    # Default values
     # -------------------------
+    if is_train_column is None:
+        is_train_column = "is_train"
+
     if train_test_split_kwargs is None:
         train_test_split_kwargs = {"random_state": 42}
 

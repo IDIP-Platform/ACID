@@ -32,7 +32,7 @@ from tifffile import imwrite as tifffileimwrite
 def tifffile_save_ometiff(save_path:os.PathLike,
                           data,
                           imagej:bool=True,
-                          photometric:str="minisblack",
+                          photometric:str|None=None,
                           **kwargs):
     """
     Forms an ome.tiff file using tifffile.imwrite (https://pypi.org/project/tifffile/) implementation.
@@ -43,7 +43,7 @@ def tifffile_save_ometiff(save_path:os.PathLike,
     argument data in tifffile.imwrite ref to their documentation.
     - imagej. Bool. Optional. Default True. Whether or not to create a imagej compatible file. NOTE: creating an imagej compatiple file
     implies conforming to their conventions. Ref to imagej documentation and tifffile documentation.
-    - photometrics. string. Optional. Default 'minisblack'. How to intepret the value range of the image. The parameter is passed to
+    - photometrics. string or None. Optional. Default 'minisblack'. How to intepret the value range of the image. The parameter is passed to
     photometrics in tifffile. Ref to their documentation.
     - kwargs. The optional parameters to pass to tifffile.imwrite. These are meant especially for metadata writing.
 
@@ -51,6 +51,9 @@ def tifffile_save_ometiff(save_path:os.PathLike,
     no output is provided, but an ome.tiff object is saved at the save_path.
     
     """
+    if photometric is None:
+        photometric="minisblack"
+    
     tifffileimwrite(save_path,
                      data,
                      imagej=imagej,

@@ -1,6 +1,6 @@
 import os
 
-def mk_subdir(subdir_name:str="my_subdirectory",
+def mk_subdir(subdir_name:str|None=None,
               parent_dir:os.PathLike=os.getcwd(),
               return_exist:bool=False,
               overwrite_dir:bool=False):
@@ -9,7 +9,7 @@ def mk_subdir(subdir_name:str="my_subdirectory",
     By default, the folder is only created if it does not already exist.
 
     Inputs:
-    - subdir_name. String. Optional. Default my_subdirectory. The name of the folder to create.
+    - subdir_name. String or None. Optional. Default my_subdirectory. The name of the folder to create.
     - parent_dir. PathLike. Optional. The default folder is the current working directory. The path to the directory where the new folder should be created.
     The path must exist.
     - return_exist. Boolean. Optional. Default False. If True, a boolean value is returned indicating whether subdir_name existed or not.
@@ -51,6 +51,10 @@ def mk_subdir(subdir_name:str="my_subdirectory",
                 True is returned.
     """
     
+    # set default name for the sub-directory
+    if subdir_name is None:
+        subdir_name="my_subdirectory"
+
     # create the full directory of subdir_name within parent_dir
     subdir_full_path = os.path.join(parent_dir, subdir_name)
     
@@ -76,15 +80,15 @@ def mk_subdir(subdir_name:str="my_subdirectory",
             return False
 
        
-def mkdir_tree(secondary_output_name:str='secondary_output',
+def mkdir_tree(secondary_output_name:str|None=None,
                secondary_output_parent:os.PathLike=os.getcwd(),
                secondary_output_return_exist:bool=False,
                seconary_output_overwrite_dir:bool=False,
-               metadata_name:str='proc_metadata',
+               metadata_name:str|None=None,
                metadata_parent:os.PathLike=os.getcwd(),
                metadata_return_exist:bool=False,
                metadata_overwrite_dir:bool=False,
-               fov_name:str='fov',
+               fov_name:str|None=None,
                fov_parent:os.PathLike=os.getcwd(),
                fov_return_exist:bool=False,
                fov_overwrite_dir:bool=False)-> tuple:
@@ -97,7 +101,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     useful for the ACID project.
 
     Inputs:
-    - secondary_output_name.str. Optional. Default 'secondary_output'. The parameter to pass to mk_subdir subdir_name
+    - secondary_output_name. str or None. Optional. Default 'secondary_output'. The parameter to pass to mk_subdir subdir_name
     argument for creating the secondary_output folder.
 
     - secondary_output_parent. os.PathLike. Optional. Default os.getcwd(). The parameter to pass to mk_subdir parent_dir
@@ -109,7 +113,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     - seconary_output_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
     argument for creating the secondary_output folder.
 
-    - metadata_name. str. Optional. Default 'proc_metadata'. The parameter to pass to mk_subdir subdir_name
+    - metadata_name. str or None. Optional. Default 'proc_metadata'. The parameter to pass to mk_subdir subdir_name
     argument for creating the metadata folder.
     
     - metadata_parent. os.PathLike. Optional. Default os.getcwd(). The parameter to pass to mk_subdir parent_dir
@@ -121,7 +125,7 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     - metadata_overwrite_dir. bool. Optional. Default False. The parameter to pass to mk_subdir overwrite_dir
     argument for creating the metadata folder.
     
-    - fov_name. str. Optional. Default 'fov'. The parameter to pass to mk_subdir subdir_name
+    - fov_name. str or None. Optional. Default 'fov'. The parameter to pass to mk_subdir subdir_name
     argument for creating the fov folder.
     
     - fov_parent. os.PathLike. Optional. Default os.getcwd(). The parameter to pass to mk_subdir parent_dir
@@ -157,6 +161,16 @@ def mkdir_tree(secondary_output_name:str='secondary_output',
     1 indicating whether or not the directory already existed.
     """
     
+    # set default sub-directory names
+    if secondary_output_name is None:
+        secondary_output_name='secondary_output'
+    
+    if metadata_name is None:
+        metadata_name='proc_metadata'
+    
+    if fov_name is None:
+        fov_name='fov'
+
     # Create secondary_output subdirectory - don't modify the following lines
     mk_subdir(subdir_name=secondary_output_name,
             parent_dir=secondary_output_parent,

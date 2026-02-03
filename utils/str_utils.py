@@ -2,12 +2,10 @@ import re
 import pandas as pd
 
 def format_str(in_s:str,
-               symb_ols:list=['~', '!', '@', '#', '$', '%', '^', '&', '*',
-                                     '(', ')', '`', ';', '<', '>', '.', '?', ',', '[',
-                                     ']', '{', '}', '|', '°', '§', '/', 'ß', '+', '-'],
-               spa_ces:list=[' ', '  ', '   '],
-               symb_ol_replace:str='_',
-               spa_ce_replace:str='')->pd.Series:
+               symb_ols:list|None=None,
+               spa_ces:list|None=None,
+               symb_ol_replace:str|None=None,
+               spa_ce_replace:str|None=None)->pd.Series:
     """
     Formats string by:
     - substituting all symbols in symb_ols with symb_ol_replace (default '_')
@@ -16,6 +14,21 @@ def format_str(in_s:str,
 
     Returns the formatted string.
     """
+
+    # set defaults
+    if symb_ol is None:
+        symb_ols=['~', '!', '@', '#', '$', '%', '^', '&', '*',
+                  '(', ')', '`', ';', '<', '>', '.', '?', ',', '[',
+                  ']', '{', '}', '|', '°', '§', '/', 'ß', '+', '-']
+    
+    if spa_ces is None:
+        spa_ces=[' ', '  ', '   ']
+    
+    if symb_ol_replace is None:
+        symb_ol_replace='_'
+    
+    if spa_ce_replace is None:
+        spa_ce_replace=''
 
     # store input s in an output string
     out_s = in_s

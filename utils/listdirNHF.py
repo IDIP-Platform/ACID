@@ -3,10 +3,10 @@ import os
 def listdirNHF(path:os.PathLike,
                target:str|list|None=None,
                exclude:str|list|None=None,
-               hidden_file_signature:str=".") -> list:
+               hidden_file_signature:str|None=None) -> list:
     """
     Returns files in a given directory as a list, avoding hidden files.
-    Hidden files are identified because the start with a hidden_file_signature
+    Hidden files are identified because they start with a hidden_file_signature (default ".")
 
     Inputs:
     - path. os.PathLike. The path to the directory whose objects have to be listed.
@@ -15,8 +15,13 @@ def listdirNHF(path:os.PathLike,
 
     NOTE: in case of conflict, exlcude has always priority to target.
 
-    Output. List.  
+    Output. List.
     """
+
+    # set default hidden_file_signature
+    if hidden_file_signature is None:
+        hidden_file_signature="."
+
     # return an error if a variable different than None or a string or a list of strings is passed to target
     if target != None:
         assert (isinstance(target, str) or isinstance(target, list)), "target should be either None or a string or a list"

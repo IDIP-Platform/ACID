@@ -4,13 +4,13 @@ import pandas as pd
 from bioio import BioImage
 
 def extract_bioio_scene_metadata(bioio_scene:Callable,
-                                 dtype_name:str|bool='dtype',
-                                 dims_order_name:str|bool='dims_order',
-                                 t_name:str|bool='size_t',
-                                 c_name:str|bool='size_c',
-                                 z_name:str|bool='size_z',
-                                 xy_prefix_name:str|bool='size',
-                                 physical_size_prefix_name:str|bool='physical_size',
+                                 dtype_name:str|bool|None=None,
+                                 dims_order_name:str|bool|None=None,
+                                 t_name:str|bool|None=None,
+                                 c_name:str|bool|None=None,
+                                 z_name:str|bool|None=None,
+                                 xy_prefix_name:str|bool|None=None,
+                                 physical_size_prefix_name:str|bool|None=None,
                                  **kwargs)->tuple:
     
     """
@@ -44,6 +44,28 @@ def extract_bioio_scene_metadata(bioio_scene:Callable,
     - Position 2. Extracted metadata and all metadata passed to kwargs as a dictionary.
     """
     
+    # set default metadata names
+    if dtype_name is None:
+        dtype_name='dtype'
+    
+    if dims_order_name is None:
+        dims_order_name='dims_order'
+    
+    if t_name is None:
+        t_name='size_t'
+    
+    if c_name is None:
+        c_name='size_c'
+    
+    if z_name is None:
+        z_name='size_z'
+    
+    if xy_prefix_name:
+        xy_prefix_name='size'
+    
+    if physical_size_prefix_name is None:
+        physical_size_prefix_name='physical_size'
+
     # assert correct data type for naming arguments
     assert (isinstance(dtype_name,str) or dtype_name==False), "dtype_name can only be a string or False"
     assert (isinstance(dims_order_name,str) or dims_order_name==False), "dims_order_name can only be a string or False"

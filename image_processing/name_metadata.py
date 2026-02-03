@@ -35,7 +35,7 @@ def extract_subinfo_bit(infobit:str,
 
 
 def extract_name_metadata(file_name:str,
-                          separator:str='_',
+                          separator:str|None=None,
                           infobits:dict|None=None,
                           replace_str:str|None=None,
                           infobit_position:int=0,
@@ -45,7 +45,11 @@ def extract_name_metadata(file_name:str,
     """
 
     """
-
+    
+    # set default separator
+    if separator is None:
+        separator='_'
+    
     # replace str in name if necessary
     if replace_str!=None:
         file_name = file_name.replace(' ', separator)

@@ -129,22 +129,22 @@ class MeasureStructureTensor():
     
     - num_sigma. int, float or None. Optional, default None. The number of sigma values to compute. Ref to below for the options to be passed and default behaviour.
 
-    - struct_tens_kwargs. dict. Optional, default {} (empty dictionary). Keyword arguments for the structure tensor function. All parameters skimage.feature.structure_tensor's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.structure_tensor)
+    - struct_tens_kwargs. dict or None. Optional, default {} (empty dictionary). Keyword arguments for the structure tensor function. All parameters skimage.feature.structure_tensor's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.structure_tensor)
     EXCEPT FOR 'sigma', can be passed to this dictionary as key-value pairs. 'sigma' must be specified using min_sigma, max_sigma and num_sigma.
 
-    - erosion_kwargs. dict. Optional, default {'footprint':disk(9)}. Keyword arguments for the erosion function. All parameters skimage.morphology.erosion's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion)
+    - erosion_kwargs. dict or None. Optional, default {'footprint':disk(9)}. Keyword arguments for the erosion function. All parameters skimage.morphology.erosion's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion)
     can be passed to this dictionary as key-value pairs. NOTE: the default setting is can only be used for eroding a 2D image. For eroding images with higher dimensions one should
     pass a structuring element which matches the number of dimensions of the input image (or image channels), or no structural element, in which case the default behaviour
     follows skimage.morphology.erosion (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion).
 
-    - regionprops_kwargs. dict. Optional, default {'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}. Keyword arguments for the regionprops function.
+    - regionprops_kwargs. dict or None. Optional, default {'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}. Keyword arguments for the regionprops function.
     All parameters skimage.measure.regionprops's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.measure.html#skimage.measure.regionprops) can be passed to this dictionary as key-value pairs. These
     include properties to measure and extra_properties to measure.
     NOTE: if 'properties' is passed to regionprops_kwargs, it must include 'label'. NOTE: if 'separator' is passed to regionprops_kwargs and it is '_', the behavior of the function is not guaranteed (a warning is printed)
 
     - erosion_warning. bool. Optional, default True. If True, a warning will be issued if the erosion operation removes any labelled object in label_image.
 
-    - renaming_kwargs. dict. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
+    - renaming_kwargs. dict or None. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
     must contain 'label'.
 
     ========= ========= =========
@@ -162,17 +162,17 @@ class MeasureStructureTensor():
     
     - num_sigma. int, float or None. Optional, default None. The number of sigma values to compute. Ref to below for the options to be passed and default behaviour.
 
-    - erosion_kwargs. dict. Optional, default {'footprint':disk(9)}. Keyword arguments for the erosion function. All parameters skimage.morphology.erosion's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion)
+    - erosion_kwargs. dict or None. Optional, default {'footprint':disk(9)}. Keyword arguments for the erosion function. All parameters skimage.morphology.erosion's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion)
     can be passed to this dictionary as key-value pairs. NOTE: the default setting is can only be used for eroding a 2D image. For eroding images with higher dimensions one should
     pass a structuring element which matches the number of dimensions of the input image (or image channels), or no structural element, in which case the default behaviour
     follows skimage.morphology.erosion (https://scikit-image.org/docs/0.25.x/api/skimage.morphology.html#skimage.morphology.erosion).
 
-    - regionprops_kwargs. dict. Optional, default {'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}. Keyword arguments for the regionprops function.
+    - regionprops_kwargs. dict or None. Optional, default {'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}. Keyword arguments for the regionprops function.
     All parameters skimage.measure.regionprops's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.measure.html#skimage.measure.regionprops) can be passed to this dictionary as key-value pairs.
     These include properties to measure and extra_properties to measure. NOTE: if 'properties' is passed to regionprops_kwargs, it must include 'label'. NOTE: if 'separator' is passed to regionprops_kwargs and it is '_',
     the behavior of the function is not guaranteed (a warning is printed)
 
-    - eigen_ratio_kwargs. dict. Optional, default {'eps':1.e-6, 'sep':'_'}. Keyword arguments for the structure_tensor_eigenval_ratio.
+    - eigen_ratio_kwargs. dict or None. Optional, default {'eps':1.e-6, 'sep':'_'}. Keyword arguments for the structure_tensor_eigenval_ratio.
     NOTE: as the structure tensor and relative eigenvalues are calculated within the structure_tensor_eigenval_ratio function, their parameters must be specified using this function. Precisely,
     all skimage.feature.structure_tensor's parameters (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.structure_tensor)
     EXCEPT FOR 'sigma', can be passed to this dictionary as the following key-value pair: 'kwargs':{'structure_tensor_parameter_1':value, 'structure_tensor_parameter_2':value, ...}.
@@ -180,7 +180,7 @@ class MeasureStructureTensor():
 
     - erosion_warning. bool. Optional, default True. If True, a warning will be issued if the erosion operation removes any labelled object in label_image.
 
-    - renaming_kwargs. dict. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
+    - renaming_kwargs. dict or None. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
     must contain 'label'.
 
     ========= ========= =========

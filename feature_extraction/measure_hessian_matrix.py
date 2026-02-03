@@ -219,12 +219,25 @@ class MeasureHessianMatrix():
                                             sigma_max:float=1,
                                             num_sigma:int|None=None,
                                             axis:int|None=None,
-                                            mbf_kwargs:dict={},
-                                            erosion_kwargs:dict={'footprint':disk(9)},
-                                            regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],'separator':'-'},
+                                            mbf_kwargs:dict|None=None,
+                                            erosion_kwargs:dict|None=None,
+                                            regionprops_kwargs:dict|None=None,
                                             erosion_warning:bool=True,
                                             h_eigenval_position:int=-1,
-                                            sep='_')->pd.DataFrame:
+                                            sep:str|None=None)->pd.DataFrame:
+        # use defaults
+        if mbf_kwargs is None:
+            mbf_kwargs={}
+        
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                                'separator':'-'}
+        
+        if sep is None:
+            sep='_'
 
         assert 'image' not in mbf_kwargs, "image can't be passed to mbf_kwargs, as the image input to __init__ is used for processing"
         assert 'sigma_min' not in mbf_kwargs, "sigma_min can't be passed to mbf_kwargs, use sigma_min argument instead"

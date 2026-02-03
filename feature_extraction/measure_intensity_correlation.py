@@ -10,7 +10,7 @@ def measure_corr_coeff_per_label_single_pair(label_image:np.array,
                                              n_permutation:int=0,
                                              ignore_index:bool=True,
                                              return_permutations:bool=False,
-                                             method:str='spearman',
+                                             method:str|None=None,
                                              min_periods:int=1,
                                              numeric_only:bool=True,
                                              **kwargs) -> pd.DataFrame | tuple:
@@ -24,21 +24,30 @@ def measure_corr_coeff_per_label_single_pair(label_image:np.array,
     Inputs:
     - intensity_image_stack: np.array. Must have at least 2 dimensions. The stack of intensity images to compare. Each image must have the same shape.
     The images to compare are expected to be stacked along the specified axis. Images can have any number of dimensions.
+    
     - label_image: np.array. The shape must correspond to that of the individual images to compare. The labels for each pixel in the intensity images.
+    
     - axis: int. Optional. Default 0. The axis along which the intensity images are stacked.
+    
     - n_permutation: int. Optional. Default 0. The number of permutations to perform for the intensity values per label.
     If 0, no permutations are performed.
+    
     - ignore_index: bool. Optional. Default True. Whether or not to ignore indexes when concatenating permutations pd.Series. NOTE: this is meant to be
     True, the behaviour of the function is not guaranteed if set to False.
+    
     - return_permutations: bool. Optional. Default False. If True, the individual permutations are returned as pd.DataFrame in addition
     to the main result.
-    - method: str. Optional. Default 'spearman'. The method to use for calculating the correlation coefficients. Can be 'pearson', 'spearman', or 'kendall'.
+    
+    - method: str or None. Optional. Default 'spearman'. The method to use for calculating the correlation coefficients. Can be 'pearson', 'spearman', or 'kendall'.
     It is passed to pandas.DataFrame.corr() method.
+    
     - min_periods: int. Optional. Default 1. Minimum number of observations required per label to have a valid result.
     This is passed to pandas.DataFrame.corr() method.
     If the number of observations is less than min_periods, NaN is returned.
+    
     - numeric_only: bool. Optional. Default True. Whether to include only numeric columns in the correlation calculation.
     This is passed to pandas.DataFrame.corr() method.
+    
     - **kwargs: Additional keyword arguments passed to permute_values_per_label function.
 
     Returns:
@@ -66,6 +75,10 @@ def measure_corr_coeff_per_label_single_pair(label_image:np.array,
 
     NOTE: the function was not tested for images of 1 pixel.
     """
+    # set default method
+    if method is None:
+        method='spearman'
+
     assert method not in kwargs, "method can't be passed to kwargs. Use the method argument instead."
 
     if return_permutations:
@@ -137,10 +150,10 @@ def measure_corr_coeff_per_label(label_image:np.array,
                                  n_permutation:int=0,
                                  ignore_index:bool=True,
                                  return_permutations:bool=False,
-                                 method:str='spearman',
+                                 method:str|None=None,
                                  min_periods:int=1,
                                  numeric_only:bool=True,
-                                 sep:str='_',
+                                 sep:str|None=None,
                                  **kwargs) -> pd.DataFrame | tuple:
     """
     Given a stack of intensity images and a label image, for each label in the label image and for all the image-pairs in a stack, this function measures
@@ -151,22 +164,32 @@ def measure_corr_coeff_per_label(label_image:np.array,
     Inputs:
     - intensity_image_stack: np.array. Must have at least 2 dimensions. The stack of intensity images to compare. Each image must have the same shape.
     The images to compare are expected to be stacked along the specified axis. Images can have any number of dimensions.
+    
     - label_image: np.array. The shape must correspond to that of the individual images to compare. The labels for each pixel in the intensity images.
+    
     - axis: int. Optional. Default 0. The axis along which the intensity images are stacked.
+    
     - n_permutation: int. Optional. Default 0. The number of permutations to perform for the intensity values per label.
     If 0, no permutations are performed.
+    
     - ignore_index: bool. Optional. Default True. Whether or not to ignore indexes when concatenating permutations pd.Series. NOTE: this is meant to be
     True, the behaviour of the function is not guaranteed if set to False.
+    
     - return_permutations: bool. Optional. Default False. If True, the individual permutations are returned as pd.DataFrame in addition
     to the main result.
-    - method: str. Optional. Default 'spearman'. The method to use for calculating the correlation coefficients. Can be 'pearson', 'spearman', or 'kendall'.
+    
+    - method: str or None. Optional. Default 'spearman'. The method to use for calculating the correlation coefficients. Can be 'pearson', 'spearman', or 'kendall'.
     It is passed to pandas.DataFrame.corr() method.
+    
     - min_periods: int. Optional. Default 1. Minimum number of observations required per label to have a valid result.
     This is passed to pandas.DataFrame.corr() method.
     If the number of observations is less than min_periods, NaN is returned.
+    
     - numeric_only: bool. Optional. Default True. Whether to include only numeric columns in the correlation calculation.
     This is passed to pandas.DataFrame.corr() method.
-    - sep. str. Optional. Default '_'. The string to use for separating the channels from the rest of the column name in the output dataframe.
+    
+    - sep. str or None. Optional. Default '_'. The string to use for separating the channels from the rest of the column name in the output dataframe.
+    
     - **kwargs: Additional keyword arguments passed to permute_values_per_label function.
 
     Returns:
@@ -200,6 +223,14 @@ def measure_corr_coeff_per_label(label_image:np.array,
 
     NOTE: the function was not tested for images of 1 pixel.
     """
+
+    # set default method and sep
+    if method is None:
+        method='spearman'
+    
+    if sep is None:
+        sep='_'
+    
     assert method not in kwargs, "method can't be passed to kwargs. Use the method argument instead."
 
     if return_permutations:

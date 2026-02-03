@@ -144,7 +144,7 @@ class MeasureStructureTensor():
 
     - erosion_warning. bool. Optional, default True. If True, a warning will be issued if the erosion operation removes any labelled object in label_image.
 
-    - renaming_kwargs. dict. Optional, default {'keep_column':['label'],'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
+    - renaming_kwargs. dict. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
     must contain 'label'.
 
     ========= ========= =========
@@ -180,7 +180,7 @@ class MeasureStructureTensor():
 
     - erosion_warning. bool. Optional, default True. If True, a warning will be issued if the erosion operation removes any labelled object in label_image.
 
-    - renaming_kwargs. dict. Optional, default {'keep_column':['label'],'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
+    - renaming_kwargs. dict. Optional, default {'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}. Keyword arguments used for renaming columns in the output DataFrame. NOTE: the list associated to 'keep_column'
     must contain 'label'.
 
     ========= ========= =========
@@ -257,9 +257,15 @@ class MeasureStructureTensor():
                        dataframe:pd.DataFrame,
                        prefix:str|None=None,
                        suffix:str|None=None,
-                       keep_column:list|None=None,
-                       pre_sep:str="_",
-                       suf_sep:str="_")->pd.DataFrame:
+                       keep_column:tuple|None=None,
+                       pre_sep:str|None=None,
+                       suf_sep:str|None=None)->pd.DataFrame:
+        
+        # use default pre_sep and suf_sep
+        if pre_sep is None:
+            pre_sep="_"
+        if suf_sep is None:
+            suf_sep="_"
         
         # initialize a dictionary to be used as mapper for column renaming
         mapper_col = {}
@@ -294,11 +300,18 @@ class MeasureStructureTensor():
     def structure_tensor_eigenval_ratio(self,
                                         concat_axis:int=-1,
                                         eps:float=1.e-6,
-                                        sep:str='_',
+                                        sep:str|None=None,
                                         return_eigen_pairs:bool=False,
-                                        kwargs:dict={})->np.array:
+                                        kwargs:dict|None=None)->np.array:
         """
         """
+
+        # use default sep and kwargs
+        if sep is None:
+            sep='_'
+        if kwargs is None:
+            kwargs={}
+
         # ensure that no division by 0 is present
         assert eps>0, "eps must be different than 0"
 
@@ -357,11 +370,14 @@ class MeasureStructureTensor():
             return eigen_ratio
 
 
-    def image_mean_anisotropy(self, eps:float=1.e-6, kwargs:dict={}) -> float:
+    def image_mean_anisotropy(self, eps:float=1.e-6, kwargs:dict|None=None) -> float:
         
         """
         """
-
+        # use default kwargs
+        if kwargs is None:
+            kwargs={}
+        
         # calculate eigenvalue ratio
         eigen_ratio = self.structure_tensor_eigenval_ratio(eps, **kwargs)
 
@@ -370,12 +386,23 @@ class MeasureStructureTensor():
 
     def measure_obj_struct_tensor_eigenval_single_image_sigma(self,
                                                         label_image:np.array,
-                                                        struct_tens_kwargs:dict={},
-                                                        erosion_kwargs:dict={'footprint':disk(9)},
-                                                        regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std']},
+                                                        struct_tens_kwargs:dict|None=None,
+                                                        erosion_kwargs:dict|None=None,
+                                                        regionprops_kwargs:dict|None=None,
                                                         erosion_warning:bool=True)-> pd.DataFrame:
         """
         """
+
+        # use default kwargs settings
+        if struct_tens_kwargs is None:
+            struct_tens_kwargs={}
+        
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std']}
+
         assert 'properties' in regionprops_kwargs, "'properties' must be passed to regionpros_kwargs"
         assert 'label' in regionprops_kwargs['properties'], "'label' must be a property passed to 'properties' in regionprops_kwargs"
         if 'sigma' in struct_tens_kwargs:
@@ -411,7 +438,7 @@ class MeasureStructureTensor():
         # rename columns
         eigen_measurement = self.rename_columns(eigen_measurement_i,
                                                 prefix=f"str_tens_eigv_1",
-                                                keep_column=['label'])
+                                                keep_column=('label'))
 
         # copy the measurement dataframe - NOTE: this is a step which can potentially be cleaned
         glob_eigen_measurement = eigen_measurement.copy()
@@ -430,7 +457,7 @@ class MeasureStructureTensor():
             # rename columns
             eigen_measurement_ii = self.rename_columns(eigen_measurement_iii,
                                                        prefix=f"str_tens_eigv_{o}",
-                                                       keep_column=['label'])
+                                                       keep_column=('label'))
             
             # merge measurements for the o-th eigenvalue to the global measurements dataframe - store the merged dataframe in a new dataframe (NOTE: this is a step which can potentially be cleaned)
             eigen_measurement_i = glob_eigen_measurement.merge(eigen_measurement_ii,
@@ -449,12 +476,24 @@ class MeasureStructureTensor():
 
     def measure_object_anisotropy_single_image_sigma(self,
                                                label_image:np.array,
-                                               erosion_kwargs:dict={'footprint':disk(9)},
-                                               regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'},
-                                               eigen_ratio_kwargs:dict={'eps':1.e-6, 'sep':'_'},
+                                               erosion_kwargs:dict|None=None,
+                                               regionprops_kwargs:dict|None=None,
+                                               eigen_ratio_kwargs:dict|None=None,
                                                erosion_warning:bool=True)-> pd.DataFrame:
         """
         """
+
+        # use default kwargs
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                                'separator':'-'}
+        
+        if eigen_ratio_kwargs is None:
+            eigen_ratio_kwargs={'eps':1.e-6, 'sep':'_'}
+
         assert 'properties' in regionprops_kwargs, "'properties' must be passed to regionprops_kwargs"
         assert 'label' in regionprops_kwargs['properties'], "'label' must be a property passed to 'properties' in regionprops_kwargs"
         assert 'concat_axis' not in eigen_ratio_kwargs, "'concat_axis' should not be passed to eigen_ratio_kwargs as it is hard coded in the last position for the regionprops-based measurement"
@@ -498,7 +537,7 @@ class MeasureStructureTensor():
         # add 'anisotropy' to measurement column names
         eigen_ratio_measurement = self.rename_columns(eigen_ratio_measurement,
                                                        prefix="anisotropy",
-                                                       keep_column=['label'])
+                                                       keep_column=('label'))
         
         # add the pair of eigenvalues used for ratio calculation to the column names
 
@@ -537,12 +576,23 @@ class MeasureStructureTensor():
     def measure_obj_struct_tensor_eigenval_single_sigma(self,
                                            label_image:np.array,
                                            axis:int|None=None,
-                                           struct_tens_kwargs:dict={},
-                                           erosion_kwargs:dict={'footprint':disk(9)},
-                                           regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'},
+                                           struct_tens_kwargs:dict|None=None,
+                                           erosion_kwargs:dict|None=None,
+                                           regionprops_kwargs:dict|None=None,
                                            erosion_warning:bool=True)->pd.DataFrame:
         """
         """
+
+        # use default kwargs
+        if struct_tens_kwargs is None:
+            struct_tens_kwargs={}
+        
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                                'separator':'-'}
 
         if 'separator' in regionprops_kwargs:
            if regionprops_kwargs['separator']=='_':
@@ -570,9 +620,14 @@ class MeasureStructureTensor():
             def measure__obj__struct__tensor__eigenval__single__image__sigma(imag_e:np.array,
                                                                       label_imag_e:np.array,
                                                                       suffix:int|None=None,
-                                                                      suf_sep:str="-")-> pd.DataFrame:
+                                                                      suf_sep:str|None=None)-> pd.DataFrame:
                 """
                 """
+
+                # use default suf_sep
+                if suf_sep is None:
+                    suf_sep="_"
+                
                 assert 'properties' in regionprops_kwargs, "'properties' must be passed to regionpros_kwargs"
                 assert 'label' in regionprops_kwargs['properties'], "'label' must be a property passed to 'properties' in regionprops_kwargs"
 
@@ -591,7 +646,7 @@ class MeasureStructureTensor():
                 eigen_measurement = self.rename_columns(eigen_measurement_i,
                                                         prefix=f"str_tens_eigv_1",
                                                         suffix=f"{suffix}",
-                                                        keep_column=['label'],
+                                                        keep_column=('label'),
                                                         suf_sep=suf_sep)
 
                 # copy the measurement dataframe - NOTE: this is a step which can potentially be cleaned
@@ -612,7 +667,7 @@ class MeasureStructureTensor():
                     eigen_measurement_ii = self.rename_columns(eigen_measurement_iii,
                                                             prefix=f"str_tens_eigv_{o}",
                                                             suffix=f"{suffix}",
-                                                            keep_column=['label'],
+                                                            keep_column=('label'),
                                                             suf_sep=suf_sep)
                     
                     # merge measurements for the o-th eigenvalue to the global measurements dataframe - store the merged dataframe in a new dataframe (NOTE: this is a step which can potentially be cleaned)
@@ -682,12 +737,23 @@ class MeasureStructureTensor():
     def measure_object_anisotropy_single_sigma(self,
                                   label_image:np.array,
                                   axis:int|None=None,
-                                  erosion_kwargs:dict={'footprint':disk(9)},
-                                  regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'},
-                                  eigen_ratio_kwargs:dict={'eps':1.e-6, 'sep':'_'},
+                                  erosion_kwargs:dict|None=None,
+                                  regionprops_kwargs:dict|None=None,
+                                  eigen_ratio_kwargs:dict|None=None,
                                   erosion_warning:bool=True)-> pd.DataFrame:
         """
         """
+
+        # set default kwargs
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}
+        
+        if eigen_ratio_kwargs is None:
+            eigen_ratio_kwargs:dict={'eps':1.e-6, 'sep':'_'}
+
         if axis==None:
             if 'sigma' in eigen_ratio_kwargs['kwargs']:
                 assert len(eigen_ratio_kwargs['kwargs']['sigma'])==len(self.image.shape), "only one sigma value can be passed to the present function"
@@ -704,11 +770,18 @@ class MeasureStructureTensor():
             def structure__tensor__eigenval__ratio(imag_e:np.array,
                                                    concat_axis:int=-1,
                                                    eps:float=1.e-6,
-                                                   sep:str='_',
+                                                   sep:str|None=None,
                                                    return_eigen_pairs:bool=False,
-                                                   kwargs:dict={})->np.array:
+                                                   kwargs:dict|None=None)->np.array:
                 """
                 """
+
+                # set default sep and kwargs
+                if sep is None:
+                    sep = "_"
+                
+                if kwargs is None:
+                    kwargs={}
 
                 # calculate image structure tensors
                 A_elems = structure_tensor(imag_e, **kwargs)
@@ -787,7 +860,7 @@ class MeasureStructureTensor():
                 # add 'anisotropy' to measurement column names
                 eigen_ratio_measurement = self.rename_columns(eigen_ratio_measurement,
                                                             prefix="anisotropy",
-                                                            keep_column=['label'])
+                                                            keep_column=('label'))
                 
                 # add the pair of eigenvalues used for ratio calculation to the column names
 
@@ -1044,11 +1117,11 @@ class MeasureStructureTensor():
                                            max_sigma:int|float|tuple|list|None=None,
                                            num_sigma:int|float|None=None,
                                            axis:int|None=None,
-                                           struct_tens_kwargs:dict={},
-                                           erosion_kwargs:dict={'footprint':disk(9)},
-                                           regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'},
+                                           struct_tens_kwargs:dict|None=None,
+                                           erosion_kwargs:dict|None=None,
+                                           regionprops_kwargs:dict|None=None,
                                            erosion_warning:bool=True,
-                                           renaming_kwargs:dict={'keep_column':['label'],'measurement_pos':0,'ch_pos':-1}) -> pd.DataFrame:
+                                           renaming_kwargs:dict|None=None) -> pd.DataFrame:
         """
         sigma can't be passed to struct_tens_kwargs.
 
@@ -1079,6 +1152,19 @@ class MeasureStructureTensor():
             min_sigma and corresponding i value in max_sigma, a N long linspace is created in the i-min_sigma - i-max_sigma range.
             Each of N-th kernel is generated by taking the N-th value per each of i-th linspace.
         """
+
+        # set default kwargs
+        if struct_tens_kwargs is None:
+            struct_tens_kwargs={}
+        
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'}
+        
+        if renaming_kwargs is None:
+            renaming_kwargs={'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}
 
         # ensure that 'sigma' is not passed to struct_tens_kwargs
         assert 'sigma' not in struct_tens_kwargs, "sigma can't be passed to struct_tens_kwargs. Use min_sigma, max_sigma and num_sigma instead"
@@ -1144,13 +1230,23 @@ class MeasureStructureTensor():
 
             # rename columns
             def rename_sigma_columns(measurement_df:pd.DataFrame,
-                                     ch_sep:str="-",
-                                     sigma_sep:str="_",
-                                     sigma_str:str="s0",
-                                     keep_column:list|None=['label'],
+                                     ch_sep:str|None=None,
+                                     sigma_sep:str|None=None,
+                                     sigma_str:str|None=None,
+                                     keep_column:tuple|None=('label'),
                                      measurement_pos:int=0,
                                      ch_pos:int=-1)->pd.DataFrame:
                 
+                # set default renaming variables
+                if ch_sep is None:
+                    ch_sep="-"
+                
+                if sigma_sep is None:
+                    sigma_sep="_"
+                
+                if sigma_str is None:
+                    sigma_str="s0"
+
                 # intialize a mapper
                 column_mapper = {}
 
@@ -1211,11 +1307,11 @@ class MeasureStructureTensor():
                                   max_sigma:int|float|tuple|list|None=None,
                                   num_sigma:int|float|None=None,
                                   axis:int|None=None,
-                                  erosion_kwargs:dict={'footprint':disk(9)},
-                                  regionprops_kwargs:dict={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'], 'separator':'-'},
-                                  eigen_ratio_kwargs:dict={'eps':1.e-6, 'sep':'_'},
+                                  erosion_kwargs:dict|None=None,
+                                  regionprops_kwargs:dict|None=None,
+                                  eigen_ratio_kwargs:dict|None=None,
                                   erosion_warning:bool=True,
-                                  renaming_kwargs:dict={'keep_column':['label'],'measurement_pos':0,'ch_pos':-1}) -> pd.DataFrame:
+                                  renaming_kwargs:dict|None=None) -> pd.DataFrame:
         
         """
         sigma can't be passed to eigen_ratio_kwargs['kwargs'].
@@ -1247,6 +1343,22 @@ class MeasureStructureTensor():
             min_sigma and corresponding i value in max_sigma, a N long linspace is created in the i-min_sigma - i-max_sigma range.
             Each of N-th kernel is generated by taking the N-th value per each of i-th linspace.
         """
+
+        # set default kwargs
+        if erosion_kwargs is None:
+            erosion_kwargs={'footprint':disk(9)}
+        
+        if regionprops_kwargs is None:
+            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
+                                'separator':'-'}
+        
+        if eigen_ratio_kwargs is None:
+            eigen_ratio_kwargs={'eps':1.e-6, 'sep':'_'}
+        
+        if renaming_kwargs is None:
+            renaming_kwargs:dict={'keep_column':('label'),'measurement_pos':0,'ch_pos':-1}
+        
+
         eigen_ratio_kwargs = eigen_ratio_kwargs.copy() # to avoid modifying the input dictionary
         
         # ensure that 'sigma' is not passed to eigen_ratio_kwargs['kwargs']
@@ -1327,13 +1439,23 @@ class MeasureStructureTensor():
 
             # rename columns
             def rename_sigma_columns(measurement_df:pd.DataFrame,
-                                     ch_sep:str="-",
-                                     sigma_sep:str="_",
-                                     sigma_str:str="s0",
-                                     keep_column:list|None=['label'],
+                                     ch_sep:str|None=None,
+                                     sigma_sep:str|None=None,
+                                     sigma_str:str|None=None,
+                                     keep_column:tuple|None=('label'),
                                      measurement_pos:int=0,
                                      ch_pos:int=-1)->pd.DataFrame:
                 
+                # set default renaming variables
+                if ch_sep is None:
+                    ch_sep="-"
+                
+                if sigma_sep is None:
+                    sigma_sep="_"
+                
+                if sigma_str is None:
+                    sigma_str="s0"
+
                 # intialize a mapper
                 column_mapper = {}
 

@@ -408,7 +408,10 @@ def measure_label_stack_overlap(label_image_stack,
                                 axis:int=0,
                                 combined_dtype:np.dtype=np.uint32,
                                 include_background:bool=True,
-                                check_dtype_safety:bool=False)-> pd.DataFrame:
+                                check_dtype_safety:bool=False,
+                                label_clm:str|None=None,
+                                overlap_clm:str|None=None,
+                                sep:str|None=None)-> pd.DataFrame:
     """
     Measure and collect the overlap between all the labels of all pairs of label images in a stack.
     The label_image_stack is expected to be a 2D or higher dimensional array where each sub-array along the specified axis
@@ -426,23 +429,30 @@ def measure_label_stack_overlap(label_image_stack,
 
     - check_dtype_safety. bool. Optional. Default False. If True, check that the combined_dtype is safe for the maximum label values in the label_image_stack.
 
+    - label_clm. :str or None. Optional. Default "label". The prefix of names of the columns storing object label
+    values per each label image of label_image_stack.
+
+    - overlap_clm. str or None. Optional. Default "areaoverlap". The prefix of names of the columns storing the
+    overlap between pixels per each pair of labelled objects in the label_image_stack.
+
+    - sep. str or None. Optional. Default "sep". The separator for tokens in the output dictionary column names.
 
     Outputs: pandas DataFrame. Each row is a pair of labels from the label images in the label_image_stack (the sub-arrays
     resulting by splitting label_image_stack on the specified axis). All and only existing pairs of labels are present in the output dataframe.
 
     The columns are:
     
-    - label_0, label_1, ...: the label values from the label images in the label_image_stack. The final number indicates the index of the label image
+    - {label_clm}{sep}0, {label_clm}{sep}1, ...: the label values from the label images in the label_image_stack. The final number indicates the index of the label image
     in the label_image_stack along the indicated axis.
 
-    - area_overlap_0_1, area_overlap_0_2, ...: the area of overlap between the labels from the label images in the label_image_stack. The final numbers
+    - {overlap_clm}{sep}0{sep}1, {overlap_clm}{sep}0{sep}2, ...: the area of overlap between the labels from the label images in the label_image_stack. The final numbers
     indicate the indices of the label image pair in the label_image_stack along the indicated axis.
     For example, area_overlap_0_1 is the area of overlap between label_0 and label_1.
     
-    - area_0, area_1, ...: the area of the labels from the label images in the label_image_stack. The final number indicates the index of the label image
+    - area{sep}0, area{sep}1, ...: the area of the labels from the label images in the label_image_stack. The final number indicates the index of the label image
     in the label_image_stack along the indicated axis.
     
-    - centroid-y_0, centroid-x_0, ...: the coordinates of the centroids of the labels from the label images in the label_image_stack. The
+    - centroid-y{sep}0, centroid-x{sep}0, ...: the coordinates of the centroids of the labels from the label images in the label_image_stack. The
     second last number indicates the axis along which the centroid is measured, the last number indicates the index of the label image in the
     label_image_stack along the indicated axis.
     (e.g. centroid-y_0 is the y-coordinate of the centroid of label_0, centroid-x_1 is the x-coordinate of the centroid of label_1).
@@ -479,6 +489,17 @@ def measure_label_stack_overlap(label_image_stack,
     df_5['overlap_fraction_2_0'] = df_5['area_overlap_0_2'] / df_5['area_2']
     df_6 = df_5[df_5['overlap_fraction_2_0']>0.7]
     """
+
+    # set default variables for column naming
+    if label_clm is None:
+        label_clm="label"
+    
+    if overlap_clm is None:
+        overlap_clm="areaoverlap"
+    
+    if sep is None:
+        sep="_"
+
     # check that label_image_stack is at least 2D and that the axis is valid
     assert label_image_stack.ndim > 1, "label_image_stack must be at least 2D"
     assert axis < label_image_stack.ndim, f"axis {axis} is out of bounds for label_image_stack with {label_image_stack.ndim} dimensions"
@@ -503,7 +524,7 @@ def measure_label_stack_overlap(label_image_stack,
         label_image_index_2 = label_image_index_1+1
         for label_image_2 in label_image_list[label_image_index_2:]:
 
-            # measure the overlap between the two label images
+            # measure the overlap between the two label images - NOTE: the default naming of the output columns is used
             overlap_df_i = measure_label_object_overlap(label_image_1=label_image_1,
                                                             label_image_2=label_image_2,
                                                             combined_dtype=combined_dtype,
@@ -511,9 +532,10 @@ def measure_label_stack_overlap(label_image_stack,
                                                             check_dtype_safety=check_dtype_safety)
                 
             # rename the columns of the overlap dataframe to match the label image indices
-            overlap_df = overlap_df_i.rename(columns={'label_1': f"label_{label_image_index_1}",
-                                                          'label_2': f"label_{label_image_index_2}",
-                                                          'counts': f"area_overlap_{label_image_index_1}_{label_image_index_2}"})
+            # NOTE: the remapping is based on the default column naming from measure_label_object_overlap
+            overlap_df = overlap_df_i.rename(columns={'label_1': f"{label_clm}{sep}{label_image_index_1}",
+                                                          'label_2': f"{label_clm}{sep}{label_image_index_2}",
+                                                          'counts': f"{overlap_clm}{sep}{label_image_index_1}{sep}{label_image_index_2}"})
             
             # add the label columns for the other label images
             for clumn in expected_columns:
@@ -545,7 +567,7 @@ def measure_label_stack_overlap(label_image_stack,
         # merge the area and centroid information with the output dataframe
         output_overlap_df_i = pd.merge(output_overlap_df,
                                         label_image_area_coord_df,
-                                        how='left', on=f"label_{label_image_index}", copy=True)
+                                        how='left', on=f"{label_clm}{sep}{label_image_index}", copy=True)
         
         # update the output dataframe with the new area and centroid information
         output_overlap_df = output_overlap_df_i

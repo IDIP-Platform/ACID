@@ -20,8 +20,9 @@ If a mask is passed, the feature map is only computed inside the mask.
 If no mask is passed, the feature map is computed on the entire image.
 
 - parallel_glcm_feature_map: computes a Haralick feature map for all the label objects in a label_image.
-If the input image has multiple channels, the feature maps are computed per each channel independently.
-Takes advantage of Dask to parallelize the computation of feature maps per each object and per each channel.
+If the input image has multiple channels, the feature maps can be computed per each channel independently.
+Takes advantage of Dask to parallelize the computation of feature maps per each object and (eventually)
+per each channel.
 
 - measure_haralick_features: uses parallel_glcm_feature_map to compute the haralick feature maps of all the label objects
 in a label_image, then measures the regionprops for all the label objects in a label_image based on the computed
@@ -701,7 +702,8 @@ def parallel_glcm_feature_map(image:np.array,
 
     === 
     === IMPORTANT NOTE ===
-    The function takes advantage of Dask to parallelize the computation of feature maps per each object and per each channel.
+    The function takes advantage of Dask to parallelize the computation of feature maps per each object and (eventually) per
+    each channel.
     === 
 
     Image must be 2D or 3D (multi-channel).

@@ -315,7 +315,10 @@ def measure_label_object_overlap(label_image_1:np.array,
                                  label_image_2:np.array,
                                  combined_dtype:np.dtype=np.uint32,
                                  include_background:bool=False,
-                                 check_dtype_safety:bool=False)-> pd.DataFrame:
+                                 check_dtype_safety:bool=False,
+                                 label_1_clm:str|None=None,
+                                 label_2_clm:str|None=None,
+                                 counts_clm:str|None=None)-> pd.DataFrame:
     """
     Return a data frame where each row is every possible pair of overlapping labels in label_image_1 and label_image_2,
     (with the exclusion of pairs involving label_image_1 value 0 if include_background=False). Columns are the label value in
@@ -330,6 +333,12 @@ def measure_label_object_overlap(label_image_1:np.array,
     - label_image_2. n-dimensional np.array. Labelled image. Background pixels are expected to have value 0.
     - combined_dtype. np.dtype. Optional. Default np.uint32. The data type to use for the combined label values (SEE NOTE BELOW).
     - include_background. bool. Optional. Default False. If True, include background pixels in the analysis.
+    - label_1_clm. str or None. Optional. Default "label_1". The name of the column where label values of
+    measured objects from the label_image_1 are stored in the output dataframe.
+    - label_2_clm. str or None. Optional. Default "label_2". The name of the column where label values of
+    measured objects from the label_image_2 are stored in the output dataframe.
+    - counts_clm. str or None. Optional. Default "counts". The number of overlapping pixels between a label_1 - label_2
+    object pair.
 
     NOTE: THIS METHOD RELIES ON THE MULTIPLICATION OF THE HIGHEST VALUE IN label_image_1 AND THE HIGHEST VALUE IN
     label_image_2. THIS MULTIPLICATION CAN LEAD TO NUMBERS NOT HANDLED BY THE INITIAL DATA TYPE OF THE IMAGES THUS
@@ -347,6 +356,16 @@ def measure_label_object_overlap(label_image_1:np.array,
     THE VALUE OF POINT 1 MUST BE STRICTLY LOWER THAN THE VALUE IN POINT 2. IF NOT, YOU SHOULD USE DATA TYPE WHICH
     ALLOWS HIGHER VALUES.
     """
+    # set default names for output dataframe columns
+    if label_1_clm is None:
+        label_1_clm="label_1"
+    
+    if label_2_clm is None:
+        label_2_clm="label_2"
+    
+    if counts_clm is None:
+        counts_clm="counts"
+
     if check_dtype_safety:
         max_combined = (label_image_1.max() * (label_image_2.max() + 1)) + label_image_2.max()
         dtype_limit = np.iinfo(combined_dtype).max
@@ -377,9 +396,9 @@ def measure_label_object_overlap(label_image_1:np.array,
     label2_ids = unique_pairs % max_label2
     
     # Create a data frame
-    labels_overlap_count_dict = {'label_1':label1_ids,
-                                'label_2': label2_ids,
-                                'counts': unique_pairs_counts}
+    labels_overlap_count_dict = {label_1_clm:label1_ids,
+                                label_2_clm: label2_ids,
+                                counts_clm: unique_pairs_counts}
     labels_overlap_counts_df = pd.DataFrame.from_dict(labels_overlap_count_dict)
 
     return labels_overlap_counts_df

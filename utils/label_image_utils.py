@@ -20,7 +20,8 @@ def label_image_custom_measurement(label_image:np.array,
                                    index:int|Sequence|None=None,
                                    out_dtype:np.dtype|None=None,
                                    default:int|float|None=None,
-                                   pass_position:bool=False)-> pd.DataFrame:
+                                   pass_position:bool=False,
+                                   label_clm_name:str|None=None)-> pd.DataFrame:
     """
     Sequentially applies an arbitrary function (that works on array_like input) to subsets of an N-D image
     array specified by labels and index. The option exists to provide the function with positional parameters
@@ -68,6 +69,9 @@ def label_image_custom_measurement(label_image:np.array,
     - pass_position. bool. Optional. Default False. If True, pass linear indices to function as a
     second argument. It is passed to the argument "pass_position" in
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.labeled_comprehension.html
+
+    - label_clm_name. str or None. Optional. Default "label". The name of the column where label values of
+    measured objects are stored in the output dataframe.
     
     Output. pandas dataframe. Each row is a labelled element present in label_image. By default all the
     labelled elements are present. Index can be used to restrict them to a subset. Two columns are present:
@@ -75,6 +79,10 @@ def label_image_custom_measurement(label_image:np.array,
     - column_name. The result function applied to intensity_image only for the pixels specified by label.
     
     """
+
+    # set default label column name
+    if label_clm_name is None:
+        label_clm_name='label'
 
     # get label_image's labels (here called indexes) if they are not provided as a function parameter
     if hasattr(index, "__len__"):
@@ -94,7 +102,7 @@ def label_image_custom_measurement(label_image:np.array,
                                                             pass_positions=pass_position)
     
     # store measurements and corresponding labels in a dictionary
-    label_measurement_dict = {'label':index, column_name:label_measurement}
+    label_measurement_dict = {label_clm_name:index, column_name:label_measurement}
 
     # use the disctionary to form a pandas dataframe
     label_measurement_df = pd.DataFrame.from_dict(label_measurement_dict)

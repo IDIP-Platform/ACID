@@ -7,9 +7,9 @@ def add_flag_column(
     lowpass_thres: Sequence[float],
     highpass_thres: Sequence[float],
     cols: Optional[Sequence[str]] = None,
-    flag_col: str = "flag",
-    flag_value: Any = "flag_value",
-    ok_value: Any = "ok",
+    flag_col: str | None = None,
+    flag_value: Any = 1,
+    ok_value: Any = 0,
 ) -> pd.DataFrame:
     """
     Add a flag column to a DataFrame based on per-column low-pass and high-pass
@@ -44,13 +44,13 @@ def add_flag_column(
         - If None, all columns in df are used.
         - Otherwise, only df[cols] is evaluated.
 
-    flag_col : str, default "flag"
+    flag_col : str or None, default "flag"
         Name of the column that will store the resulting flag values.
 
-    flag_value : Any, default "flag_value"
+    flag_value : Any, default 1
         Value assigned when a row violates any threshold.
 
-    ok_value : Any, default "ok"
+    ok_value : Any, default 0
         Value assigned when a row satisfies all thresholds.
 
     -----------------------------------------------------------------------
@@ -94,6 +94,10 @@ def add_flag_column(
     8. Single-column case
        Works correctly if thresholds are sequences of length 1.
     """
+
+    # set default flag_column name
+    if flag_col is None:
+        flag_col="flag"
 
     # --------------------------------------------------
     # 1. Select columns to apply threshold logic

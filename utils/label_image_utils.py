@@ -513,10 +513,10 @@ def measure_label_stack_overlap(label_image_stack,
     overlap_df_collection = []
 
     # collect the expected columns in the output dataframe
-    expected_columns = [f"label_{i}" for i in range(len(label_image_list))]
+    expected_columns = [f"{label_clm}{sep}{i}" for i in range(len(label_image_list))]
     for i in range(len(label_image_list)):
         for j in range(i+1, len(label_image_list)):
-            expected_column = f"area_overlap_{i}_{j}"
+            expected_column = f"{overlap_clm}{sep}{i}{sep}{j}"
             expected_columns.append(expected_column)
 
     # iterate through the pairs of label images and measure overlaps
@@ -552,6 +552,7 @@ def measure_label_stack_overlap(label_image_stack,
     output_overlap_df = pd.concat(overlap_df_collection, ignore_index=True)
 
     # iterate through the label images and measure the area and centroid of each label
+    # NOTE: properties are fixed in this case, it is not possible to choose them ad hoc
     for label_image_index, label_image in enumerate(label_image_list):
 
         label_image_area_coord_df_i = pd.DataFrame(regionprops_table(label_image, properties=['area', 'label', 'centroid']))
@@ -559,7 +560,7 @@ def measure_label_stack_overlap(label_image_stack,
         # rename the columns of the area dataframe to match the label image index
         column_mapper = {}
         for clm in label_image_area_coord_df_i.columns:
-            new_clm = f"{clm}_{label_image_index}"
+            new_clm = f"{clm}{sep}{label_image_index}"
             column_mapper[clm] = new_clm
 
         label_image_area_coord_df = label_image_area_coord_df_i.rename(columns=column_mapper)
@@ -585,13 +586,18 @@ def measure_label_stack_overlap(label_image_stack,
     # iterate through the columns of the output dataframe
     # and collect the column names in the desired order
     for clm in output_overlap_df.columns:
-        if clm.startswith("label_"):
+        if f"{label_clm}{sep}" in clm:
             label_clm_collection.append(clm)
-        elif clm.startswith("area_"):
-            if "overlap" in clm:
-                overlap_clm_collection.append(clm)
-            else:
-                area_clm_collection.append(clm)
+        
+        elif "label" in clm:
+            label_clm_collection.append(clm)
+        
+        elif overlap_clm in clm:
+            overlap_clm_collection.append(clm)
+        
+        elif "area" in clm :
+            area_clm_collection.append(clm)
+        
         else:
             centroid_clm_collection.append(clm)
     

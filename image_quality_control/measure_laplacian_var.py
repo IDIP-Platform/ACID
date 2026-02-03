@@ -4,6 +4,8 @@ This code was taken from here: https://medium.com/@nasuhcanturker/a-practical-wa
 
 A similar approach was used here: https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
 
+This is code is not implemented properly for the current project. It is here as a backbone for further implementation.
+
 """
 
 import os

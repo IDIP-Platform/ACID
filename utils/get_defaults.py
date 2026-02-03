@@ -3,10 +3,10 @@ import datetime
 
 def default_file_name(file_list:list,
                       from_file_name:bool=False,
-                      directory_path:str="",
-                      separator:str="_",
+                      directory_path:str=os.PathLike,
+                      separator:str|None=None,
                       date_position:int=0,
-                      date_format:str='%Y%m%d',
+                      date_format:str|None=None,
                       reverse:bool=True)->str:
     """
     Given a list of file names (file_list), gets the file name with the closest/furthest date,
@@ -40,6 +40,14 @@ def default_file_name(file_list:list,
     Returns:
     - str: File name with the closest/furthest date in file_list.
     """
+
+    # set dafault separator and date_format
+    if separator is None:
+        separator="_"
+    
+    if date_format is None:
+        date_format='%Y%m%d'
+
     # initialize a dictionary to link file names to their dates
     file_date_link = {}
 

@@ -4,7 +4,7 @@ import tifffile
 
 def get_fov_ch_shape(df:pd.DataFrame,
                      fov_dir:os.PathLike,
-                     fov_clm:str='ome_tif_file_name',
+                     fov_clm:str|None=None,
                      channel_axis: int=0,
                      null_value:float|None=None)->int:
     """
@@ -22,6 +22,10 @@ def get_fov_ch_shape(df:pd.DataFrame,
     Returns:
         ch_number: int, number of channels in the images.
      """
+
+    # set default fov_clm name
+    if fov_clm is None:
+        fov_clm='ome_tif_file_name'
 
     # initiate a variable to signal whether a file has been found
     file_found = False

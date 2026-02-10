@@ -95,7 +95,7 @@ def calculate_bg_funct_per_condition(df: pd.DataFrame,
         df_condition = df_copy[df_copy[condition_clm] == uni_cond]
 
         # initialize a container array for the current condition
-        container_arr_condition = import_fov(df=df_copy,
+        container_arr_condition = import_fov(df=df_condition,
                                              fov_dir=fov_dir,
                                              fov_clm=fov_clm,
                                              fov_shape=fov_shape)

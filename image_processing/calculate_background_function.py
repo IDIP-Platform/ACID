@@ -63,3 +63,50 @@ def calculate_background_function(container_arr: np.ndarray,
         print(f"background_function shape: {background_function.shape}")
     
     return background_function
+
+def calculate_bg_funct_per_condition(df: pd.DataFrame,
+                                     condition_clm:str,
+                                     fov_dir:str,
+                                     fov_clm: str,
+                                     fov_shape:tuple,
+                                     method:str='median',
+                                     stack_axis:int=-1,
+                                     verbose:bool=True,
+                                     )->dict:
+
+    # copy df to avoid modification
+    df_copy = df.copy()
+
+    # Get all unique conditions in the input dataframe for the condition target column
+    unique_conditions= df_copy[condition_clm].unique()
+    print(f"unique conditions: {unique_conditions}")
+    print("--- --- ---")
+
+    # Initialize a dictionary to store the background functions calculated per each unique condition
+    background_functions_per_condition = {}
+
+    # iterate over the unique conditions
+    for uni_cond in unique_conditions:
+
+        if verbose:
+            print("--- --- ---", uni_cond)
+        
+        # filter the input dataframe to select only the rows corresponding to the current condition
+        df_condition = df_copy[df_copy[condition_clm] == uni_cond]
+
+        # initialize a container array for the current condition
+        container_arr_condition = import_fov(df=df_copy,
+                                             fov_dir=fov_dir,
+                                             fov_clm=fov_clm,
+                                             fov_shape=fov_shape)
+
+        # calculate the background function for the current condition
+        background_function_condition = calculate_background_function(container_arr=container_arr_condition,
+                                                                      method=method,
+                                                                      axis=stack_axis,
+                                                                      verbose=verbose)
+
+        # add the calculated background function to the dictionary
+        background_functions_per_condition[uni_cond] = background_function_condition
+    
+    return background_functions_per_condition

@@ -49,7 +49,7 @@ def format_str(in_s:str,
     return ous_s
 
 
-def extract_number(s):
+def extract_number(s, regex=r'(\d+)$', return_type=int, null_value=None):
     """
     Extract the number in a string (s).
     
@@ -60,5 +60,5 @@ def extract_number(s):
     strings that don't work: "well 1", "well+1", "well_99"...
     """
     
-    match = re.search(r'(\d+)$', s)
-    return int(match.group(1)) if match else None
+    match = re.search(regex, s)
+    return return_type(match.group(1)) if match else null_value

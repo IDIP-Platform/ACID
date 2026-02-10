@@ -89,7 +89,7 @@ def map_layout_condition(condition_list:Sequence,
         in, respectively an integer or a float.
         If None (default), non type conversion will be tried.
     
-    regex: regex str|None. Optional, default r'^(.*?)(\d+)$'
+    regex: regex str|None.
         The regex expression to use for splitting the input string.
     
     null_value. tuple. Optional, default (None, None).

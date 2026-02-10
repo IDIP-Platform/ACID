@@ -49,7 +49,10 @@ def format_str(in_s:str,
     return ous_s
 
 
-def extract_number(s, regex=None, return_type=int, null_value=None):
+def extract_number(s:str,
+                   regex:str|None=None,
+                   return_type:int|float=int,
+                   null_value:any=None)->int|float:
     """
     Extract the number in a string (s).
     
@@ -64,3 +67,60 @@ def extract_number(s, regex=None, return_type=int, null_value=None):
     
     match = re.search(regex, s)
     return return_type(match.group(1)) if match else null_value
+
+
+
+def split_text_and_number(s:str,
+                          number_type:int|float|None=None,
+                          regex:str|None=None,
+                          null_value:tuple=(None, None))->tuple:
+    """
+    Splits a string into a text prefix and a trailing numeric part.
+
+    Parameters
+    ----------
+    s : str
+        Input string expected to end with one or more digits (no separator).
+    number_type : type or None, optional
+        If None, the numeric part is returned as a string.
+        If a type is provided (e.g. int, float), the numeric part is
+        converted using that type.
+
+    number_type: int, float or None. Optional. Default None.
+        If int or float, the function will try to convert the second part of the splat string
+        in, respectively an integer or a float.
+        If None (default), non type conversion will be tried.
+    
+    regex: regex str|None. Optional, default r'^(.*?)(\d+)$'
+        The regex expression to use for splitting the input string.
+    
+    null_value. tuple. Optional, default (None, None).
+        The value returned if the input string can't be split using the input regex expression.
+
+    
+    Returns
+    -------
+    tuple
+        (prefix, number) if the string ends with digits.
+        If no trailing number is found, (None, None) is returned.
+    """
+    if regex is None:
+        regex = r'^(.*?)(\d+)$'
+
+    match = re.search(regex, s)
+    if not match:
+        return null_value
+
+
+    prefix = match.group(1)
+    number_str = match.group(2)
+
+    if number_type is not None:
+        try:
+            return prefix, number_type(number_str)
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"Cannot convert '{number_str}' to {number_type}"
+            )
+
+    return prefix, number_str

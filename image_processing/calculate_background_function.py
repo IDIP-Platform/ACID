@@ -110,3 +110,179 @@ def calculate_bg_funct_per_condition(df: pd.DataFrame,
         background_functions_per_condition[uni_cond] = background_function_condition
     
     return background_functions_per_condition
+
+
+
+def polyfit2d(x, y, z, kx=3, ky=3, order=None):
+    '''
+    === === ===
+    Source - https://stackoverflow.com/a/57923405
+    Posted by Paddy Harrison, modified by community. See post 'Timeline' for change history
+    Retrieved 2026-02-11, License - CC BY-SA 4.0
+    === === ===
+
+    Two dimensional polynomial fitting by least squares.
+    Fits the functional form f(x,y) = z.
+
+    Notes
+    -----
+    Resultant fit can be plotted with:
+    np.polynomial.polynomial.polygrid2d(x, y, soln.reshape((kx+1, ky+1)))
+
+    Parameters
+    ----------
+    x, y: array-like, 1d
+        x and y coordinates.
+    z: np.ndarray, 2d
+        Surface to fit.
+    kx, ky: int, default is 3
+        Polynomial order in x and y, respectively.
+    order: int or None, default is None
+        If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
+        If int, coefficients up to a maximum of kx+ky <= order are considered.
+
+    Returns
+    -------
+    Return paramters from np.linalg.lstsq.
+
+    soln: np.ndarray
+        Array of polynomial coefficients.
+    residuals: np.ndarray
+    rank: int
+    s: np.ndarray
+
+    '''
+
+    # grid coords
+    x, y = np.meshgrid(x, y)
+    # coefficient array, up to x^kx, y^ky
+    coeffs = np.ones((kx+1, ky+1))
+
+    # solve array
+    a = np.zeros((coeffs.size, x.size))
+
+    # for each coefficient produce array x^i, y^j
+    for index, (j, i) in enumerate(np.ndindex(coeffs.shape)):
+        # do not include powers greater than order
+        if order is not None and i + j > order:
+            arr = np.zeros_like(x)
+        else:
+            arr = coeffs[i, j] * x**i * y**j
+        a[index] = arr.ravel()
+
+    # do leastsq fitting and return leastsq result
+    return np.linalg.lstsq(a.T, np.ravel(z), rcond=None)
+
+
+def get_polyfit_background_function(background_function: np.ndarray,
+                                kx: int = 3,
+                                ky: int = 3,
+                                order: int = None,
+                                verbose: bool = True)-> np.ndarray:
+    """
+    Fit a 2d polynomial to the background function and return the fitted polynomial as a 2d array.
+    
+    Parameters
+    ----------
+    background_function: np.ndarray
+        The background function to fit the polynomial to.
+    
+    kx: int, default is 3
+        The order of the polynomial in the x direction.
+    
+    ky: int, default is 3
+        The order of the polynomial in the y direction.
+    
+    order: int or None, default is None
+        If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
+        If int, coefficients up to a maximum of kx+ky <= order are considered.
+    
+    verbose: bool, default is True
+        If True, print the shape of the fitted polynomial background function.
+    
+    Returns
+    -------
+    np.ndarray
+        The fitted polynomial background function as a 2d array.
+     
+    """
+    # copy the background function to avoid modifying the original one
+    background_function_copy = background_function.copy()
+
+    # get the x and y coordinates of the background function
+    x = np.arange(background_function_copy.shape[1])
+    y = np.arange(background_function_copy.shape[0])
+
+    # fit a 2d polynomial to the background function
+    soln, residuals, rank, s = polyfit2d(x, y, background_function_copy, kx=kx, ky=ky, order=order)
+
+    # reshape the solution to get the polynomial coefficients in a 2d array
+    poly_coeffs = soln.reshape((kx+1, ky+1))
+
+    # evaluate the fitted polynomial on the grid defined by x and y
+    polyfit_background_function = np.polynomial.polynomial.polygrid2d(x, y, poly_coeffs)
+
+    if verbose:
+        print(f"polyfit_background_function shape: {polyfit_background_function.shape}")
+    
+    return polyfit_background_function
+
+def get_polyfit_bg_funct_channel(background_function: np.ndarray,
+                                    channel_axis: int,
+                                    kx: int = 3,
+                                    ky: int = 3,
+                                    order: int = None,
+                                    verbose: bool = True)-> np.ndarray:
+    """
+    Fit a 2d polynomial to the background function for each channel and return the fitted polynomial background functions as a 3d array.
+    
+    Parameters
+    ----------
+    background_function: np.ndarray
+        The background function to fit the polynomial to. The background function is expected to have a channel axis along which the different channels are organized.
+    channel_axis: int
+        The axis along which the channels are organized in the background function array.
+    kx: int, default is 3
+        The order of the polynomial in the x direction.
+    ky: int, default is 3
+        The order of the polynomial in the y direction.
+    order: int or None, default is None
+        If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
+        If int, coefficients up to a maximum of kx+ky <= order are considered.
+    verbose: bool, default is True
+        If True, print the shape of the fitted polynomial background function for each channel.
+    
+    Returns
+    -------
+    np.ndarray
+        The fitted polynomial background functions for each channel as a 3d array.
+        The channel axis is the same as the input background function.
+    """
+    # copy the background function to avoid modifying the original one
+    background_function_copy = background_function.copy()
+
+    # move the channel axis to the last axis for easier processing
+    background_function_copy = np.moveaxis(background_function_copy, channel_axis, -1)
+
+    # create an empty array to store the fitted polynomial background functions for each channel
+    polyfit_bg_funct_channel = np.zeros_like(background_function_copy)
+
+    # unstack the background function along the channel axis
+    unstacked_bg_funct = np.unstack(background_function_copy, axis=-1)
+
+    # for each channel, fit a 2d polynomial to the background function and store the result
+    for ch, bg_funct_ch in enumerate(unstacked_bg_funct):
+
+        if verbose:
+            print(f"Processing channel {ch}...")
+        
+        # fit a 2d polynomial to the background function for this channel
+        polyfit_bg_funct_ch = get_polyfit_background_function(bg_funct_ch, kx=kx, ky=ky, order=order, verbose=verbose)
+
+        # store the fitted polynomial background function for this channel
+        polyfit_bg_funct_channel[..., ch] = polyfit_bg_funct_ch
+    
+    # move the channel axis back to its original position
+    polyfit_bg_funct_channel = np.moveaxis(polyfit_bg_funct_channel, -1, channel_axis)
+
+    return polyfit_bg_funct_channel

@@ -229,9 +229,9 @@ def get_polyfit_background_function(background_function: np.ndarray,
 
 def get_polyfit_bg_funct_channel(background_function: np.ndarray,
                                     channel_axis: int,
-                                    kx: int = 3,
-                                    ky: int = 3,
-                                    order: int = None,
+                                    kx: int | tuple = 3,
+                                    ky: int | tuple = 3,
+                                    order: int | tuple | None = None,
                                     verbose: bool = True)-> np.ndarray:
     """
     Fit a 2d polynomial to the background function for each channel and return the fitted polynomial background functions as a 3d array.
@@ -240,15 +240,29 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
     ----------
     background_function: np.ndarray
         The background function to fit the polynomial to. The background function is expected to have a channel axis along which the different channels are organized.
+    
     channel_axis: int
         The axis along which the channels are organized in the background function array.
-    kx: int, default is 3
+    
+    kx: int or tuple of ints, default is 3
         The order of the polynomial in the x direction.
-    ky: int, default is 3
+        If tuple of ints, the order of the polynomial in the x direction can be different for each channel.
+        The length of the tuple should be equal to the number of channels.
+        A tuple of ints must be passed also to ky and order (if not None) in this case.
+    
+    ky: int or tuple of ints, default is 3
         The order of the polynomial in the y direction.
-    order: int or None, default is None
+        If tuple of ints, the order of the polynomial in the y direction can be different for each channel.
+        The length of the tuple should be equal to the number of channels.
+        A tuple of ints must be passed also to kx and order (if not None) in this case.
+    
+    order: int or tuple of ints or None, default is None
         If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
         If int, coefficients up to a maximum of kx+ky <= order are considered.
+        If tuple of ints, the maximum order of the polynomial coefficients to consider can be different for each channel.
+        The length of the tuple should be equal to the number of channels.
+        A tuple of ints must be passed also to kx and ky in this case.
+    
     verbose: bool, default is True
         If True, print the shape of the fitted polynomial background function for each channel.
     
@@ -258,6 +272,24 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
         The fitted polynomial background functions for each channel as a 3d array.
         The channel axis is the same as the input background function.
     """
+    # check if kx, ky and order are tuples and if their length is equal to the number of channels
+    # in the background function
+    if isinstance(kx, tuple) or isinstance(ky, tuple) or isinstance(order, tuple):
+        if not (isinstance(kx, tuple) and isinstance(ky, tuple) and isinstance(order, tuple)):
+            raise ValueError("If kx, ky or order is a tuple, all of them must be tuples.")
+        if not (len(kx) == len(ky) == len(order) == background_function.shape[channel_axis]):
+            raise ValueError("If kx, ky or order is a tuple, their length must be equal to the number of channels in the background function.")
+
+    # if kx, ky and order are ints, convert them to tuples of ints with length equal to the number of channels in the background function
+    if isinstance(kx, int):
+        kx = tuple([kx] * background_function.shape[channel_axis])
+    
+    if isinstance(ky, int):
+        ky = tuple([ky] * background_function.shape[channel_axis])
+    
+    if isinstance(order, int) or order is None:
+        order = tuple([order] * background_function.shape[channel_axis])
+
     # copy the background function to avoid modifying the original one
     background_function_copy = background_function.copy()
 
@@ -277,7 +309,7 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
             print(f"Processing channel {ch}...")
         
         # fit a 2d polynomial to the background function for this channel
-        polyfit_bg_funct_ch = get_polyfit_background_function(bg_funct_ch, kx=kx, ky=ky, order=order, verbose=verbose)
+        polyfit_bg_funct_ch = get_polyfit_background_function(bg_funct_ch, kx=kx[ch], ky=ky[ch], order=order[ch], verbose=verbose)
 
         # store the fitted polynomial background function for this channel
         polyfit_bg_funct_channel[..., ch] = polyfit_bg_funct_ch

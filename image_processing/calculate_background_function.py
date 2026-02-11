@@ -272,14 +272,7 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
         The fitted polynomial background functions for each channel as a 3d array.
         The channel axis is the same as the input background function.
     """
-    # check if kx, ky and order are tuples and if their length is equal to the number of channels
-    # in the background function
-    if isinstance(kx, tuple) or isinstance(ky, tuple) or isinstance(order, tuple):
-        if not (isinstance(kx, tuple) and isinstance(ky, tuple) and isinstance(order, tuple)):
-            raise ValueError("If kx, ky or order is a tuple, all of them must be tuples.")
-        if not (len(kx) == len(ky) == len(order) == background_function.shape[channel_axis]):
-            raise ValueError("If kx, ky or order is a tuple, their length must be equal to the number of channels in the background function.")
-
+    
     # if kx, ky and order are ints, convert them to tuples of ints with length equal to the number of channels in the background function
     if isinstance(kx, int):
         kx = tuple([kx] * background_function.shape[channel_axis])
@@ -289,6 +282,15 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
     
     if isinstance(order, int) or order is None:
         order = tuple([order] * background_function.shape[channel_axis])
+    
+    # check if kx, ky and order are tuples and if their length is equal to the number of channels
+    # in the background function
+    if isinstance(kx, tuple) or isinstance(ky, tuple) or isinstance(order, tuple):
+        if not (isinstance(kx, tuple) and isinstance(ky, tuple) and isinstance(order, tuple)):
+            raise ValueError("If kx, ky or order is a tuple, all of them must be tuples.")
+        if not (len(kx) == len(ky) == len(order) == background_function.shape[channel_axis]):
+            raise ValueError("If kx, ky or order is a tuple, their length must be equal to the number of channels in the background function.")
+    
 
     # copy the background function to avoid modifying the original one
     background_function_copy = background_function.copy()

@@ -6,7 +6,7 @@ def my_line(x, a, b):
 def my_polynomial(x, *coeff):
     return np.polyval(coeff, x)
 
-def fit_polynomial(seq,
+def fit_polynomial(arr,
                    polyorder=1,
                    array_kwargs:dict|None=None,
                    arange_kwargs:dict|None=None,
@@ -23,6 +23,6 @@ def fit_polynomial(seq,
     if polyfit_kwargs is None:
         polyfit_kwargs={}
 
-    y = np.array(seq)
-    x = np.arange(len(y))
+    y = np.array(arr)
+    x = np.arange(arr.size)
     return np.polyfit(x, y, polyorder)

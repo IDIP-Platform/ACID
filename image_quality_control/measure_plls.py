@@ -51,11 +51,7 @@ except ImportError:
 The Power Spectral Density (PSD) of image intensity reveals how image brightness
 (power) is distributed across different spatial frequencies, indicating patterns,
 textures, or noise, with high frequencies showing fine details/edges and low frequencies
-showing large areas/smoothness, calculated by transforming intensity data
-(e.g., via FFT) to the frequency domain, squaring amplitudes, and often radially
-averaging for isotropic analysis, which helps characterize surface roughness, detect
-defects, or analyze texture in fields like optics and microscopy.
-
+showing large areas/smoothness.
 
 How it's calculated (General Steps):
 1) Transform to Frequency Domain: Use a Fast Fourier Transform (FFT) on the image's
@@ -89,13 +85,13 @@ to a logarithmic scale.
 4) Linear Regression: A line is fitted to the data points on this log-log plot.
 The slope of this line is the PLLS value.
 
+Conceptually:
 
-To implement the Power Log-Log Slope in Python, we use numpy for the
-Fourier Transform and scipy or numpy for the linear regression.
+Sharp, in-focus images have more high-frequency content, so the slope is LESS negative (The Power spectral
+densition - aka the distrubition of intensity values over frequencies - have a "tail" - the x axis
+contains frequencies, high frequencies are on the high side of the x axis - which higher y values).
 
-The core idea is to collapse the 2D power spectrum into a 1D "radial"
-profile (averaging the power at each frequency distance from the center)
-and then fitting a line to that profile in log-log space.
+Blurry or out-of-focus images have suppressed high frequencies, so the slope is MORE NEGATIVE.
 """
 
 

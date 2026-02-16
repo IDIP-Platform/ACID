@@ -1,9 +1,14 @@
 from collections.abc import Sequence
+from dask.base import compute
 import numpy as np
-import dask
+from dask import delayed
+from time import time
 import dask.bag as db
+from dask.distributed import get_client, secede, rejoin, worker_client
 import pandas as pd
-from skimage.feature import graycomatrix, graycoprops
+# from skimage.feature import graycomatrix, graycoprops
+from skimage.feature import graycomatrix
+import numba
 from skimage.morphology import disk, erosion
 from skimage.measure import regionprops, regionprops_table
 from skimage.util.shape import view_as_windows
@@ -461,7 +466,6 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 
     # Get the coordinates of the mask (NOTE: if a mask is not passed, the mask becomes the entire image)
     rows, cols = np.nonzero(mask)  # only compute inside object
-
     # Iterate through the coordinates of the mask's pixels
     for i, j in zip(rows, cols):
 
@@ -479,13 +483,19 @@ def glcm_feature_map(image:np.typing.ArrayLike,
         for p in props:
             # Get the haralick measurement for all distances and angles
             prop_i = graycoprops(glcm, p)
-        
+
             # Flatten the value
             prop = prop_i.flatten()
 
             # Collect flatten property in collection list
             val_l.append(prop)
 
+        # client = get_client()
+        # futures = client.map(lambda p: graycoprops_dask(glcm, p), props)
+        # secede()
+        # val_l = client.gather(futures)
+        # rejoin()
+        #
         # Concatenate measurements for multiple features - NOTE: When a single feature is measured, np.concatenate has
         # no effect
         val = np.concatenate(val_l,axis=0,**concat_kwargs) # it is known that axis is 0 since prop measurements have been flatten
@@ -494,6 +504,204 @@ def glcm_feature_map(image:np.typing.ArrayLike,
         feature_map[i, j,...] = val
 
     return feature_map
+
+@delayed
+def graycoprops_dask(glcm, prop):
+    prop_i = graycoprops(glcm, prop)
+
+    # Flatten the value
+    return prop_i.flatten()
+    
+@numba.njit()
+def graycoprops(P: np.ndarray, prop='contrast'):
+    """Calculate texture properties of a GLCM.
+
+    Compute a feature of a gray level co-occurrence matrix to serve as
+    a compact summary of the matrix. The properties are computed as
+    follows:
+
+    - 'contrast': :math:`\\sum_{i,j=0}^{levels-1} P_{i,j}(i-j)^2`
+    - 'dissimilarity': :math:`\\sum_{i,j=0}^{levels-1}P_{i,j}|i-j|`
+    - 'homogeneity': :math:`\\sum_{i,j=0}^{levels-1}\\frac{P_{i,j}}{1+(i-j)^2}`
+    - 'ASM': :math:`\\sum_{i,j=0}^{levels-1} P_{i,j}^2`
+    - 'energy': :math:`\\sqrt{ASM}`
+    - 'correlation':
+        .. math:: \\sum_{i,j=0}^{levels-1} P_{i,j}\\left[\\frac{(i-\\mu_i) \\
+                  (j-\\mu_j)}{\\sqrt{(\\sigma_i^2)(\\sigma_j^2)}}\\right]
+    - 'mean': :math:`\\sum_{i=0}^{levels-1} i*P_{i}`
+    - 'variance': :math:`\\sum_{i=0}^{levels-1} P_{i}*(i-mean)^2`
+    - 'std': :math:`\\sqrt{variance}`
+    - 'entropy': :math:`\\sum_{i,j=0}^{levels-1} -P_{i,j}*log(P_{i,j})`
+
+    Each GLCM is normalized to have a sum of 1 before the computation of
+    texture properties.
+
+    .. versionchanged:: 0.19
+           `greycoprops` was renamed to `graycoprops` in 0.19.
+
+    Parameters
+    ----------
+    P : ndarray
+        Input array. `P` is the gray-level co-occurrence histogram
+        for which to compute the specified property. The value
+        `P[i,j,d,theta]` is the number of times that gray-level j
+        occurs at a distance d and at an angle theta from
+        gray-level i.
+    prop : {'contrast', 'dissimilarity', 'homogeneity', 'energy', \
+            'correlation', 'ASM', 'mean', 'variance', 'std', 'entropy'}, optional
+        The property of the GLCM to compute. The default is 'contrast'.
+
+    Returns
+    -------
+    results : 2-D ndarray
+        2-dimensional array. `results[d, a]` is the property 'prop' for
+        the d'th distance and the a'th angle.
+
+    References
+    ----------
+    .. [1] M. Hall-Beyer, 2007. GLCM Texture: A Tutorial v. 1.0 through 3.0.
+           The GLCM Tutorial Home Page,
+           https://prism.ucalgary.ca/handle/1880/51900
+           DOI:`10.11575/PRISM/33280`
+
+    Examples
+    --------
+    Compute the contrast for GLCMs with distances [1, 2] and angles
+    [0 degrees, 90 degrees]
+
+    >>> image = np.array([[0, 0, 1, 1],
+    ...                   [0, 0, 1, 1],
+    ...                   [0, 2, 2, 2],
+    ...                   [2, 2, 3, 3]], dtype=np.uint8)
+    >>> g = graycomatrix(image, [1, 2], [0, np.pi/2], levels=4,
+    ...                  normed=True, symmetric=True)
+    >>> contrast = graycoprops(g, 'contrast')
+    >>> contrast
+    array([[0.58333333, 1.        ],
+           [1.25      , 2.75      ]])
+
+    """
+
+    num_level, num_level2, num_dist, num_angle = np.int64(P.shape)
+    if num_level != num_level2:
+        raise ValueError('num_level and num_level2 must be equal.')
+    if num_dist <= 0:
+        raise ValueError('num_dist must be positive.')
+    if num_angle <= 0:
+        raise ValueError('num_angle must be positive.')
+
+    npone = np.int64(1)
+
+    I_ = np.arange(num_level, dtype=np.float64).reshape((num_level, npone, npone, npone))
+    tmp_ = I_ * P
+    mean = np.sum(tmp_, axis=0)
+    mean = np.sum(mean, axis=0)
+
+    # normalize each GLCM
+    P = P.astype(np.float64)
+    glcm_sums_1 = np.sum(P, axis=0)
+    glcm_sums = np.sum(glcm_sums_1, axis=0)
+    glcm_sums = np.expand_dims(glcm_sums, axis=0)
+    glcm_sums = np.expand_dims(glcm_sums, axis=0)
+    shape = glcm_sums.shape
+    glcm_sums = glcm_sums.flatten()
+    glcm_sums[glcm_sums == 0] = 1
+    glcm_sums.reshape(shape)
+    P /= glcm_sums
+
+    # create weights for specified property
+    # I, J = np.ogrid[0:num_level, 0:num_level]
+    I = np.arange(num_level, dtype=np.float64).reshape((num_level,npone))
+    J = I.T
+    weights = np.empty_like(I, dtype=np.float64).reshape((num_level, num_level, npone, npone))
+    if prop == 'contrast':
+        weights = ( (I - J) ** 2).reshape((num_level, num_level, npone, npone))
+    elif prop == 'dissimilarity':
+        weights =( np.abs(I - J)).reshape((num_level, num_level, npone, npone))
+    elif prop == 'homogeneity':
+        weights =( 1.0 / (1.0 + (I - J) ** 2)).reshape((num_level, num_level, npone, npone))
+    elif prop in ['ASM', 'energy', 'correlation', 'entropy', 'variance', 'mean', 'std']:
+        pass
+    else:
+        raise ValueError(f'{prop} is an invalid property')
+
+    # compute property for each GLCM
+    if prop == 'energy':
+        asm_1 = np.sum(P**2, axis=0)
+        asm = np.sum(asm_1, axis=0)
+        results = np.atleast_3d(np.sqrt(asm))
+    elif prop == 'ASM':
+        asm_1 = np.sum(P**2, axis=0)
+        asm = np.sum(asm_1, axis=0)
+        results = np.atleast_3d(asm)
+    elif prop == 'mean':
+        results = mean
+        results = np.atleast_3d(mean)
+    elif prop == 'variance':
+        I = I_
+        var_1 = np.sum(P * ((I - mean) ** 2), axis=0)
+        var = np.sum(var_1, axis=0)
+        results = np.atleast_3d(var)
+    elif prop == 'std':
+        I = I_
+        var_1 = np.sum(P * ((I - mean) ** 2), axis=0)
+        var = np.sum(var_1, axis=0)
+        results = np.atleast_3d(np.sqrt(var))
+    elif prop == 'entropy':
+        ln = -np.log(P, where=(P != 0), out=np.zeros_like(P))
+        ent_1 = np.sum(P * ln, axis=0)
+        ent = np.sum(ent_1, axis=0)
+        results = np.atleast_3d(ent)
+
+    elif prop == 'correlation':
+        results = np.zeros((num_dist, num_angle), dtype=np.float64)
+        I = np.arange(num_level, dtype=np.float64).reshape((num_level, npone, npone, npone))
+        J = np.arange(num_level, dtype=np.float64).reshape((npone, num_level, npone, npone))
+        diff_i_1 = np.sum(I * P, axis=0)
+        diff_i = I - np.sum(diff_i_1, axis=0)
+        diff_j_1 = np.sum(J * P, axis=0)
+        diff_j = J - np.sum(diff_j_1, axis=0)
+
+        std_i_1 = np.sum(P * (diff_i) ** 2, axis=0)
+        std_i = np.sqrt(np.sum(std_i_1, axis=0))
+        std_j_1 = np.sum(P * (diff_j) ** 2, axis=0)
+        std_j = np.sqrt(np.sum(std_j_1, axis=0))
+        cov_1 = np.sum(P * (diff_i * diff_j), axis=0)
+        cov = np.sum(cov_1, axis=0)
+
+        # handle the special case of standard deviations near zero
+        mask_0i = std_i < 1e-15
+        mask_0j = std_j < 1e-15
+        mask_0i = mask_0i.flatten()
+        mask_0j = mask_0j.flatten()
+        mask_0i[mask_0j] = True
+
+        results_shape = results.shape
+        results_f = results.flatten()
+        results_f[mask_0i] = 1
+
+        # mask_0 = mask_0i.reshape(m0i_shape)
+
+        # handle the standard case
+        mask_1i = ~mask_0i
+        cov = cov.flatten()
+        std_i = std_i.flatten()
+        std_j = std_j.flatten()
+        results_f[mask_1i] = cov[mask_1i] / (std_i[mask_1i] * std_j[mask_1i])
+        results_ff = results_f.reshape(results_shape)
+        return np.atleast_3d(results_ff)
+
+    elif prop in ['contrast', 'dissimilarity', 'homogeneity']:
+        # weights = weights.reshape((num_level, num_level, npone, npone))
+        # shape = np.array([num_level, num_level, npone, npone], dtype=int)
+
+        w = weights
+        m = P * w
+
+        results_1 = np.sum(m, axis=0)
+        results = np.sum(results_1, axis=0)
+
+    return results
 
 
 # def glcm_object(region,
@@ -828,6 +1036,8 @@ def parallel_glcm_feature_map(image:np.array,
     are stacked.
 
     """
+    times = [time()]
+    labels = []
     assert (isinstance(channel_axis, int) or channel_axis==None), "channel_axis must be either int or None"
 
     # Copy image and label
@@ -889,6 +1099,9 @@ def parallel_glcm_feature_map(image:np.array,
     else:
         image_with_ch_last = np.expand_dims(image,axis=-1)
 
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("init")
 
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
@@ -934,14 +1147,27 @@ def parallel_glcm_feature_map(image:np.array,
     # get the number of channels
     n_channels = image_with_ch_last.shape[-1]
 
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("rescale/graycom")
+
     # get the properties of the individual objects in label_image
     regions = regionprops(label_image, intensity_image=image_with_ch_last, **regionprops_kwargs)
+
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("regionprops")
 
     # build (region, channel) pairs and include them in a list of tasks
     tasks = [(region, ch) for region in regions for ch in range(n_channels)]
 
     # include tasks in a dask.bag
     bag = db.from_sequence(tasks, **daskbag_kwargs)
+
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("Build bag")
+
 
     # compute tasks in the dask.bag in parallel
     results = bag.map(lambda rc: glcm_object(rc[0],
@@ -954,7 +1180,12 @@ def parallel_glcm_feature_map(image:np.array,
                                              pad_kwargs=pad_kwargs,
                                              windows_kwargs=windows_kwargs,
                                              zeros_kwargs=zeros_kwargs,
-                                             concat_kwargs=concat_kwargs)).compute()
+                                             concat_kwargs=concat_kwargs)).compute(scheduler="single-threaded")
+
+
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("Calculate bag")
 
     # Assemble full-size feature map
 
@@ -968,6 +1199,17 @@ def parallel_glcm_feature_map(image:np.array,
     for label, bbox, channel_axis, fmap_local in results:
         minr, minc, maxr, maxc = bbox
         fmap[minr:maxr, minc:maxc, channel_axis, :] += fmap_local
+
+    times.append(time() - times.pop())
+    times.append(time())
+    labels.append("Assemble")
+
+    print("###### Timings #######")
+    for l,t in zip(labels, times):
+        print(f"{l:10s}: {t:.03f}")
+
+    print("###### ####### #######")
+
     
     return fmap
 

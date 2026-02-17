@@ -60,7 +60,7 @@ def extract_bioio_scene_metadata(bioio_scene:Callable,
     if z_name is None:
         z_name='size_z'
     
-    if xy_prefix_name:
+    if xy_prefix_name is None:
         xy_prefix_name='size'
     
     if physical_size_prefix_name is None:

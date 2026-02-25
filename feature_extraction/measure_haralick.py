@@ -839,8 +839,6 @@ def parallel_glcm_feature_map(image:np.array,
     are stacked.
 
     """
-    times = [time()]
-    labels = []
     assert (isinstance(channel_axis, int) or channel_axis==None), "channel_axis must be either int or None"
 
     # Copy image and label
@@ -902,10 +900,6 @@ def parallel_glcm_feature_map(image:np.array,
     else:
         image_with_ch_last = np.expand_dims(image,axis=-1)
 
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("init")
-
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
     # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
@@ -950,27 +944,14 @@ def parallel_glcm_feature_map(image:np.array,
     # get the number of channels
     n_channels = image_with_ch_last.shape[-1]
 
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("rescale/graycom")
-
     # get the properties of the individual objects in label_image
     regions = regionprops(label_image, intensity_image=image_with_ch_last, **regionprops_kwargs)
-
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("regionprops")
 
     # build (region, channel) pairs and include them in a list of tasks
     tasks = [(region, ch) for region in regions for ch in range(n_channels)]
 
     # include tasks in a dask.bag
     bag = db.from_sequence(tasks, **daskbag_kwargs)
-
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("Build bag")
-
 
     # compute tasks in the dask.bag in parallel
     results = bag.map(lambda rc: glcm_object(rc[0],
@@ -985,11 +966,6 @@ def parallel_glcm_feature_map(image:np.array,
                                              zeros_kwargs=zeros_kwargs,
                                              concat_kwargs=concat_kwargs)).compute()
 
-
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("Calculate bag")
-
     # Assemble full-size feature map
 
     # Initialize a zero array to be updated for storing the feature map
@@ -1003,17 +979,6 @@ def parallel_glcm_feature_map(image:np.array,
         minr, minc, maxr, maxc = bbox
         fmap[minr:maxr, minc:maxc, channel_axis, :] += fmap_local
 
-    times.append(time() - times.pop())
-    times.append(time())
-    labels.append("Assemble")
-
-    print("###### Timings #######")
-    for l,t in zip(labels, times):
-        print(f"{l:10s}: {t:.03f}")
-
-    print("###### ####### #######")
-
-    
     return fmap
 
 

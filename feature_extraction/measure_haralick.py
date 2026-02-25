@@ -1,12 +1,7 @@
 from collections.abc import Sequence
-from dask.base import compute
 import numpy as np
-from dask import delayed
-from time import time
 import dask.bag as db
-from dask.distributed import get_client, secede, rejoin, worker_client
 import pandas as pd
-# from skimage.feature import graycomatrix, graycoprops
 from .graycoprops_compiled import graycoprops
 from skimage.feature import graycomatrix
 from skimage.morphology import disk, erosion

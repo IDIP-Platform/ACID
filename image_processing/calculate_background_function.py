@@ -7,15 +7,34 @@ def import_fov(df: pd.DataFrame,
                 fov_dir: str,
                 fov_clm: str,
                 fov_shape: tuple,
-                verbose: bool = True)-> np.ndarray:
+                verbose: bool = True,
+                np_zero_kwargs: dict | None = None,
+                sample_df: bool = False,
+                sample_fraction: float = 0.5,
+                sample_kwargs: dict | None = None)-> np.ndarray:
 
     # copy the dataframe to avoid modifying the original one
     df_copy = df.copy()
 
+    # sample the dataframe if requested
+    if sample_df:
+        if sample_kwargs is None:
+            sample_kwargs = {"random_state": 42}
+        assert "frac" not in sample_kwargs, "sample_kwargs cannot contain 'frac' as it is passed separately via sample_fraction"
+        df_copy = df_copy.sample(frac=sample_fraction, **sample_kwargs)
+
+    # use default kwargs
+    if np_zero_kwargs is None:
+        np_zero_kwargs = {'dtype':np.float32}
+    else:
+        # use float32 as default data type for container array
+        if 'dtype' not in np_zero_kwargs:
+            np_zero_kwargs["dtype"] = np.float32
+
     # Initialize an array container to store the fields of view for background function calculation
     # NOTE: the axis along which the fields of view are stored is hard coded to be the last one (i.e. -1)
     container_arr_shape = tuple([a for a in fov_shape] + [df_copy.shape[0]]) # the shape of the container array is the shape of the fields of view + the number of fields of view (aka number of rows in the metadata dataframe)
-    container_arr = np.zeros(container_arr_shape)
+    container_arr = np.zeros(container_arr_shape, **np_zero_kwargs)
 
     # initialize a positional counter
     pos_counter = 0

@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 import numpy as np
-import dask
 import dask.bag as db
 import pandas as pd
-from skimage.feature import graycomatrix, graycoprops
+from .graycoprops_compiled import graycoprops
+from skimage.feature import graycomatrix
 from skimage.morphology import disk, erosion
 from skimage.measure import regionprops, regionprops_table
 from skimage.util.shape import view_as_windows
@@ -461,7 +461,6 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 
     # Get the coordinates of the mask (NOTE: if a mask is not passed, the mask becomes the entire image)
     rows, cols = np.nonzero(mask)  # only compute inside object
-
     # Iterate through the coordinates of the mask's pixels
     for i, j in zip(rows, cols):
 
@@ -479,13 +478,19 @@ def glcm_feature_map(image:np.typing.ArrayLike,
         for p in props:
             # Get the haralick measurement for all distances and angles
             prop_i = graycoprops(glcm, p)
-        
+
             # Flatten the value
             prop = prop_i.flatten()
 
             # Collect flatten property in collection list
             val_l.append(prop)
 
+        # client = get_client()
+        # futures = client.map(lambda p: graycoprops_dask(glcm, p), props)
+        # secede()
+        # val_l = client.gather(futures)
+        # rejoin()
+        #
         # Concatenate measurements for multiple features - NOTE: When a single feature is measured, np.concatenate has
         # no effect
         val = np.concatenate(val_l,axis=0,**concat_kwargs) # it is known that axis is 0 since prop measurements have been flatten
@@ -494,6 +499,7 @@ def glcm_feature_map(image:np.typing.ArrayLike,
         feature_map[i, j,...] = val
 
     return feature_map
+
 
 
 # def glcm_object(region,
@@ -889,7 +895,6 @@ def parallel_glcm_feature_map(image:np.array,
     else:
         image_with_ch_last = np.expand_dims(image,axis=-1)
 
-
     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
     # NOTE: this is the default behaviour of CellProfiler
     # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
@@ -968,7 +973,7 @@ def parallel_glcm_feature_map(image:np.array,
     for label, bbox, channel_axis, fmap_local in results:
         minr, minc, maxr, maxc = bbox
         fmap[minr:maxr, minc:maxc, channel_axis, :] += fmap_local
-    
+
     return fmap
 
 

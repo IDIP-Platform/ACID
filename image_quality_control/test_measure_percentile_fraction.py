@@ -157,6 +157,7 @@ def contamination_vs_saturation(
     max_fallback_percentile: float = 99.0,
     min_fallback_percentile: float = 1.0,
     axes=None,
+    randomize: bool = True,
 ) -> None:
     """Analyze effect of adding saturated/zero pixels and plot results.
 
@@ -171,19 +172,40 @@ def contamination_vs_saturation(
     percentile_tuple : tuple of two floats
         Percentile pair passed to :func:`fraction_in_extreme_percentiles`.
         Defaults to (1.0, 99.0) as used previously.
-    fallback_percentile : float
-        When the maximum pixel value is not finite, compute a surrogate
-        saturation value using this percentile of the valid data.  Default
-        matches the previous hard-coded 99.
+    max_fallback_percentile : float
+        Percentile used to compute a substitute maximum when the real maximum
+        is not finite.  Defaults to 99.
+    min_fallback_percentile : float
+        Percentile used to compute a substitute minimum when the real minimum
+        is not finite.  Defaults to 1.
+    axes : sequence or None
+        Optional pair of :class:`matplotlib.axes.Axes` objects on which to
+        draw the percentile-fraction curves.  If ``None`` the function
+        creates its own figure.
+    randomize : bool
+        Flag controlling which pixels are corrupted.
 
-    The routine randomly selects sets of pixels whose size grows from 0 up to
-    ``max_fraction`` of all pixels.  For each level we create two corruptions:
-    one in which those pixels are set to the image maximum (saturation) and
-    another where they are set to the minimum value.  For each corrupted image
-    it calls :func:`fraction_in_extreme_percentiles` with ``percentile_tuple``
-    and records the bottom/top fractions.  If the raw maximum or minimum of
-    the image is not finite, fallback percentiles (``max_fallback_percentile``
-    / ``min_fallback_percentile``) are used to compute surrogate extreme
+        * If ``False`` (the default) pixels are selected by constructing a
+          progressively larger central square within the un-flattened image
+          (a 1×1 block at first, then 2×2, etc.).  This produces a spatially
+          coherent corruption around the centre.
+
+        * If ``True`` a purely random subset of pixels is chosen at each
+          contamination level (using a fixed RNG for reproducibility).
+
+        The previous semantics (random on ``True``) have been reversed
+        per the latest user request.
+
+    The routine selects sets of pixels whose size grows from 0 up to
+    ``max_fraction`` of all pixels.  If ``randomize`` is False (the default)
+    the pixels form a central square of the appropriate area; when True a
+    random subset is chosen.  For each level we create two corruptions: one in
+    which those pixels are set to the image maximum (saturation) and another
+    where they are set to the minimum value.  For each corrupted image it
+    calls :func:`fraction_in_extreme_percentiles` with ``percentile_tuple`` and
+    records the bottom/top fractions.  If the raw maximum or minimum of the
+    image is not finite, fallback percentiles (``max_fallback_percentile`` /
+    ``min_fallback_percentile``) are used to compute surrogate extreme
     values.  Results are plotted in a 1x2 figure; if ``axes`` is supplied the
     existing axes are used instead of creating new ones.
     Returns
@@ -252,8 +274,59 @@ def contamination_vs_saturation(
         # number of pixels to replace at this corruption level
         count = int(np.round(frac * n_pixels))
 
-        # choose ``count`` distinct pixel indices at random
-        idx = rng.choice(n_pixels, size=count, replace=False)
+        # select pixel indices depending on randomize flag
+        # ``randomize`` controls whether we choose pixels randomly or in a
+        # structured, deterministic pattern.
+        if randomize:
+            # When randomize is True we draw ``count`` distinct indices at
+            # random from the set of all pixel positions.  A fixed random
+            # number generator seed ensures the same sequence on every call.
+            idx = rng.choice(n_pixels, size=count, replace=False)
+        else:
+            # When randomize is False we create a square block centered within
+            # the two-dimensional image.  The block is enlarged as ``count``
+            # increases, starting from a single centre pixel and growing
+            # outward in a symmetric fashion.
+            if arr.ndim >= 2:
+                # height and width of the image
+                h, w = arr.shape[0], arr.shape[1]
+
+                # compute a side length for a square whose area is at least
+                # ``count`` pixels; round up to ensure we cover enough pixels.
+                side = int(np.ceil(np.sqrt(count))) if count > 0 else 0
+
+                # make sure the square doesn't exceed image boundaries
+                side = min(side, h, w)
+
+                if side > 0:
+                    # compute starting row/column so the square is centered
+                    row_start = (h - side) // 2
+                    col_start = (w - side) // 2
+
+                    # generate row/column coordinates for every position in
+                    # the square using meshgrid; ``rr`` and ``cc`` each have
+                    # shape (side, side).
+                    rr, cc = np.meshgrid(
+                        np.arange(row_start, row_start + side),
+                        np.arange(col_start, col_start + side),
+                        indexing="ij",
+                    )
+
+                    # convert the 2‑D coordinates to flat indices into the
+                    # flattened array (row * width + col) and then linearize
+                    # the results with ``ravel()``.
+                    flat_indices = (rr * w + cc).ravel()
+
+                    # keep only the first ``count`` indices in case the square
+                    # contained slightly more pixels than required.
+                    idx = flat_indices[:count]
+                else:
+                    # if side is zero (count was zero) just use an empty array
+                    idx = np.array([], dtype=int)
+            else:
+                # for 1-D inputs there is no 2-D centre; revert to the simple
+                # first-N-behaviour so that the function still works.
+                idx = np.arange(count, dtype=int)
 
         # ----- saturated version -----
         corrupted = flat.copy()              # start with original pixel values
@@ -319,32 +392,5 @@ def contamination_vs_saturation(
         fig.tight_layout()
         plt.show()
 
-    # # show a supplementary image figure with original and corrupted versions
-    # try:
-    #     fig2, (ax_orig, ax_sat, ax_min) = plt.subplots(1, 3, figsize=(12, 4))
-    # except Exception:
-    #     fig2 = plt.figure(figsize=(12, 4))
-    #     ax_orig = fig2.add_subplot(1, 3, 1)
-    #     ax_sat = fig2.add_subplot(1, 3, 2)
-    #     ax_min = fig2.add_subplot(1, 3, 3)
 
-    # ax_orig.imshow(arr, cmap='gray', aspect='auto')
-    # ax_orig.set_title('Original image')
-    # ax_orig.axis('off')
 
-    # if max_corrupted_sat is not None:
-    #     ax_sat.imshow(max_corrupted_sat, cmap='gray', aspect='auto')
-    #     ax_sat.set_title('Max-saturated corruption')
-    # else:
-    #     ax_sat.set_title('No saturated corruption')
-    # ax_sat.axis('off')
-
-    # if max_corrupted_min is not None:
-    #     ax_min.imshow(max_corrupted_min, cmap='gray', aspect='auto')
-    #     ax_min.set_title('Max-min corruption')
-    # else:
-    #     ax_min.set_title('No minimum corruption')
-    # ax_min.axis('off')
-
-    # fig2.tight_layout()
-    # plt.show()

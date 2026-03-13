@@ -3,7 +3,7 @@ import warnings
 import matplotlib.pyplot as plt
 from typing import Tuple
 
-from image_quality_control.measure_percentile_fraction import (
+from ..image_quality_control.measure_percentile_fraction import (
     fraction_in_extreme_percentiles,
 )
 

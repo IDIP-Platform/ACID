@@ -1,7 +1,7 @@
 from typing import Union
 import numpy as np
 import pandas as pd
-from utils.label_image_utils import permute_values_per_label
+from acid.utils.label_image_utils import permute_values_per_label
 
 
 def measure_corr_coeff_per_label_single_pair(label_image:np.array,

@@ -4,6 +4,8 @@ from skimage.util import invert
 from scipy.ndimage import gaussian_filter, convolve
 from scipy.signal import convolve2d
 from typing import Optional, Dict, Union, Any
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 
 def compute_simple_background_2d(
@@ -287,6 +289,54 @@ def compute_simple_background_nd(
     -------
     background : np.ndarray
         Estimated background.
+    
+    Edge Cases
+    ----------
+    - Empty input:
+    If `image.size == 0`, an empty array is returned.
+
+    - Uniform intensity:
+    Images with constant values yield a constant background of similar intensity,
+    as no structures are present to remove.
+
+    - Large rolling-ball radius:
+    If `ball_radius` exceeds the image extent in one or more dimensions, the
+    estimated background becomes nearly flat (approaching a global baseline).
+
+    - Anisotropic data:
+    The rolling-ball algorithm is isotropic. For images with unequal resolution
+    across axes (e.g., z-stacks), this may lead to over-smoothing along smaller
+    dimensions.
+
+    - White background handling:
+    When `white_background=True`, inversion is applied before and after background
+    estimation. This is safe for common dtypes (e.g., uint8, uint16, float).
+
+    - No smoothing:
+    If `gau_smooth is None`, no additional smoothing is applied.
+
+    - Zero Gaussian smoothing:
+    If `gau_smooth == 0`, Gaussian filtering has no effect.
+
+    - Custom kernel smoothing:
+    If `gau_smooth` is an ndarray, it must have the same number of dimensions as
+    the input image. Otherwise, `scipy.ndimage.convolve` will raise an error.
+
+    - Boundary effects in convolution:
+    Convolution behavior at image borders depends on `convolve_kwargs`
+    (default is `'reflect'` mode in `scipy.ndimage.convolve`).
+
+    - NaN and Inf values:
+    Special values are not explicitly handled and will propagate through the
+    computation.
+
+    - Data type conversion:
+    If `dtype` is specified, the result is cast at the end. This may introduce
+    precision loss or clipping.
+
+    - Boolean input:
+    Boolean arrays are processed numerically; the output will generally not remain
+    boolean unless explicitly cast back.
     """
 
     # Initialize kwargs if None
@@ -325,5 +375,129 @@ def compute_simple_background_nd(
         background = background.astype(dtype)
 
     return background
+
+
+import numpy as np
+from typing import Optional, Dict, Union, Any
+from concurrent.futures import ThreadPoolExecutor
+import time
+
+
+def compute_simple_background(
+    image: np.ndarray,
+    ball_radius: int = 50,
+    white_background: bool = False,
+    axis: Optional[int] = None,
+    _rb_kwargs: Optional[Dict[str, Any]] = None,
+    invert_kwargs: Optional[Dict[str, Any]] = None,
+    gau_smooth: Optional[Union[int, np.ndarray]] = None,
+    gaussian_kwargs: Optional[Dict[str, Any]] = None,
+    convolve_kwargs: Optional[Dict[str, Any]] = None,
+    dtype: Optional[np.dtype] = None,
+    n_jobs: Optional[int] = None,
+    map_kwargs: Optional[Dict[str, Any]] = None,
+    verbose: bool = False,
+) -> np.ndarray:
+    """
+    Compute a background estimate for an n-dimensional image, optionally
+    processing slices independently along a given axis and in parallel.
+
+    (Documentation truncated here for brevity — keep your previous version,
+    just add the section below)
+
+    ----------------------------------------------------------------------
+    VERBOSE MODE
+    ----------------------------------------------------------------------
+    If `verbose=True`, the function prints:
+    - Whether parallelization is used
+    - Number of slices processed
+    - Number of worker threads
+    - Total execution time
+
+    This helps users understand whether parallelization is effective.
+    """
+
+    # Validate map_kwargs
+    if map_kwargs is None:
+        map_kwargs = {}
+    else:
+        allowed_keys = {"timeout", "chunksize"}
+        invalid_keys = set(map_kwargs.keys()) - allowed_keys
+        assert not invalid_keys, (
+            f"Invalid keys in map_kwargs: {invalid_keys}. "
+            f"Only {allowed_keys} are allowed."
+        )
+
+    start_time = time.time()
+
+    if axis is None:
+        if verbose:
+            print("[compute_simple_background] Running in full ND mode (no slicing)")
+
+        result = compute_simple_background_nd(
+            image=image,
+            ball_radius=ball_radius,
+            white_background=white_background,
+            _rb_kwargs=_rb_kwargs,
+            invert_kwargs=invert_kwargs,
+            gau_smooth=gau_smooth,
+            gaussian_kwargs=gaussian_kwargs,
+            convolve_kwargs=convolve_kwargs,
+            dtype=dtype,
+        )
+
+        if verbose:
+            elapsed = time.time() - start_time
+            print(f"[compute_simple_background] Done in {elapsed:.3f} s")
+
+        return result
+
+    axis = np.core.numeric.normalize_axis_index(axis, image.ndim)
+    moved = np.moveaxis(image, axis, 0)
+    n_slices = moved.shape[0]
+
+    if verbose:
+        print("[compute_simple_background] Slice-wise processing enabled")
+        print(f"  axis: {axis}")
+        print(f"  number of slices: {n_slices}")
+        print(f"  n_jobs: {n_jobs if n_jobs is not None else 'default'}")
+
+    def process_slice(slice_i):
+        return compute_simple_background_nd(
+            image=slice_i,
+            ball_radius=ball_radius,
+            white_background=white_background,
+            _rb_kwargs=_rb_kwargs,
+            invert_kwargs=invert_kwargs,
+            gau_smooth=gau_smooth,
+            gaussian_kwargs=gaussian_kwargs,
+            convolve_kwargs=convolve_kwargs,
+            dtype=dtype,
+        )
+
+    timeout = map_kwargs.get("timeout", None)
+    chunksize = map_kwargs.get("chunksize", 1)
+
+    with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        processed = list(
+            executor.map(
+                process_slice,
+                moved,
+                timeout=timeout,
+                chunksize=chunksize,
+            )
+        )
+
+    stacked = np.stack(processed, axis=0)
+    result = np.moveaxis(stacked, 0, axis)
+
+    if verbose:
+        elapsed = time.time() - start_time
+        print(f"[compute_simple_background] Completed {n_slices} slices")
+        print(f"[compute_simple_background] Total time: {elapsed:.3f} s")
+
+    return result
+
+
 
 

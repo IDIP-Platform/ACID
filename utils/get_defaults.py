@@ -89,3 +89,55 @@ def default_file_name(file_list:list,
     return_file = file_date_link[return_date]
 
     return return_file
+
+
+def default_multifile_name(file_list: list,
+                            from_file_name: bool = False,
+                            directory_path: str = os.PathLike,
+                            separator: str | None = None,
+                            date_position: int = 0,
+                            date_format: str | None = None,
+                            reverse: bool = True) -> list:
+    """
+    Given a list of file names, returns all files that share the most recent or oldest date,
+    either from the file name (from_file_name=True) or from the last modification date
+    (from_file_name=False).
+
+    Args:
+    - file_list (list): List of file names to evaluate.
+    - from_file_name (bool): Whether to extract the date from the file name or from the last modification date.
+    - directory_path (str): Directory path where the files are located (used if from_file_name=False).
+    - separator (str): Separator used in the file name to split components (used if from_file_name=True).
+    - date_position (int): Position of the date component in the split file name (used if from_file_name=True).
+    - date_format (str): Format of the date in the file name (used if from_file_name=True).
+    - reverse (bool): If True, considers the most recent date; if False, considers the oldest.
+
+    Returns:
+    - list: List of file names sharing the closest/furthest date in file_list.
+    """
+
+    if separator is None:
+        separator = "_"
+    
+    if date_format is None:
+        date_format = '%Y%m%d'
+
+    # dictionary linking file names to their dates
+    file_date_link = {}
+
+    for f in file_list:
+        if from_file_name:
+            f_date = datetime.datetime.strptime(f.split(separator)[date_position], date_format)
+        else:
+            f_date = datetime.datetime.fromtimestamp(os.path.getmtime(os.path.join(directory_path, f)))
+        file_date_link[f] = f_date
+
+    if not file_date_link:
+        return []
+
+    # get the extreme date
+    extreme_date = max(file_date_link.values()) if reverse else min(file_date_link.values())
+
+    # return all files that have this date
+    return [f for f, d in file_date_link.items() if d == extreme_date]
+

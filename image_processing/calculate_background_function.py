@@ -6,9 +6,9 @@ from skimage.restoration import rolling_ball
 from skimage.util import invert
 from scipy.ndimage import gaussian_filter, convolve
 from scipy.signal import convolve2d
-from typing import Optional, Dict, Union, Any
+from typing import Sequence, Optional, Dict, Union, Any
 from concurrent.futures import ThreadPoolExecutor
-import time
+# import time
 
 
 def import_fov(df: pd.DataFrame,
@@ -720,119 +720,288 @@ def compute_simple_background_nd(
     return background
 
 
+
 def compute_simple_background(
     image: np.ndarray,
-    ball_radius: int = 50,
-    white_background: bool = False,
-    axis: Optional[int] = None,
-    _rb_kwargs: Optional[Dict[str, Any]] = None,
-    invert_kwargs: Optional[Dict[str, Any]] = None,
-    gau_smooth: Optional[Union[int, np.ndarray]] = None,
-    gaussian_kwargs: Optional[Dict[str, Any]] = None,
-    convolve_kwargs: Optional[Dict[str, Any]] = None,
+    ball_radius: Union[int, Sequence[int]] = 50,
+    white_background: Union[bool, Sequence[bool]] = False,
+    _rb_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
+    invert_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
+    gau_smooth: Optional[Union[int, np.ndarray, Sequence[Optional[Union[int, np.ndarray]]]]] = None,
+    gaussian_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
+    convolve_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
     dtype: Optional[np.dtype] = None,
-    n_jobs: Optional[int] = None,
+    axis: Optional[int] = None,
+    n_workers: Optional[int] = None,
     map_kwargs: Optional[Dict[str, Any]] = None,
-    verbose: bool = False,
 ) -> np.ndarray:
     """
-    Compute a background estimate for an n-dimensional image, optionally
-    processing slices independently along a given axis and in parallel.
+    Estimate the background of an n-dimensional image with flexible options and optional parallel processing.
 
-    (Documentation truncated here for brevity — keep your previous version,
-    just add the section below)
+    This function can handle:
+      - Full n-dimensional images at once (axis=None)
+      - Slice-by-slice processing along a specific axis (axis=int)
+      - Independent parameters for each slice
+      - Parallel processing using threads for faster computation
 
-    ----------------------------------------------------------------------
-    VERBOSE MODE
-    ----------------------------------------------------------------------
-    If `verbose=True`, the function prints:
-    - Whether parallelization is used
-    - Number of slices processed
-    - Number of worker threads
-    - Total execution time
+    Parameters
+    ----------
+    image : np.ndarray
+        Input image, can be 2D, 3D, or higher-dimensional.
 
-    This helps users understand whether parallelization is effective.
+    ball_radius : int or sequence of int, default=50
+        Radius of the rolling-ball for background estimation.
+        If a sequence is provided and axis is set, each slice uses its corresponding value.
+
+    white_background : bool or sequence of bool, default=False
+        If True, assumes bright background with dark features. Can be a sequence for slice-specific control.
+
+    _rb_kwargs : dict or sequence of dict, optional
+        Extra options for rolling-ball algorithm. Slice-specific values allowed if axis is set.
+
+    invert_kwargs : dict or sequence of dict, optional
+        Options for inverting the image before/after rolling-ball. Slice-specific values allowed.
+
+    gau_smooth : int, ndarray, or sequence, optional
+        - int: Gaussian smoothing sigma
+        - ndarray: custom convolution kernel
+        Slice-specific values allowed if axis is set.
+
+    gaussian_kwargs : dict or sequence of dict, optional
+        Extra options for Gaussian filter. Slice-specific values allowed.
+
+    convolve_kwargs : dict or sequence of dict, optional
+        Extra options for convolution. Slice-specific values allowed.
+
+    dtype : np.dtype, optional
+        Desired data type for output. If None, keeps original type.
+
+    axis : int or None, optional
+        Axis along which to process slices independently.
+        None means process the entire image at once.
+
+    n_workers : int or None, optional
+        Number of parallel threads for processing slices. Default=None (no parallelism).
+
+    map_kwargs : dict, optional
+        Extra options for ThreadPoolExecutor.map. Allowed keys: "timeout", "chunksize".
+
+    Returns
+    -------
+    np.ndarray
+        Estimated background of the input image.
+
+    Edge Cases
+    ----------
+    - Empty input: returns an empty array.
+    - Constant images: returns a uniform background equal to the constant value.
+    - axis out of bounds: raises ValueError.
+    - Sequence parameters of wrong length: raises ValueError.
+    - map_kwargs with invalid keys: raises AssertionError.
+    - Parallel execution may not speed up very small images or few slices.
+
+    Notes
+    -----
+    - Each slice is independent, so processing is "embarrassingly parallel".
+    - Works for 2D, 3D, and nD images.
     """
 
+    # Case 1: axis is None → process full image using the original function
+    if axis is None:
+        return compute_simple_background_nd(
+            image=image,                      # pass image
+            ball_radius=ball_radius,          # rolling ball radius
+            white_background=white_background, # invert if needed
+            _rb_kwargs=_rb_kwargs,            # extra rolling-ball options
+            invert_kwargs=invert_kwargs,      # extra inversion options
+            gau_smooth=gau_smooth,            # smoothing parameter
+            gaussian_kwargs=gaussian_kwargs,  # extra gaussian options
+            convolve_kwargs=convolve_kwargs,  # extra convolution options
+            dtype=dtype,                      # desired output type
+        )
+
+    # Normalize axis to always be positive
+    axis = int(axis)                         # ensure axis is an integer
+    if axis < 0:                             # negative axis support
+        axis += image.ndim                   # convert to positive
+    if axis < 0 or axis >= image.ndim:       # check valid axis
+        raise ValueError(f"Invalid axis {axis} for image with ndim {image.ndim}")
+
+    # Move the processing axis to the front for easy iteration
+    moved = np.moveaxis(image, axis, 0)      # shape now: (slices, ...)
+    n_slices = moved.shape[0]                # number of slices along this axis
+
+    # Helper to expand single value to a list or validate a sequence
+    def _expand_param(param, name):
+        if isinstance(param, Sequence) and not isinstance(param, (str, bytes, np.ndarray)):
+            if len(param) != n_slices:       # check sequence length matches slices
+                raise ValueError(f"{name} must have length {n_slices}, got {len(param)}")
+            return list(param)               # already a valid sequence
+        else:
+            return [param] * n_slices       # broadcast single value to all slices
+
+    # Expand all slice-dependent parameters
+    ball_radius_list = _expand_param(ball_radius, "ball_radius")
+    white_background_list = _expand_param(white_background, "white_background")
+    rb_kwargs_list = _expand_param(_rb_kwargs, "_rb_kwargs")
+    invert_kwargs_list = _expand_param(invert_kwargs, "invert_kwargs")
+    gau_smooth_list = _expand_param(gau_smooth, "gau_smooth")
+    gaussian_kwargs_list = _expand_param(gaussian_kwargs, "gaussian_kwargs")
+    convolve_kwargs_list = _expand_param(convolve_kwargs, "convolve_kwargs")
+
     # Validate map_kwargs
-    if map_kwargs is None:
+    if map_kwargs is None:                    # if None, make empty dict
         map_kwargs = {}
     else:
-        allowed_keys = {"timeout", "chunksize"}
+        allowed_keys = {"timeout", "chunksize"}  # only these keys allowed
         invalid_keys = set(map_kwargs.keys()) - allowed_keys
         assert not invalid_keys, (
             f"Invalid keys in map_kwargs: {invalid_keys}. "
             f"Only {allowed_keys} are allowed."
         )
 
-    start_time = time.time()
-
-    if axis is None:
-        if verbose:
-            print("[compute_simple_background] Running in full ND mode (no slicing)")
-
-        result = compute_simple_background_nd(
-            image=image,
-            ball_radius=ball_radius,
-            white_background=white_background,
-            _rb_kwargs=_rb_kwargs,
-            invert_kwargs=invert_kwargs,
-            gau_smooth=gau_smooth,
-            gaussian_kwargs=gaussian_kwargs,
-            convolve_kwargs=convolve_kwargs,
-            dtype=dtype,
-        )
-
-        if verbose:
-            elapsed = time.time() - start_time
-            print(f"[compute_simple_background] Done in {elapsed:.3f} s")
-
-        return result
-
-    axis = np.core.numeric.normalize_axis_index(axis, image.ndim)
-    moved = np.moveaxis(image, axis, 0)
-    n_slices = moved.shape[0]
-
-    if verbose:
-        print("[compute_simple_background] Slice-wise processing enabled")
-        print(f"  axis: {axis}")
-        print(f"  number of slices: {n_slices}")
-        print(f"  n_jobs: {n_jobs if n_jobs is not None else 'default'}")
-
-    def process_slice(slice_i):
+    # Worker function to process a single slice
+    def _process_slice(i):
         return compute_simple_background_nd(
-            image=slice_i,
-            ball_radius=ball_radius,
-            white_background=white_background,
-            _rb_kwargs=_rb_kwargs,
-            invert_kwargs=invert_kwargs,
-            gau_smooth=gau_smooth,
-            gaussian_kwargs=gaussian_kwargs,
-            convolve_kwargs=convolve_kwargs,
-            dtype=dtype,
+            image=moved[i],                       # i-th slice
+            ball_radius=ball_radius_list[i],      # slice-specific radius
+            white_background=white_background_list[i], # slice-specific inversion
+            _rb_kwargs=rb_kwargs_list[i],         # slice-specific rolling-ball kwargs
+            invert_kwargs=invert_kwargs_list[i],  # slice-specific invert kwargs
+            gau_smooth=gau_smooth_list[i],        # slice-specific smoothing
+            gaussian_kwargs=gaussian_kwargs_list[i], # slice-specific Gaussian kwargs
+            convolve_kwargs=convolve_kwargs_list[i], # slice-specific convolution kwargs
+            dtype=dtype,                           # final data type
         )
 
-    timeout = map_kwargs.get("timeout", None)
-    chunksize = map_kwargs.get("chunksize", 1)
+    # Decide whether to run in parallel or sequentially
+    if n_workers is None or n_workers == 1:     # sequential execution
+        backgrounds = [_process_slice(i) for i in range(n_slices)]
+    else:                                       # parallel execution using threads
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            backgrounds = list(executor.map(_process_slice, range(n_slices), **map_kwargs))
 
-    with ThreadPoolExecutor(max_workers=n_jobs) as executor:
-        processed = list(
-            executor.map(
-                process_slice,
-                moved,
-                timeout=timeout,
-                chunksize=chunksize,
-            )
-        )
+    # Stack the processed slices back along axis 0
+    stacked = np.stack(backgrounds, axis=0)     # shape (slices, ...)
 
-    stacked = np.stack(processed, axis=0)
-    result = np.moveaxis(stacked, 0, axis)
+    # Move axis back to original position
+    return np.moveaxis(stacked, 0, axis)        # final image with original shape
 
-    if verbose:
-        elapsed = time.time() - start_time
-        print(f"[compute_simple_background] Completed {n_slices} slices")
-        print(f"[compute_simple_background] Total time: {elapsed:.3f} s")
 
-    return result
+
+# def compute_simple_background(
+#     image: np.ndarray,
+#     ball_radius: int = 50,
+#     white_background: bool = False,
+#     axis: Optional[int] = None,
+#     _rb_kwargs: Optional[Dict[str, Any]] = None,
+#     invert_kwargs: Optional[Dict[str, Any]] = None,
+#     gau_smooth: Optional[Union[int, np.ndarray]] = None,
+#     gaussian_kwargs: Optional[Dict[str, Any]] = None,
+#     convolve_kwargs: Optional[Dict[str, Any]] = None,
+#     dtype: Optional[np.dtype] = None,
+#     n_jobs: Optional[int] = None,
+#     map_kwargs: Optional[Dict[str, Any]] = None,
+#     verbose: bool = False,
+# ) -> np.ndarray:
+#     """
+#     Compute a background estimate for an n-dimensional image, optionally
+#     processing slices independently along a given axis and in parallel.
+
+#     (Documentation truncated here for brevity — keep your previous version,
+#     just add the section below)
+
+#     ----------------------------------------------------------------------
+#     VERBOSE MODE
+#     ----------------------------------------------------------------------
+#     If `verbose=True`, the function prints:
+#     - Whether parallelization is used
+#     - Number of slices processed
+#     - Number of worker threads
+#     - Total execution time
+
+#     This helps users understand whether parallelization is effective.
+#     """
+
+#     # Validate map_kwargs
+#     if map_kwargs is None:
+#         map_kwargs = {}
+#     else:
+#         allowed_keys = {"timeout", "chunksize"}
+#         invalid_keys = set(map_kwargs.keys()) - allowed_keys
+#         assert not invalid_keys, (
+#             f"Invalid keys in map_kwargs: {invalid_keys}. "
+#             f"Only {allowed_keys} are allowed."
+#         )
+
+#     start_time = time.time()
+
+#     if axis is None:
+#         if verbose:
+#             print("[compute_simple_background] Running in full ND mode (no slicing)")
+
+#         result = compute_simple_background_nd(
+#             image=image,
+#             ball_radius=ball_radius,
+#             white_background=white_background,
+#             _rb_kwargs=_rb_kwargs,
+#             invert_kwargs=invert_kwargs,
+#             gau_smooth=gau_smooth,
+#             gaussian_kwargs=gaussian_kwargs,
+#             convolve_kwargs=convolve_kwargs,
+#             dtype=dtype,
+#         )
+
+#         if verbose:
+#             elapsed = time.time() - start_time
+#             print(f"[compute_simple_background] Done in {elapsed:.3f} s")
+
+#         return result
+
+#     axis = np.core.numeric.normalize_axis_index(axis, image.ndim)
+#     moved = np.moveaxis(image, axis, 0)
+#     n_slices = moved.shape[0]
+
+#     if verbose:
+#         print("[compute_simple_background] Slice-wise processing enabled")
+#         print(f"  axis: {axis}")
+#         print(f"  number of slices: {n_slices}")
+#         print(f"  n_jobs: {n_jobs if n_jobs is not None else 'default'}")
+
+#     def process_slice(slice_i):
+#         return compute_simple_background_nd(
+#             image=slice_i,
+#             ball_radius=ball_radius,
+#             white_background=white_background,
+#             _rb_kwargs=_rb_kwargs,
+#             invert_kwargs=invert_kwargs,
+#             gau_smooth=gau_smooth,
+#             gaussian_kwargs=gaussian_kwargs,
+#             convolve_kwargs=convolve_kwargs,
+#             dtype=dtype,
+#         )
+
+#     timeout = map_kwargs.get("timeout", None)
+#     chunksize = map_kwargs.get("chunksize", 1)
+
+#     with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+#         processed = list(
+#             executor.map(
+#                 process_slice,
+#                 moved,
+#                 timeout=timeout,
+#                 chunksize=chunksize,
+#             )
+#         )
+
+#     stacked = np.stack(processed, axis=0)
+#     result = np.moveaxis(stacked, 0, axis)
+
+#     if verbose:
+#         elapsed = time.time() - start_time
+#         print(f"[compute_simple_background] Completed {n_slices} slices")
+#         print(f"[compute_simple_background] Total time: {elapsed:.3f} s")
+
+#     return result
 
 

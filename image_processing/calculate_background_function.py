@@ -878,6 +878,9 @@ def compute_simple_background(
     if n_workers is None or n_workers == 1:     # sequential execution
         backgrounds = [_process_slice(i) for i in range(n_slices)]
     else:                                       # parallel execution using threads
+        advice_n_workers = min(moved.shape[0], os.cpu_count())  # slices vs CPU cores
+        print(f"Running in parallel with n_workers={n_workers}."
+              f"Consider setting n_workers={advice_n_workers} for optimal performance.")
         with ThreadPoolExecutor(max_workers=n_workers) as executor:
             backgrounds = list(executor.map(_process_slice, range(n_slices), **map_kwargs))
 

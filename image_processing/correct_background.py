@@ -294,7 +294,7 @@ def correct_background(
 
         # iterate over channels and correct for background
         for ch in range(image.shape[channel_axis]):
-            corrected_image[ch] = correct_background_nd(
+            corrected[ch] = correct_background_nd(
                 image=image_moved[ch],
                 background=background_moved[ch],
                 method=method,

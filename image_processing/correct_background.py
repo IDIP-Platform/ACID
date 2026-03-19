@@ -311,6 +311,10 @@ def correct_background(
         # move back the channel axis to the original position
         corrected_image = np.moveaxis(corrected, 0, channel_axis)
 
+        # change the output dtype if specified - NOTE: this is required as corrected_image has working_dtype
+        if output_dtype is not None:
+            corrected_image = corrected_image.astype(output_dtype)
+
     else:
         raise ValueError("channel_axis must be None or an integer specifying the channel dimension.")
 

@@ -1,7 +1,9 @@
+import os
 from collections.abc import Callable
 import numpy as np
 import pandas as pd
 from bioio import BioImage
+import tifffile
 
 def extract_bioio_scene_metadata(bioio_scene:Callable,
                                  dtype_name:str|bool|None=None,
@@ -170,3 +172,17 @@ def extract_physical_size_unit_from_lif_xml():
     # length_value = dimension_desc_4.attrib.get("Length")
     # print(length_value)
     return "um"  # this is just a placeholder, the actual implementation would extract the unit from the XML file
+
+
+def extract_ometif_imagej_metadata(ometif_image_path:os.PathLike)->dict:
+    """
+    Returns the metadata dictionary, compatible with ImageJ, saved within an ome.tif file.
+
+    Parameters: ometif_image_path the full path to the ome.tif file as a pathlike object.
+    """
+    with tifffile.TiffFile(ometif_image_path) as tif:
+        # print(tif)
+        # imagej_metadata = tif.pages[0].tags['ImageDescription'].value
+        imagej_metadata = tif.imagej_metadata
+        # first_fov_metadata = tifffile.TiffFile(first_fov_path).pages[0].tags['ImageDescription'].value
+    return imagej_metadata

@@ -12,7 +12,8 @@ def correct_background_nd(
     rescale_background:Optional[str]=None,
     clip_corrected_image:Optional[bool]=False,
     min_clip_value:Optional[float]=0,
-    max_clip_value:Optional[float]=None
+    max_clip_value:Optional[float]=None,
+    offset_background:Optional[bool]=False
 )->np.ndarray:
     """
     Apply background correction to a microscopy image.
@@ -65,6 +66,9 @@ def correct_background_nd(
     - max_clip_value : float, optional. Default is None. The maximum value to which pixel
     values in the corrected image will be clipped if clip_corrected_image is True.
 
+    - offset_background : bool, optional. Default False. If True the offset is subtracted also to the background
+    function. Note that if background is rescaled the application of the offset happens before the rescaling.
+
     Outputs    -------
     - corrected_image : np.ndarray. The background-corrected image, in the same shape as the input
     image and in the dtype specified by output_dtype (or working_dtype if output_dtype is None).  
@@ -90,6 +94,18 @@ def correct_background_nd(
     if epsilon <= 0:
         raise ValueError("epsilon must be positive for numerical stability.")
 
+    # warn against the risk of using unsigned integer working types when doing subtraction-based
+    # background correction
+    if method=="subtraction" and np.issubdtype(working_dtype, np.unsignedinteger):
+            print("warning. Using an unsigned integer working type with subtraction method can lead to mathematical" \
+            "instability because unsigned integers can't accomodate negative numbers")
+
+    # warn against the risk of using integer output types when doing division-based
+    # background correction
+    if method=="division" and np.issubdtype(working_dtype, np.integer):
+        print("warning. Using interger output with division method leads to a loss of numerical precision"
+        "as integers can't accomodated decimals")
+
     # warn against the risk of using unsigned integer output types when doing subtraction-based
     # background correction
     if method=="subtraction" and np.issubdtype(output_dtype, np.unsignedinteger) and clip_corrected_image==False:
@@ -97,11 +113,16 @@ def correct_background_nd(
             "unsigned integers can't accomodate negative numbers. Ensure accurate clipping is done or change the"
             "output data type")
 
-    # warn against the risk of using integer output types when doing division-based
-    # background correction
-    if method=="division" and np.issubdtype(working_dtype, np.integer):
-        print("warning. Using interger output with division method leads to a loss of numerical precision"
-        "as integers can't accomodated decimals")
+    # offset background if required
+    if offset_background:
+        
+        # ensure that background offsetting does not lead to negative numbers
+        if offset>0:
+            min_val_background = np.min(background)
+            if offset > min_val_background:
+                raise ValueError(f"If offset_background is True, offset must be less than the minimum pixel value in the background ({min_val_background}) to avoid negative values.")
+
+        background = background - offset
 
     # Optional background rescaling
     if rescale_background is None:
@@ -183,6 +204,7 @@ def correct_background(
     clip_corrected_image:Optional[bool]=False,
     min_clip_value:Optional[float]=0,
     max_clip_value:Optional[float]=None,
+    offset_background:Optional[bool]=False,
     zero_kwargs:Optional[dict]=None
 )->np.ndarray:
     """
@@ -237,6 +259,9 @@ def correct_background(
     - max_clip_value : float, optional. Default is None. The maximum value to which pixel
     values in the corrected image will be clipped if clip_corrected_image is True.
 
+    - offset_background : bool, optional. Default False. If True the offset is subtracted also to the background
+    function. Note that if background is rescaled the application of the offset happens before the rescaling.
+
     - zero_kwargs : dict, optional. Default is None. A dictionary of keyword arguments to pass
     to np.zeros when creating the output array for channel-wise correction. This allows you to
     specify additional parameters such as order when creating the zero array. Note that it is not possible
@@ -276,7 +301,8 @@ def correct_background(
             rescale_background=rescale_background,
             clip_corrected_image=clip_corrected_image,
             min_clip_value=min_clip_value,
-            max_clip_value=max_clip_value
+            max_clip_value=max_clip_value,
+            offset_background=offset_background
         )
 
     # Apply background correction separately to each channel if channel_axis is specified
@@ -305,7 +331,8 @@ def correct_background(
                 rescale_background=rescale_background,
                 clip_corrected_image=clip_corrected_image,
                 min_clip_value=min_clip_value,
-                max_clip_value=max_clip_value
+                max_clip_value=max_clip_value,
+                offset_background=offset_background
             )
         
         # move back the channel axis to the original position

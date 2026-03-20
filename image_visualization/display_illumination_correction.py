@@ -45,7 +45,10 @@ def plot_image_channels_and_diagonals(
 
         channel_img = img[c]
         channel_corr = corr[c]
-
+        print(f"--- channel {c}")
+        print(f"before correction. min value: {np.min(channel_img)}. max value: {np.max(channel_img)}")
+        print(f"after correction. min value: {np.min(channel_corr)}. max value: {np.max(channel_corr)}")
+        
         # --- Column 1: Original ---
         ax_img.imshow(channel_img, cmap="gray")
         ax_img.axis("off")

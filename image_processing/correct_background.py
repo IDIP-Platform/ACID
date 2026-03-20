@@ -378,6 +378,8 @@ def correct_background(
 
         # iterate over channels and correct for background
         for ch in range(image.shape[channel_axis]):
+            if verbose:
+                print(f"--- ch {ch}")
             corrected[ch] = correct_background_nd(
                 image=image_moved[ch],
                 background=background_moved[ch],

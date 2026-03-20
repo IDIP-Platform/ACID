@@ -13,7 +13,8 @@ def correct_background_nd(
     clip_corrected_image:Optional[bool]=False,
     min_clip_value:Optional[float]=0,
     max_clip_value:Optional[float]=None,
-    offset_background:Optional[bool]=False
+    offset_background:Optional[bool]=False,
+    verbose:Optional[bool]=False
 )->np.ndarray:
     """
     Apply background correction to a microscopy image.
@@ -69,6 +70,8 @@ def correct_background_nd(
     - offset_background : bool, optional. Default False. If True the offset is subtracted also to the background
     function. Note that if background is rescaled the application of the offset happens before the rescaling.
 
+    - verbose : bool, optional. Default False. If True prints information about the function process.
+
     Outputs    -------
     - corrected_image : np.ndarray. The background-corrected image, in the same shape as the input
     image and in the dtype specified by output_dtype (or working_dtype if output_dtype is None).  
@@ -81,10 +84,6 @@ def correct_background_nd(
     # Ensure that image and background do not contain NaN or Inf values
     if not np.isfinite(image).all() or not np.isfinite(background).all():
         raise ValueError("Input contains NaN or Inf values.")
-
-    # warn against the use of interger dtypes as outputs
-    if np.issubdtype(output_dtype, np.integer):
-        print("Warning: casting to integer may lose precision.")
 
     # Convert to working dtype
     image = image.astype(working_dtype)
@@ -100,11 +99,17 @@ def correct_background_nd(
             print("warning. Using an unsigned integer working type with subtraction method can lead to mathematical" \
             "instability because unsigned integers can't accomodate negative numbers")
 
-    # warn against the risk of using integer output types when doing division-based
-    # background correction
-    if method=="division" and np.issubdtype(working_dtype, np.integer):
-        print("warning. Using interger output with division method leads to a loss of numerical precision"
-        "as integers can't accomodated decimals")
+    if method=="division":
+        # warn against the risk of using integer output types when doing division-based
+        # background correction
+        if np.issubdtype(working_dtype, np.integer):
+            print("warning. Using interger output with division method leads to a loss of numerical precision"
+            "as integers can't accomodated decimals")
+        
+        # warn against the use of interger dtypes as outputs when doing division-based
+        # background correction
+        if np.issubdtype(output_dtype, np.integer):
+            print("Warning: casting to integer may lose precision.")
 
     # warn against the risk of using unsigned integer output types when doing subtraction-based
     # background correction
@@ -116,6 +121,9 @@ def correct_background_nd(
     # offset background if required
     if offset_background:
         
+        if verbose:
+            print("offsetting the background")
+        
         # ensure that background offsetting does not lead to negative numbers
         if offset>0:
             min_val_background = np.min(background)
@@ -126,21 +134,39 @@ def correct_background_nd(
 
     # Optional background rescaling
     if rescale_background is None:
+        if verbose:
+            print("using background without rescaling")
         pass
 
     elif rescale_background == "max":
+        
+        if verbose:
+            print("rescaling background with max method")
+            print(f"before rescaling background min: {np.min(background)}, background max: {np.max(background)}")
+
         max_val = np.max(background)
         background = background / (max_val + epsilon)
 
+        if verbose:
+            print(f"after rescaling background min: {np.min(background)}, background max: {np.max(background)}")
+
     elif rescale_background == "minmax":
+
         min_val = np.min(background)
         max_val = np.max(background)
+        
+        if verbose:
+            print("rescaling background with minmax method")
+            print(f"before rescaling background min: {min_val}, background max: {max_val}")
 
         # check that the image is not constant
         if max_val == min_val:
             raise ValueError("Cannot minmax scale a constant background.")
         
         background = (background - min_val) / (max_val - min_val + epsilon)
+        
+        if verbose:
+            print(f"after rescaling background min: {np.min(background)}, background max: {np.max(background)}")
 
     else:
         raise ValueError("rescale_background must be None, 'max', or 'minmax'.")
@@ -154,6 +180,10 @@ def correct_background_nd(
 
     # Apply correction
     if method == "subtraction":
+        
+        if verbose:
+            print("correct background with subtraction method")
+            print(f"before correction image min: {np.min(image)}, image max: {np.max(image)}")
 
         # warn against the risk of using unsigned integers as working types when subtraction method is used
         if np.issubdtype(working_dtype, np.unsignedinteger):
@@ -161,6 +191,9 @@ def correct_background_nd(
             "problematic output as unsigned integers can't accomodate negative numbers")
 
         corrected_image = image - background - offset
+
+        if verbose:
+            print(f"after correction image min: {np.min(corrected_image)}, image max: {np.max(corrected_image)}")
 
     elif method == "division":
 
@@ -175,7 +208,14 @@ def correct_background_nd(
         if rescale_background != "max":
             print("Warning: division-based background correction typically requires the background to be rescaled to a maximum of 1. Consider setting rescale_background='max' for optimal results.")
         
+        if verbose:
+            print("correct background with division method")
+            print(f"before correction image min: {np.min(image)}, image max: {np.max(image)}")
+        
         corrected_image = (image - offset) / (background + epsilon) 
+
+        if verbose:
+            print(f"after correction image min: {np.min(corrected_image)}, image max: {np.max(corrected_image)}")
 
     else:
         raise ValueError("Method must be 'subtraction' or 'division'.")
@@ -184,9 +224,17 @@ def correct_background_nd(
     if clip_corrected_image:
         corrected_image = np.clip(corrected_image, a_min=min_clip_value, a_max=max_clip_value)
 
+        if verbose:
+            print("clipping corrected image")
+            print(f"after clipping image min: {np.min(corrected_image)}, image max: {np.max(corrected_image)}")
+
     # Convert to desired output dtype if provided
     if output_dtype is not None:
         corrected_image = corrected_image.astype(output_dtype)
+
+        if verbose:
+            print("changing the data type of the output/corrected image")
+            print(f"final data type: {corrected_image.dtype}, image min: {np.min(corrected_image)}, image max: {np.max(corrected_image)}")
 
     return corrected_image
 
@@ -205,7 +253,8 @@ def correct_background(
     min_clip_value:Optional[float]=0,
     max_clip_value:Optional[float]=None,
     offset_background:Optional[bool]=False,
-    zero_kwargs:Optional[dict]=None
+    zero_kwargs:Optional[dict]=None,
+    verbose:Optional[bool]=False
 )->np.ndarray:
     """
     Apply background correction to a microscopy image with the option of correcting each channel separately.
@@ -269,6 +318,8 @@ def correct_background(
     If zero_kwargs is None, an empty dictionary will be used and no additional parameters will
     be passed to np.zeros.
 
+    - verbose : bool, optional. Default False. If True prints information about the function process.
+
     Outputs    -------
     - corrected_image : np.ndarray. The background-corrected image, in the same shape as the input
     image and in the dtype specified by output_dtype (or working_dtype if output_dtype is None).
@@ -290,6 +341,9 @@ def correct_background(
     
     # Apply background correction to the entire image if channel_axis is None
     if channel_axis is None:
+        if verbose:
+            print("background correction on the entire input image")
+
         corrected_image = correct_background_nd(
             image=image,
             background=background,
@@ -302,12 +356,16 @@ def correct_background(
             clip_corrected_image=clip_corrected_image,
             min_clip_value=min_clip_value,
             max_clip_value=max_clip_value,
-            offset_background=offset_background
+            offset_background=offset_background,
+            verbose=verbose
         )
 
     # Apply background correction separately to each channel if channel_axis is specified
     elif isinstance(channel_axis, int):
         
+        if verbose:
+            print(f"background correction on axis: {channel_axis}")
+
         # normalize axis to the image dimensions
         channel_axis = np.core.numeric.normalize_axis_index(channel_axis, image.ndim)
 
@@ -332,7 +390,8 @@ def correct_background(
                 clip_corrected_image=clip_corrected_image,
                 min_clip_value=min_clip_value,
                 max_clip_value=max_clip_value,
-                offset_background=offset_background
+                offset_background=offset_background,
+                verbose=verbose
             )
         
         # move back the channel axis to the original position

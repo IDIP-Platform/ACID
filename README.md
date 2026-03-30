@@ -6,6 +6,63 @@ Creation (yyyy/mm/dd): 2025/11/21
 
 Status: ongoing (2026/03/30)
 
+# Run the project (Windows):
+## Start - One-time setup 
+
+#### Using PowerShell
+Navigate to project root
+cd path\to\mother_folder
+
+Create virtual environment
+uv venv
+
+Activate venv
+.venv\Scripts\activate
+
+Install project in editable mode
+uv pip install -e .
+
+Install Jupyter kernel
+uv pip install ipykernel
+python -m ipykernel install --user --name acid-env
+
+#### Using VS Code
+1. Open mother_folder in VS Code.
+2. Open a terminal in VS Code (Terminal → New Terminal).
+3. Creat a virtual environment: uv venv
+4. Activate the virtual environment: .venv\Scripts\activate
+5. Install the package in editable mode: uv pip install -e .
+6. Install Jupyter support: uv pip install ipykernel.
+7. Select the interpreter for VS Code: Press Ctrl + Shift + P → Python: Select Interpreter → choose .venv\Scripts\python.exe
+8. For notebooks, select kernel: Click the kernel selector in the top-right → choose acid-env
+
+## Restart project - Daily
+#### Using PowerShell
+Navigate to project
+cd path\to\mother_folder
+
+Activate venv
+.venv\Scripts\activate
+
+Sync dependencies if changed
+uv sync
+
+Ensure package is linked
+uv pip install -e .
+
+
+#### Using VS Code
+1. Open mother_folder in VS Code.
+2. Open a terminal in VS Code (Terminal → New Terminal).
+3. Activate the virtual environment: .venv\Scripts\activate
+4. If dependencies changed, run: uv sync
+5. Ensure your package is installed in editable mode: uv pip install -e .
+6. Select the interpreter: Ctrl + Shift + P → Python: Select Interpreter → .venv\Scripts\python.exe
+7. For notebooks, select acid-env kernel.
+
+
+
+
 # Description:
 **Background and scope**\
 The project is carried out at the Center for Integrative Infectious Disease Research in Heidelberg (abbreviated to CIID; https://ciid-heidelberg.de/).

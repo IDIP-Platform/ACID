@@ -15,7 +15,8 @@ SUMMARY OF FUNCTIONS:
 
 - measure_haralick_image: measures haralick features on an entire image.
 
-- glcm_feature_map: computes a Haralick feature map for one object (mask).
+- glcm_feature_map_ch: computes a Haralick feature map for one object (mask)
+and a one image channel.
 If a mask is passed, the feature map is only computed inside the mask.
 If no mask is passed, the feature map is computed on the entire image.
 
@@ -269,7 +270,7 @@ def measure_haralick_image(image:np.array,
     
     return haralick_measurements
 
-def glcm_feature_map(image:np.typing.ArrayLike,
+def glcm_feature_map_ch(image:np.typing.ArrayLike,
                      props:str|Sequence|None=None,
                      distances:int|float|tuple|list|Sequence|None=None,
                      angles:int|float|tuple|list|Sequence|None=None,
@@ -284,7 +285,7 @@ def glcm_feature_map(image:np.typing.ArrayLike,
     """
     Compute a Haralick feature map for one object.
     
-    Image must be 2D.
+    Image must be 2D (as a corollary, the image is single channel).
 
     Mask is assumed to have 0 as background. Everything which is non-zero in the mask is considered foreground and part of a
     single object/region.
@@ -502,6 +503,157 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 
 
 
+def glcm_feature_map(image: np.typing.ArrayLike,
+                     props: str | Sequence | None = None,
+                     distances: int | float | tuple | list | Sequence | None = None,
+                     angles: int | float | tuple | list | Sequence | None = None,
+                     mask: np.typing.ArrayLike | None = None,
+                     channel_axis: int | None = None,
+                     window_shape: int | tuple = 11,
+                     graycomtx_kwargs: dict | None = None,
+                     pad_kwargs: dict | None = None,
+                     windows_kwargs: dict | None = None,
+                     zeros_kwargs: dict | None = None,
+                     glcm_concat_kwargs: dict | None = None,
+                     stack_channels: bool = True,
+                     stack_axis: int = -1,
+                     stack_kwargs: dict | None = None,
+                     feature_concat_axis: int = -1,
+                     feature_concat_kwargs: dict | None = None) -> np.array:
+    
+    """
+    Wrapper around glcm_feature_map_ch to support multi-channel images.
+
+    If channel_axis is None:
+        - behaves exactly like glcm_feature_map_ch
+
+    If channel_axis is provided:
+        - iterates over sub-arrays along channel_axis
+        - computes glcm_feature_map_ch for each channel independently
+
+    Channel handling:
+    - If stack_channels=True (default):
+        output shape: (..., F, C)
+        where:
+            F = number of features per channel
+            C = number of channels
+        By default the channel dimension is in the last position, but it can be moved to a different position using stack_axis.
+
+    - If stack_channels=False:
+        feature maps are concatenated along feature_concat_axis
+        (default: last axis), resulting in flattened features across channels
+
+    Inputs:
+    - image: numpy array. Input image. Can be 2D or multi-channel.
+
+    - props, distances, angles, mask, window_shape, graycomtx_kwargs,
+      pad_kwargs, windows_kwargs, zeros_kwargs:
+      same as glcm_feature_map_ch.
+    
+    - glcm_concat_kwargs: same as concat_kwargs in glcm_feature_map_ch.
+
+    - channel_axis: int or None. Axis corresponding to channels.
+      If None, the image is treated as single-channel. Default: None.
+    
+    - stack_channels: bool. If True, keeps channel dimension separate
+      (recommended). If False, flattens channel features into one axis.
+      Default: True.
+    
+    - stack_axis: int. Axis along which channel dimension is placed when stack_channels=True. Default: -1 (last axis).
+    
+    - feature_concat_axis: int. Axis along which feature maps are concatenated
+      when stack_channels=False. Default: -1.
+    
+    - stack_kwargs: dict or None. Additional arguments to pass to np.stack
+    when stack_channels=True. Optional. Default: {}. NOTE: 'axis'
+    can't be passed here, as it is set by stack_axis argument.
+
+    - feature_concat_kwargs: dict or None. Additional arguments to pass
+    to np.concatenate when stack_channels=False. Optional. Default: {}. NOTE: 'axis'
+    can't be passed here, as it is set by feature_concat_axis argument.
+
+    Outputs:
+    - feature_map: numpy array containing Haralick feature maps.
+    """
+
+    # Single-channel case → delegate directly
+    if channel_axis is None:
+        return glcm_feature_map_ch(
+            image=image,
+            props=props,
+            distances=distances,
+            angles=angles,
+            mask=mask,
+            window_shape=window_shape,
+            graycomtx_kwargs=graycomtx_kwargs,
+            pad_kwargs=pad_kwargs,
+            windows_kwargs=windows_kwargs,
+            zeros_kwargs=zeros_kwargs,
+            concat_kwargs=glcm_concat_kwargs
+        )
+
+    # Set defaults
+    if stack_kwargs is None:
+        assert "axis" not in stack_kwargs, "axis can't be passed to stack_kwargs. Use stack_axis argument instead."
+        stack_kwargs:dict={}
+    
+    if feature_concat_kwargs is None:
+        assert "axis" not in feature_concat_kwargs, "axis can't be passed to feature_concat_kwargs. Use feature_concat_axis argument instead."
+        feature_concat_kwargs:dict={}
+
+    # Prepare image
+    image = np.asarray(image)
+    image_moved = np.moveaxis(image, channel_axis, 0)  # (C, ...)
+
+    # Handle mask (shared across channels)
+    if hasattr(mask, "__len__"):
+        mask = mask.copy()
+
+    feature_maps = []
+
+    # Compute per-channel feature maps
+    for ch in image_moved:
+        fm = glcm_feature_map_ch(
+            image=ch,
+            props=props,
+            distances=distances,
+            angles=angles,
+            mask=mask,
+            window_shape=window_shape,
+            graycomtx_kwargs=graycomtx_kwargs,
+            pad_kwargs=pad_kwargs,
+            windows_kwargs=windows_kwargs,
+            zeros_kwargs=zeros_kwargs,
+            concat_kwargs=glcm_concat_kwargs
+        )
+        feature_maps.append(fm)
+
+    # Stack channels → shape (..., F, C)
+    feature_map = np.stack(feature_maps, axis=-1)
+
+    # return stacked channels by default
+    if stack_channels:
+
+        # If stack_axis is not last, move axis
+        if stack_axis != -1:
+            feature_map = np.moveaxis(feature_map, -1, stack_axis)
+        return feature_map
+
+    # Flatten channels into feature axis
+    # Move channel axis next to feature axis, then reshape
+    *spatial_dims, F, C = feature_map.shape
+
+    # reshape to (..., F*C)
+    flattened = feature_map.reshape(*spatial_dims, F * C)
+
+    # If feature_concat_axis is not last, move axis
+    if feature_concat_axis != -1:
+        flattened = np.moveaxis(flattened, -1, feature_concat_axis)
+
+    return flattened
+
+
+
 # def glcm_object(region,
 #                 props:str|Sequence='contrast',
 #                 distances:int|float|tuple|list|Sequence=[1],
@@ -530,6 +682,7 @@ def glcm_feature_map(image:np.typing.ArrayLike,
 #                                   props=props,
 #                                   distances=distances,
 #                                   angles=angles,
+#                                   channel_axis=None,  # channel axis is already handled by picking the channel in sub_image
 #                                   window_shape=window_shape,
 #                                   graycomtx_kwargs=graycomtx_kwargs,
 #                                   pad_kwargs=pad_kwargs,
@@ -550,7 +703,7 @@ def glcm_object(region,
                 pad_kwargs:dict|None=None,
                 windows_kwargs:dict|None=None,
                 zeros_kwargs:dict|None=None,
-                concat_kwargs:dict|None=None)->tuple:
+                glcm_concat_kwargs:dict|None=None)->tuple:
     """
     Wrapper for Dask: computes feature map for a region/segmented object in a given channel.
 
@@ -585,8 +738,8 @@ def glcm_object(region,
     if zeros_kwargs is None:
         zeros_kwargs={'dtype': float}
     
-    if concat_kwargs is None:
-        concat_kwargs:dict={}
+    if glcm_concat_kwargs is None:
+        glcm_concat_kwargs:dict={}
 
     # Get the region/object bounding box for the intensity image
     # (aka - the image for which haralick feature map has to be computed cropped to contain the region/object)
@@ -602,12 +755,13 @@ def glcm_object(region,
                                   props=props,
                                   distances=distances,
                                   angles=angles,
+                                  channel_axis=None,  # channel axis is already handled by picking the channel in sub_image
                                   window_shape=window_shape,
                                   graycomtx_kwargs=graycomtx_kwargs,
                                   pad_kwargs=pad_kwargs,
                                   windows_kwargs=windows_kwargs,
                                   zeros_kwargs=zeros_kwargs,
-                                  concat_kwargs=concat_kwargs)
+                                  glcm_concat_kwargs=glcm_concat_kwargs)
     
     return (region.label, region.bbox, channel_index, fmap_local)
 
@@ -624,7 +778,7 @@ def glcm_object(region,
 #                               pad_kwargs:dict={'mode':'reflect'},
 #                               windows_kwargs:dict={},
 #                               zeros_kwargs:dict={'dtype':float},
-#                               concat_kwargs:dict={}):
+#                               glcm_concat_kwargs:dict={}):
 
 #     # if prop is str, store it in a list, for compatibility with following iteration
 #     if isinstance(props,str):
@@ -671,7 +825,7 @@ def glcm_object(region,
 #                       pad_kwargs=pad_kwargs,
 #                       windows_kwargs=windows_kwargs,
 #                       zeros_kwargs=zeros_kwargs,
-#                       concat_kwargs=concat_kwargs).compute()
+#                       glcm_concat_kwargs=glcm_concat_kwargs).compute()
     
 #     # Assemble full-size feature map
 
@@ -701,7 +855,7 @@ def parallel_glcm_feature_map(image:np.array,
                               pad_kwargs:dict|None=None,
                               windows_kwargs:dict|None=None,
                               zeros_kwargs:dict|None=None,
-                              concat_kwargs:dict|None=None)->np.array:
+                              glcm_concat_kwargs:dict|None=None)->np.array:
     """
     Compute a Haralick feature map for all the label objects in a label_image. If the input image has multiple channels,
     the feature maps can be computed per each channel independently by passing the axis to channel_axis.
@@ -820,7 +974,7 @@ def parallel_glcm_feature_map(image:np.array,
     - zeros_kwargs: dict or None. Additional arguments to pass to np.zeros for feature map array initialization. Optional.
     Default: {'dtype':float}. NOTE: 'a' can't be passed here, as the shape of the array is hard coded.
     
-    - concat_kwargs: dict or None. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
+    - glcm_concat_kwargs: dict or None. Additional arguments to pass to np.concatenate for concatenating multiple haralick measurements
     per pixel. Optional. Default: {}. NOTE: 'axis' can't be passed here, as it is hard coded to be in position 0.
     
 
@@ -884,8 +1038,8 @@ def parallel_glcm_feature_map(image:np.array,
     if zeros_kwargs is None:
         zeros_kwargs={'dtype': float}
     
-    if concat_kwargs is None:
-        concat_kwargs={}
+    if glcm_concat_kwargs is None:
+        glcm_concat_kwargs={}
 
     # move channel axis to the last position, if present - or add an axis of size 1 in the last position of image if no
     # channel axis is present
@@ -959,7 +1113,7 @@ def parallel_glcm_feature_map(image:np.array,
                                              pad_kwargs=pad_kwargs,
                                              windows_kwargs=windows_kwargs,
                                              zeros_kwargs=zeros_kwargs,
-                                             concat_kwargs=concat_kwargs)).compute()
+                                             glcm_concat_kwargs=glcm_concat_kwargs)).compute()
 
     # Assemble full-size feature map
 
@@ -1024,7 +1178,7 @@ def haralick_regionprops_channel(image:np.array,
         - distances
             - angles.
     
-    This order is the same as the one produced by glcm_feature_map.
+    This order is the same as the one produced by glcm_feature_map_ch.
     
     Image must be 2D grayscale image, with and extra dimension in position -1 containing the haralick feature maps.
 
@@ -1407,7 +1561,7 @@ def measure_haralick_features(image:np.array,
                                                      pad_kwargs=glcm_pad_kwargs,
                                                      windows_kwargs=glcm_windows_kwargs,
                                                      zeros_kwargs=glcm_zeros_kwargs,
-                                                     concat_kwargs=glcm_concat_kwargs)
+                                                     glcm_concat_kwargs=glcm_concat_kwargs)
     
     # erode labels
     eroded_label_image = erosion(original_label_image, **erosion_kwargs)

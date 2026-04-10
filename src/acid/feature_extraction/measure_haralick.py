@@ -574,6 +574,13 @@ def glcm_feature_map(image: np.typing.ArrayLike,
 
     Outputs:
     - feature_map: numpy array containing Haralick feature maps.
+
+    NOTE: by default, None is passed to graycomtx_kwargs. This leads to the following
+    behavior when rescaling the image intensity:
+        - If no channel axis is specified, the entire image is rescaled to 8
+        intensity levels (0-7) before calculating the GLCM.
+        - If a channel axis is specified, each channel is independently
+        rescaled to 8 intensity levels (0-7) before calculating the GLCM for that channel.
     """
 
     # Single-channel case → delegate directly

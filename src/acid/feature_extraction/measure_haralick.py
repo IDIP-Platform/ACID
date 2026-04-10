@@ -7,7 +7,8 @@ from skimage.feature import graycomatrix
 from skimage.morphology import disk, erosion
 from skimage.measure import regionprops, regionprops_table
 from skimage.util.shape import view_as_windows
-from skimage.exposure import rescale_intensity
+# from skimage.exposure import rescale_intensity
+from acid.image_processing.rescale_intensity import quantize_image
 
 
 """
@@ -19,6 +20,9 @@ SUMMARY OF FUNCTIONS:
 and a one image channel.
 If a mask is passed, the feature map is only computed inside the mask.
 If no mask is passed, the feature map is computed on the entire image.
+
+- glcm_feature_map: computes a Haralick feature map for one object (mask, ref to glcm_feature_map_ch)
+and a multi-channel image, by iterating glcm_feature_map_ch per each channel and concatenating the results.
 
 - parallel_glcm_feature_map: computes a Haralick feature map for all the label objects in a label_image.
 If the input image has multiple channels, the feature maps can be computed per each channel independently.
@@ -79,10 +83,13 @@ https://scikit-image.org/docs/0.25.x/auto_examples/features_detection/plot_glcm.
 
 === === ===
 IMPORTANT NOTE:
-Differently than CellProfiler (https://cellprofiler-manual.s3.amazonaws.com/CPmanual/MeasureTexture.html)
-the GLCM matrix is NOT min-max normalized per object. Instead, the entire image is rescaled to a indicated
-level of intensitis (default 8).
-
+As for CellProfiler (https://cellprofiler-manual.s3.amazonaws.com/CPmanual/MeasureTexture.html)
+by default the gray intensity levels are min-max normalized per object bounding box to
+8 levels (0-7) before calculating the GLCM and the haralick features.
+This behavior falls back to the function glcm_feature_map_ch. The behaviour can be
+changed by passing the 'levels' argument in graycomtx_kwargs.
+Ref to the documentation of the functions glcm_feature_map_ch and
+parallel_glcm_feature_map for more details.
 """
 
 
@@ -137,15 +144,26 @@ def measure_haralick_image(image:np.array,
     https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.graycoprops
     https://scikit-image.org/docs/0.25.x/auto_examples/features_detection/plot_glcm.html).
 
-    Image must be 2D.
+    Image must be 2D (as a corollary, the image is single channel). If 'levels' is
+    passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     Returns a pandas Series with haralick measurements.
 
     NOTE: by default, the image is rescaled to 8 intensity levels (0-7) before calculating the GLCM. To change this behaviour,
-    pass the 'levels' argument in graycomtx_kwargs.
+    set pass the 'levels' argument in graycomtx_kwargs. For example, if an image
+    has pixel values in the range 0-255, setting 'levels' to 256 in graycomtx_kwargs
+    will avoid rescaling and use the original pixel values for GLCM calculation.
+    Note that 0 is always assumed to be the lowest intensity value and that no
+    rescaling is performed if 'levels' is specified. 'levels' is simply the number of
+    intensity levels used for GLCM calculation, starting from 0.
+    The "levels" argument is passed to graycomatrix, ref to the documentation
+    for additional details (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.graycomatrix).
 
     Inputs:
-    - image: 2D numpy array
+    - image: 2D numpy array. The input image for which the haralick features have to be computed.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
     
     - prop: str, list of str or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation', 'ASM', 'mean', 'variance', 'std', 'entropy'])
@@ -200,8 +218,27 @@ def measure_haralick_image(image:np.array,
     
     # set default graycomtx_kwargs
     if graycomtx_kwargs is None:
-        graycomtx_kwargs={'levels':8,'symmetric':True,'normed':True}
+        graycomtx_kwargs={'symmetric':True,'normed':True}
     
+    # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
+    # NOTE: this is the default behaviour of CellProfiler
+    if 'levels' not in graycomtx_kwargs:
+        print("Default: Rescaling image to 8 intensity levels - indicate levels in graycomtx_kwargs to avoid this")
+        image = quantize_image(image,
+                                levels=8,
+                                pmin=1,
+                                pmax=99,
+                                out_bottom=0,
+                                out_dtype=np.uint8,
+                                percentile_kwargs=None,
+                                clip_kwargs=None,
+                                rescale_kwargs=None,
+                                floor_kwargs=None)
+        
+        # image = rescale_intensity(image,out_range=(0,7)).astype(np.uint8)
+        graycomtx_kwargs = graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
+        graycomtx_kwargs['levels']=8
+
     if sep is None:
         sep='_'
 
@@ -270,22 +307,25 @@ def measure_haralick_image(image:np.array,
     
     return haralick_measurements
 
+
 def glcm_feature_map_ch(image:np.typing.ArrayLike,
-                     props:str|Sequence|None=None,
-                     distances:int|float|tuple|list|Sequence|None=None,
-                     angles:int|float|tuple|list|Sequence|None=None,
-                     mask:np.typing.ArrayLike|None=None,
-                     window_shape:int|tuple=11,
-                     graycomtx_kwargs:dict|None=None,
-                     pad_kwargs:dict|None=None,
-                     windows_kwargs:dict|None=None,
-                     zeros_kwargs:dict|None=None,
-                     concat_kwargs:dict|None=None)->np.array:
+                        props:str|Sequence|None=None,
+                        distances:int|float|tuple|list|Sequence|None=None,
+                        angles:int|float|tuple|list|Sequence|None=None,
+                        mask:np.typing.ArrayLike|None=None,
+                        window_shape:int|tuple=11,
+                        graycomtx_kwargs:dict|None=None,
+                        pad_kwargs:dict|None=None,
+                        windows_kwargs:dict|None=None,
+                        zeros_kwargs:dict|None=None,
+                        concat_kwargs:dict|None=None)->np.array:
     
     """
     Compute a Haralick feature map for one object.
     
-    Image must be 2D (as a corollary, the image is single channel).
+    Image must be 2D (as a corollary, the image is single channel). If 'levels' is
+    passed to graycomtx_kwargs, only integer typed input images are
+    supported and only positive valued images are supported.
 
     Mask is assumed to have 0 as background. Everything which is non-zero in the mask is considered foreground and part of a
     single object/region.
@@ -317,10 +357,19 @@ def glcm_feature_map_ch(image:np.typing.ArrayLike,
     One gets the feature maps correctly matching the angle, distance and property.
 
     NOTE: by default, the image is rescaled to 8 intensity levels (0-7) before calculating the GLCM. To change this behaviour,
-    pass the 'levels' argument in graycomtx_kwargs.
+    set pass the 'levels' argument in graycomtx_kwargs. For example, if an image
+    has pixel values in the range 0-255, setting 'levels' to 256 in graycomtx_kwargs
+    will avoid rescaling and use the original pixel values for GLCM calculation.
+    Note that 0 is always assumed to be the lowest intensity value and that no
+    rescaling is performed if 'levels' is specified. 'levels' is simply the number of
+    intensity levels used for GLCM calculation, starting from 0.
+    The "levels" argument is passed to graycomatrix, ref to the documentation
+    for additional details (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.graycomatrix).
 
     Inputs:
     - image: 2D numpy array. The input image for which the haralick feature map has to be computed.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
     
     - props: str, sequence or None. Single haralick feature (if str) or list of haralick features (if list) to measure. Optional.
     Default: 'contrast'.
@@ -424,7 +473,18 @@ def glcm_feature_map_ch(image:np.typing.ArrayLike,
     # NOTE: this is the default behaviour of CellProfiler
     if 'levels' not in graycomtx_kwargs:
         print("Default: Rescaling image to 8 intensity levels - indicate levels in graycomtx_kwargs to avoid this")
-        image = rescale_intensity(image,out_range=(0,7)).astype(np.uint8)
+        image = quantize_image(image,
+                                levels=8,
+                                pmin=1,
+                                pmax=99,
+                                out_bottom=0,
+                                out_dtype=np.uint8,
+                                percentile_kwargs=None,
+                                clip_kwargs=None,
+                                rescale_kwargs=None,
+                                floor_kwargs=None)
+        
+        # image = rescale_intensity(image,out_range=(0,7)).astype(np.uint8)
         graycomtx_kwargs = graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
         graycomtx_kwargs['levels']=8
 
@@ -486,12 +546,6 @@ def glcm_feature_map_ch(image:np.typing.ArrayLike,
             # Collect flatten property in collection list
             val_l.append(prop)
 
-        # client = get_client()
-        # futures = client.map(lambda p: graycoprops_dask(glcm, p), props)
-        # secede()
-        # val_l = client.gather(futures)
-        # rejoin()
-        #
         # Concatenate measurements for multiple features - NOTE: When a single feature is measured, np.concatenate has
         # no effect
         val = np.concatenate(val_l,axis=0,**concat_kwargs) # it is known that axis is 0 since prop measurements have been flatten
@@ -545,6 +599,8 @@ def glcm_feature_map(image: np.typing.ArrayLike,
 
     Inputs:
     - image: numpy array. Input image. Can be 2D or multi-channel.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     - props, distances, angles, mask, window_shape, graycomtx_kwargs,
       pad_kwargs, windows_kwargs, zeros_kwargs:
@@ -581,6 +637,7 @@ def glcm_feature_map(image: np.typing.ArrayLike,
         intensity levels (0-7) before calculating the GLCM.
         - If a channel axis is specified, each channel is independently
         rescaled to 8 intensity levels (0-7) before calculating the GLCM for that channel.
+    Ref to the documentation of glcm_feature_map_ch for more details.
     """
 
     # Single-channel case → delegate directly
@@ -663,45 +720,6 @@ def glcm_feature_map(image: np.typing.ArrayLike,
 
 
 
-# def glcm_object(region,
-#                 props:str|Sequence='contrast',
-#                 distances:int|float|tuple|list|Sequence=[1],
-#                 angles:int|float|tuple|list|Sequence=[0],
-#                 window_shape:int|tuple=11,
-#                 graycomtx_kwargs:dict={'symmetric':True,'normed':True},
-#                 pad_kwargs:dict={'mode':'reflect'},
-#                 windows_kwargs:dict={},
-#                 zeros_kwargs:dict={'dtype':float},
-#                 concat_kwargs:dict={})->tuple:
-#     """
-#     Wrapper for Dask: computes feature map for a region/segmented object.
-#     """
-    
-#     # Get the region/object bounding box for the intensity image
-#     # (aka - the image for which haralick feature map has to be computed cropped to contain the region/object)
-#     sub_image = region.intensity_image
-    
-#     # Get the region/object for the segmentation mask
-#     # (aka - the labelled image with object segmentation cropped to contain the region/object)
-#     mask = region.image
-
-#     # Compute glcm_feature_map for the region/segmented object
-#     fmap_local = glcm_feature_map(image=sub_image,
-#                                   mask=mask,
-#                                   props=props,
-#                                   distances=distances,
-#                                   angles=angles,
-#                                   channel_axis=None,  # channel axis is already handled by picking the channel in sub_image
-#                                   window_shape=window_shape,
-#                                   graycomtx_kwargs=graycomtx_kwargs,
-#                                   pad_kwargs=pad_kwargs,
-#                                   windows_kwargs=windows_kwargs,
-#                                   zeros_kwargs=zeros_kwargs,
-#                                   concat_kwargs=concat_kwargs)
-
-#     return (region.label, region.bbox, fmap_local)
-
-
 def glcm_object(region,
                 channel_index: int = -1,
                 props:str|Sequence|None=None,
@@ -722,33 +740,10 @@ def glcm_object(region,
     - the channel axis is expected in position -1.
     - a channel axis is always expected. If a region has a single channel, there should anyway be a channel axis, in
     position -1, of size 1.
-
+    - by default, None is passed to graycomtx_kwargs. As a consequence, the
+    image/object is rescaled to 8 intensity levels (0-7) before calculating the GLCM.
+    Ref to the documentation of glcm_feature_map_ch for more details.
     """
-    
-    # set defaults
-    if props is None:
-        props='contrast'
-    
-    if distances is None:
-        distances=[1]
-    
-    if angles is None:
-        angles=[0]
-    
-    if graycomtx_kwargs is None:
-        graycomtx_kwargs={'symmetric': True, 'normed': True}
-    
-    if pad_kwargs is None:
-        pad_kwargs={'mode': 'reflect'}
-    
-    if windows_kwargs is None:
-        windows_kwargs:dict={}
-    
-    if zeros_kwargs is None:
-        zeros_kwargs={'dtype': float}
-    
-    if glcm_concat_kwargs is None:
-        glcm_concat_kwargs:dict={}
 
     # Get the region/object bounding box for the intensity image
     # (aka - the image for which haralick feature map has to be computed cropped to contain the region/object)
@@ -775,82 +770,6 @@ def glcm_object(region,
     return (region.label, region.bbox, channel_index, fmap_local)
 
 
-# def parallel_glcm_feature_map(image:np.typing.ArrayLike,
-#                               label_image:np.typing.ArrayLike,
-#                               props:str|Sequence='contrast',
-#                               distances:int|float|tuple|list|Sequence=[1],
-#                               angles:int|float|tuple|list|Sequence=[0],
-#                               window_shape:int|tuple=11,
-#                               regionprops_kwargs:dict={},
-#                               daskbag_kwargs:dict={'npartitions':8},
-#                               graycomtx_kwargs:dict={'symmetric':True,'normed':True},
-#                               pad_kwargs:dict={'mode':'reflect'},
-#                               windows_kwargs:dict={},
-#                               zeros_kwargs:dict={'dtype':float},
-#                               glcm_concat_kwargs:dict={}):
-
-#     # if prop is str, store it in a list, for compatibility with following iteration
-#     if isinstance(props,str):
-#         props=[props]
-
-#     # if distances and angles are int or float
-#     # store distances and angles in a list, for compatibility with skimage.feature.graycomatrix
-#     if isinstance(distances, int) or isinstance(distances,float):
-#         distances=[distances]
-    
-#     if isinstance(angles,int) or isinstance(angles,float):
-#         angles=[angles]
-    
-#     # if windows_shape is an integer, form a tuple with as many integers as the dimensions of image
-#     if isinstance(window_shape,int):
-#         window_shape = tuple(window_shape for d in image.shape)
-
-#     # print a warning if the any of the window dimension is smaller than distance, as this could lead to the
-#     # impossibility of actually measuring the value
-#     if min(window_shape)<max(distances):
-#         print(f"WARNING: using a window with at least one dimension of size smaller than the max distance to caluculate could lead to errors. Min window dim: {min(window_shape)}. Max distance: {max(distances)}")
-
-#     # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
-#     # NOTE: this is the default behaviour of CellProfiler
-#     if 'levels' not in graycomtx_kwargs:
-#         print("Default: Rescaling image to 8 intensity levels - indicate levels in graycomtx_kwargs to avoid this")
-#         image = rescale_intensity(image,out_range=(0,7)).astype(np.uint8)
-#         graycomtx_kwargs['levels']=8
-
-#     # Pad image to allow feature map computation on boarders - NOTE: the default, hard coded behavior of using half
-#     # of the window size (in all dimensions) as pad
-#     if 'pad_width' not in pad_kwargs:
-#         pad_kwargs['pad_width']=tuple([ws//2 for ws in window_shape]))
-
-#     regions = regionprops(label_image, intensity_image=image, **regionprops_kwargs)
-    
-#     bag = db.from_sequence(regions, **daskbag_kwargs)
-#     results = bag.map(glcm_object,
-#                       props=props,
-#                       distances=distances,
-#                       angles=angles,
-#                       window_shape=window_shape,
-#                       graycomtx_kwargs=graycomtx_kwargs,
-#                       pad_kwargs=pad_kwargs,
-#                       windows_kwargs=windows_kwargs,
-#                       zeros_kwargs=zeros_kwargs,
-#                       glcm_concat_kwargs=glcm_concat_kwargs).compute()
-    
-#     # Assemble full-size feature map
-
-#     # Initialize a zero array to be updated for storing the feature map
-#     # NOTE: the feature array has the same shape of the input image, plus an extra dimension of
-#     # size: number of distances calculated * number of angles calculated. This extra dimension, which is always
-#     # in position -1, is where the feature maps per each distance and angle are stacked
-#     fmap_shape = list(image.shape)
-#     fmap_shape.append(len(distances)*len(angles)*len(props))
-#     fmap = np.zeros(fmap_shape, **zeros_kwargs)
-#     # print(type(results))
-#     for label, bbox, fmap_local in results:
-#         minr, minc, maxr, maxc = bbox
-#         fmap[minr:maxr, minc:maxc] += fmap_local
-#     return fmap
-
 def parallel_glcm_feature_map(image:np.array,
                               label_image:np.array,
                               props:str|Sequence|None=None,
@@ -876,6 +795,8 @@ def parallel_glcm_feature_map(image:np.array,
     === 
 
     Image must be 2D or 3D (multi-channel).
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     Label_image is assumed to have 0 as background. Label objects are assumed to be positive integers.
 
@@ -918,12 +839,23 @@ def parallel_glcm_feature_map(image:np.array,
 
     === 
     === IMPORTANT NOTE ===
-    By default, the input image is rescaled to 8 intensity levels, unless 'levels' is specified in graycomtx_kwargs.
-    These 8 intensity levels (which go from 0 to 7) are used for the GLCM calculation.
-    This default behaviour is inherited from CellProfiler. If the image is multi-channel, this rescaling is done, individually
-    and independently, per channel.
-    If 'levels' is specified in graycomtx_kwargs, no rescaling is done and the GLCM features are calculated on the specified
-    number of levels (see skimage.feature.graycomatrix for more details).
+    By default, None is passed to graycomtx_kwargs to the downstram glcm_feature_map_ch function.
+    This leads to the following behavior when rescaling the image intensity:
+        - If no channel axis is specified, each individual object bounding box
+        is rescaled to 8 intensity levels (0-7) before calculating the GLCM.
+        - If a channel axis is specified, per each channel, each individual
+        object bounding box independently rescaled to 8 intensity levels (0-7)
+        before calculating the GLCM for that channel.
+    To avoid per-object rescaling, the 'levels' argument needs to be set to the
+    desired value in graycomtx_kwargs. Note that setting 'levels' to any value will
+    completely avoid any intensity rescaling, while also specifying the number of
+    intensity levels to use for calculating the GLCM matrix.
+    For example, if an image is uint8 data type, setting 'levels' to 256 in
+    graycomtx_kwargs will avoid rescaling and indicate that per each object gray
+    levels from 0 to 255 should be used for GLCM calculation. While setting 'levels'
+    to 200 will avoid rescaling and indicate that per each object gray levels from 0 to 199
+    should be used for GLCM calculation.
+    Ref to the documentation of glcm_feature_map_ch for more details.
     ===
 
     The function has been tested on:
@@ -935,6 +867,8 @@ def parallel_glcm_feature_map(image:np.array,
     === === ===
     Inputs:
     - image: 2D or 3D numpy array. The input image for which the haralick feature map has to be computed.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     - label_image: 2D numpy array. The labelled image indicating the objects/regions for which the haralick feature map
     has to be computed. Pixels with value 0 are considered background. Positive integers indicate label objects.
@@ -1002,53 +936,14 @@ def parallel_glcm_feature_map(image:np.array,
     # Copy image and label
     image = image.copy()
     label_image = label_image.copy()
-
-    # use default properties
-    if props is None:
-        props=['contrast']
-    else:
-        # if prop is str, store it in a list, for compatibility with following iteration
-        if isinstance(props,str):
-            props=[props]
-
-    # use default distances
-    if distances is None:
-        distances=[1]
-    else:
-        # if distances are int or float
-        # store distances in a list, for compatibility with skimage.feature.graycomatrix
-        if isinstance(distances, int) or isinstance(distances,float):
-            distances=[distances]
     
-    # use default angles
-    if angles is None:
-        angles=[0]
-    else:
-        # store angles in a list, for compatibility with skimage.feature.graycomatrix
-        if isinstance(angles,int) or isinstance(angles,float):
-            angles=[angles]
-
-    # use defaults
+    # Set defaults
     if regionprops_kwargs is None:
         regionprops_kwargs={}
     
     if daskbag_kwargs is None:
         daskbag_kwargs={'npartitions': 8}
     
-    if graycomtx_kwargs is None:
-        graycomtx_kwargs={'symmetric': True, 'normed': True}
-    
-    if pad_kwargs is None:
-        pad_kwargs={'mode': 'reflect'}
-    
-    if windows_kwargs is None:
-        windows_kwargs={}
-
-    if zeros_kwargs is None:
-        zeros_kwargs={'dtype': float}
-    
-    if glcm_concat_kwargs is None:
-        glcm_concat_kwargs={}
 
     # move channel axis to the last position, if present - or add an axis of size 1 in the last position of image if no
     # channel axis is present
@@ -1058,47 +953,33 @@ def parallel_glcm_feature_map(image:np.array,
     else:
         image_with_ch_last = np.expand_dims(image,axis=-1)
 
-    # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
-    # NOTE: this is the default behaviour of CellProfiler
-    # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
-    if 'levels' not in graycomtx_kwargs:
+    # # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
+    # # NOTE: this is the default behaviour of CellProfiler
+    # # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
+    # if 'levels' not in graycomtx_kwargs:
         
-        # print a warning
-        print("Default: Rescaling image to 8 intensity levels - indicate levels in graycomtx_kwargs to avoid this")
+    #     # print a warning
+    #     print("Default: Rescaling image to 8 intensity levels - indicate levels in graycomtx_kwargs to avoid this")
 
-        # unstack channels and rescale them individually if a channel axis is present
-        if isinstance(channel_axis, int):
+    #     # unstack channels and rescale them individually if a channel axis is present
+    #     if isinstance(channel_axis, int):
 
-            # unstack channels
-            unstacked_channels = [image_with_ch_last[..., ch] for ch in range(image_with_ch_last.shape[-1])]
-            # rescale each channel individually
-            rescaled_channels = [rescale_intensity(unstacked_channels[ch], out_range=(0,7)).astype(np.uint8) for ch in range(image_with_ch_last.shape[-1])]
-            # restack channels
-            image_with_ch_last = np.stack(rescaled_channels, axis=-1)
+    #         # unstack channels
+    #         unstacked_channels = [image_with_ch_last[..., ch] for ch in range(image_with_ch_last.shape[-1])]
+    #         # rescale each channel individually
+    #         rescaled_channels = [rescale_intensity(unstacked_channels[ch], out_range=(0,7)).astype(np.uint8) for ch in range(image_with_ch_last.shape[-1])]
+    #         # restack channels
+    #         image_with_ch_last = np.stack(rescaled_channels, axis=-1)
         
-        # else, rescale the single channel image
-        else:
-            image_with_ch_last = rescale_intensity(image_with_ch_last,out_range=(0,7)).astype(np.uint8)
+    #     # else, rescale the single channel image
+    #     else:
+    #         image_with_ch_last = rescale_intensity(image_with_ch_last,out_range=(0,7)).astype(np.uint8)
 
-        graycomtx_kwargs = graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
-        # set the levels parameter in graycomtx_kwargs
-        graycomtx_kwargs['levels']=8
+    #     graycomtx_kwargs = graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
+    #     # set the levels parameter in graycomtx_kwargs
+    #     graycomtx_kwargs['levels']=8
     
-    # if windows_shape is an integer, form a tuple with as many integers as the dimensions of image MINUS THE CHANNELS!!
-    if isinstance(window_shape,int):
-        window_shape = tuple(window_shape for d in image_with_ch_last.shape[:-1])
 
-    # print a warning if the any of the window dimension is smaller than distance, as this could lead to the
-    # impossibility of actually measuring the value
-    if min(window_shape)<max(distances):
-        print(f"WARNING: using a window with at least one dimension of size smaller than the max distance to caluculate could lead to errors. Min window dim: {min(window_shape)}. Max distance: {max(distances)}")
-
-    # Pad image to allow feature map computation on boarders - NOTE: the default, hard coded behavior of using half
-    # of the window size (in all dimensions) as pad
-    if 'pad_width' not in pad_kwargs:
-        pad_kwargs = pad_kwargs.copy()  # to avoid modifying the input dictionary
-        pad_kwargs['pad_width']=tuple([(ws//2, ws//2) for ws in window_shape])
-    
     # get the number of channels
     n_channels = image_with_ch_last.shape[-1]
 
@@ -1190,6 +1071,8 @@ def haralick_regionprops_channel(image:np.array,
     This order is the same as the one produced by glcm_feature_map_ch.
     
     Image must be 2D grayscale image, with and extra dimension in position -1 containing the haralick feature maps.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     Label_image must have the same shape of image excluding the last dimension (i.e. the haralick feature maps dimension).
 
@@ -1214,6 +1097,19 @@ def haralick_regionprops_channel(image:np.array,
     if regionprops_kwargs is None:
         regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
                             'separator':'-'}
+
+    # ensure that 'separator' is in regionprops_kwargs and that it is different than sep
+    # NOTE: by default regionprops_kwargs separator is set to '-'
+    # NOTE: print a warning if regionprops separator is set to '_', as this can lead to wrong column names
+    if 'separator' not in regionprops_kwargs:
+        assert sep!='-', "using '-' as sep can only be done together with passing a 'separator' different than '-' to regionprops_kwargs"
+        regionprops_kwargs = regionprops_kwargs.copy() # to avoid modifying the input dictionary
+        regionprops_kwargs['separator']='-'
+    else:
+        assert regionprops_kwargs['separator']!=sep, "sep and regionprops's separator must be different"
+        if regionprops_kwargs['separator']=='_':
+            print("WARNING: using '_' as regionprops separator can lead to wrong column names")
+
 
     # measure intensities of hessian eigenvalues
     haralick_measurement_i = pd.DataFrame(regionprops_table(label_image,
@@ -1328,23 +1224,26 @@ def measure_haralick_features(image:np.array,
     https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.graycoprops
     https://scikit-image.org/docs/0.25.x/auto_examples/features_detection/plot_glcm.html).
 
-    - By default, the input image is rescaled to 8 intensity levels, unless 'levels' is specified in graycomtx_kwargs.
-    These 8 intensity levels (which go from 0 to 7) are used for the GLCM calculation.
-    This default behaviour is inherited from CellProfiler. If the image is multi-channel, this rescaling is done, individually
-    and independently, per channel.
-    If 'levels' is specified in graycomtx_kwargs, no rescaling is done and the GLCM features are calculated on the specified
-    number of levels (see skimage.feature.graycomatrix for more details).
+    - By default, the individual object-bounding boxes are rescaled to 8
+    intensity levels (0-7) before calculating the GLCM.
+    This is the default behaviour of CellProfiler.
+    Ref to the documentation of parallel_glcm_feature_map and glcm_feature_map_ch for more details.
 
     - As label objects are eroded before measuring region properties on haralick feature maps, small objects could
     disappear after erosion. In this case, no region properties will be measured for these objects and they will be
     missing in the output dataframe. A warning is printed if any object disappears after erosion, unless erosion_warning
     is set to False.
+
+    - If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
     ===
 
 
     === === ===
     Inputs:
     - image: 2D (grayscale) or 3D (multi-channel) numpy array. The input image for which the haralick feature maps have to be computed.
+    If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
+    positive valued images are supported.
 
     - label_image: 2D numpy array. The labelled image indicating the objects/regions for which the haralick feature maps
     have to be computed. Pixels with value 0 are considered background. Positive integers indicate label objects. Label_image
@@ -1439,32 +1338,6 @@ def measure_haralick_features(image:np.array,
     # Copy image and label
     original_image = image.copy()
     original_label_image = label_image.copy()
-
-    # use default properties
-    if props is None:
-        props=['contrast']
-    else:
-        # if prop is str, store it in a list, for compatibility with following iteration
-        if isinstance(props,str):
-            props=[props]
-
-    # use default distances
-    if distances is None:
-        distances=[1]
-    else:
-        # if distances are int or float
-        # store distances in respective lists, for compatibility with skimage.feature.graycomatrix
-        if isinstance(distances, int) or isinstance(distances,float):
-            distances=[distances]
-    
-    # use default angles
-    if angles is None:
-        angles=[0]
-    else:
-        # if anlges are int or float
-        # store angles in respective lists, for compatibility with skimage.feature.graycomatrix
-        if isinstance(angles,int) or isinstance(angles,float):
-            angles=[angles]
     
     # move channel axis to the last position, if present, and change channel_axis accordingly
     if isinstance(channel_axis, int):
@@ -1473,84 +1346,47 @@ def measure_haralick_features(image:np.array,
     else:
         ch_axis = channel_axis  # None
     
-    # set defaults
-    if regionprops_kwargs is None:
-        regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
-                            'separator':'-'}
-    
     if erosion_kwargs is None:
         erosion_kwargs={'footprint':disk(9)}
     
     if merge_kwargs is None:
         merge_kwargs={}
-    
-    if glcm_regionprops_kwargs is None:
-        glcm_regionprops_kwargs={}
-    
-    if glcm_daskbag_kwargs is None:
-        glcm_daskbag_kwargs={'npartitions': 8}
-    
-    if glcm_graycomtx_kwargs is None:
-        glcm_graycomtx_kwargs={'symmetric': True, 'normed': True}
 
-    if glcm_pad_kwargs is None:
-        glcm_pad_kwargs={'mode': 'reflect'}
-    
-    if glcm_windows_kwargs is None:
-        lcm_windows_kwargs={}
-    
-    if glcm_zeros_kwargs is None:
-        glcm_zeros_kwargs={'dtype': float}
-    
-    if glcm_concat_kwargs is None:
-        glcm_concat_kwargs={}
-    
-    if sep is None:
-        sep="_"
 
-    # ensure that 'separator' is in regionprops_kwargs and that it is different than sep
-    # NOTE: by default regionprops_kwargs separator is set to '-'
-    # NOTE: print a warning if regionprops separator is set to '_', as this can lead to wrong column names
-    if 'separator' not in regionprops_kwargs:
-        assert sep!='-', "using '-' as sep can only be done together with passing a 'separator' different than '-' to regionprops_kwargs"
-        regionprops_kwargs = regionprops_kwargs.copy() # to avoid modifying the input dictionary
-        regionprops_kwargs['separator']='-'
-    else:
-        assert regionprops_kwargs['separator']!=sep, "sep and regionprops's separator must be different"
-        if regionprops_kwargs['separator']=='_':
-            print("WARNING: using '_' as regionprops separator can lead to wrong column names")
-
-    # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
-    # NOTE: this is the default behaviour of CellProfiler
-    # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
-    if 'levels' not in glcm_graycomtx_kwargs:
+    # # Rescale image in a 8 steps intensity level, if nothing is indicated in graycomtx_kwargs
+    # # NOTE: this is the default behaviour of CellProfiler
+    # # NOTE: this rescaling is done per each channel individually if channel_axis is not None!!!
+    # if 'levels' not in glcm_graycomtx_kwargs:
         
-        # print a warning
-        print("Default: Rescaling image to 8 intensity levels - indicate levels in glcm_graycomtx_kwargs to avoid this")
+    #     # print a warning
+    #     print("Default: Rescaling image to 8 intensity levels - indicate levels in glcm_graycomtx_kwargs to avoid this")
 
-        # unstack channels and rescale them individually if a channel axis is present
-        if isinstance(channel_axis, int):
+    #     # unstack channels and rescale them individually if a channel axis is present
+    #     if isinstance(channel_axis, int):
 
-            # unstack channels
-            unstacked_channels = [original_image[..., ch] for ch in range(original_image.shape[-1])] # the channel axis is now in the last position
+    #         # unstack channels
+    #         unstacked_channels = [original_image[..., ch] for ch in range(original_image.shape[-1])] # the channel axis is now in the last position
             
-            # rescale each channel individually
-            rescaled_channels = [rescale_intensity(unstacked_channels[ch], out_range=(0,7)).astype(np.uint8) for ch in range(original_image.shape[-1])]
+    #         # rescale each channel individually
+    #         rescaled_channels = [rescale_intensity(unstacked_channels[ch], out_range=(0,7)).astype(np.uint8) for ch in range(original_image.shape[-1])]
             
-            # restack channels
-            original_image = np.stack(rescaled_channels, axis=-1)
+    #         # restack channels
+    #         original_image = np.stack(rescaled_channels, axis=-1)
 
-        # else, rescale the single channel image
-        else:
-            original_image = rescale_intensity(original_image, out_range=(0,7)).astype(np.uint8)
+    #     # else, rescale the single channel image
+    #     else:
+    #         original_image = rescale_intensity(original_image, out_range=(0,7)).astype(np.uint8)
         
-        glcm_graycomtx_kwargs = glcm_graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
-        # set the levels parameter in glcm_graycomtx_kwargs
-        glcm_graycomtx_kwargs['levels']=8
+    #     glcm_graycomtx_kwargs = glcm_graycomtx_kwargs.copy()  # to avoid modifying the input dictionary
+    #     # set the levels parameter in glcm_graycomtx_kwargs
+    #     glcm_graycomtx_kwargs['levels']=8
 
     assert (isinstance(channel_axis, int) or channel_axis==None), "channel_axis must be either int or None"
-    assert 'properties' in regionprops_kwargs, "properties must be in regionprops_kwargs"
-    assert 'label' in regionprops_kwargs['properties'], "label must be in regionprops_kwargs['properties']"
+    
+    # ensure that regionprops_kwargs contains 'properties' and 'label'
+    if regionprops_kwargs is not None:
+        assert 'properties' in regionprops_kwargs, "properties must be in regionprops_kwargs"
+        assert 'label' in regionprops_kwargs['properties'], "label must be in regionprops_kwargs['properties']"
 
 
     # calculate haralick feature maps

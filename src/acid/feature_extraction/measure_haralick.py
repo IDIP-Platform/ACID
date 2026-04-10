@@ -594,12 +594,14 @@ def glcm_feature_map(image: np.typing.ArrayLike,
 
     # Set defaults
     if stack_kwargs is None:
-        assert "axis" not in stack_kwargs, "axis can't be passed to stack_kwargs. Use stack_axis argument instead."
         stack_kwargs:dict={}
+    else:
+        assert "axis" not in stack_kwargs, "axis can't be passed to stack_kwargs. Use stack_axis argument instead."
     
     if feature_concat_kwargs is None:
-        assert "axis" not in feature_concat_kwargs, "axis can't be passed to feature_concat_kwargs. Use feature_concat_axis argument instead."
         feature_concat_kwargs:dict={}
+    else:
+        assert "axis" not in feature_concat_kwargs, "axis can't be passed to feature_concat_kwargs. Use feature_concat_axis argument instead."
 
     # Prepare image
     image = np.asarray(image)

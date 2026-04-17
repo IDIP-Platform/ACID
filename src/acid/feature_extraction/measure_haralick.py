@@ -8,6 +8,7 @@ from skimage.morphology import disk, erosion
 from skimage.measure import regionprops, regionprops_table
 from skimage.util.shape import view_as_windows
 # from skimage.exposure import rescale_intensity
+from acid.utils.miscellaneous_utils import _normalize_to_list
 from acid.image_processing.rescale_intensity import quantize_image
 
 
@@ -602,10 +603,17 @@ def glcm_feature_map(image: np.typing.ArrayLike,
     If 'levels' is passed to graycomtx_kwargs, only integer typed input images are supported and only
     positive valued images are supported.
 
-    - props, distances, angles, mask, window_shape, graycomtx_kwargs,
+    - props, distances, angles, mask, graycomtx_kwargs,
       pad_kwargs, windows_kwargs, zeros_kwargs:
       same as glcm_feature_map_ch.
     
+    - window_shape.
+        If channel_axis is None: same as glcm_feature_map_ch.
+        Else: int or tuple.
+            If int: same as glcm_feature_map_ch.
+            Else: must match the number of dimensions of individual channels (aka, the number of
+            dimensions of the image, minus 1). Then it behaves as glcm_feature_map_ch.
+
     - glcm_concat_kwargs: same as concat_kwargs in glcm_feature_map_ch.
 
     - channel_axis: int or None. Axis corresponding to channels.
@@ -666,6 +674,12 @@ def glcm_feature_map(image: np.typing.ArrayLike,
         feature_concat_kwargs:dict={}
     else:
         assert "axis" not in feature_concat_kwargs, "axis can't be passed to feature_concat_kwargs. Use feature_concat_axis argument instead."
+
+    # ensure that window_shape is specific for channels, if channel axis is passed and
+    # window shape is a tuple
+    if not isinstance(window_shape, int):
+        assert len(window_shape) == image.ndim - 1, \
+        "If channel axis is passed and window_shape is a tuple, window_shape must match spatial dims (excluding channel axis)"
 
     # Prepare image
     image = np.asarray(image)
@@ -1019,6 +1033,27 @@ def parallel_glcm_feature_map(image:np.array,
         fmap[minr:maxr, minc:maxc, channel_axis, :] += fmap_local
 
     return fmap
+
+def haralick_compute_feature_count(kwargs,
+                                   n_channels):
+    """
+    helper to get the number of feature functions computed by glcm_feature_map_ch,
+    glcm_feature_map and parallel_glcm_feature_map.
+    This is only used in combination with dask.map_overlap.
+    """
+    props = _normalize_to_list(kwargs.get('props'), ['contrast'])
+    distances = _normalize_to_list(kwargs.get('distances'), [1])
+    angles = _normalize_to_list(kwargs.get('angles'), [0])
+
+    F_per_channel = len(props) * len(distances) * len(angles)
+
+    if kwargs.get('channel_axis')==None:
+        return F_per_channel, None
+    else:
+        if kwargs.get('stack_channels', True):
+            return F_per_channel, True
+        else:
+            return F_per_channel * n_channels, False
 
 
 def haralick_prop_ch_map(props:Sequence,

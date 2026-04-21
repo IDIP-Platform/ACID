@@ -24,3 +24,11 @@ def map_image_to_condition(condition_list, image_file_names, assert_file_number=
             condition_dict[condition] = image_file
         
         return condition_dict
+
+
+def _normalize_to_list(x, default):
+    if x is None:
+        return default
+    if isinstance(x, (int, float, str)):
+        return [x]
+    return list(x)

@@ -227,7 +227,7 @@ def fraction_in_extreme_percentiles(
             top_fraction[i] = np.count_nonzero((pixels >= high) & valid) / total
 
         # Warn if any slice was invalid
-        if np.any(np.isnan(bottom_fraction)):
+        if np.any(bottom_fraction == null_val):
             warnings.warn("One or more slices contained no valid (non-NaN) pixels.")
 
         # Return results

@@ -22,6 +22,7 @@ dependencies = [
   "opencv-python>=4.13.0.92",
   "pandas>=3.0.1",
   "pycytominer>=1.4.0",
+  "PyQt5>=5.15.0",
   "roifile>=2026.2.10",
   "scikit-image>=0.26.0",
   "scikit-learn>=1.8.0",

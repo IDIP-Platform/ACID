@@ -1,1 +1,1 @@
-all = ["measure_image_stat"]
+all = ["measure_glob_image_stat", "measure_local_image_stat"]

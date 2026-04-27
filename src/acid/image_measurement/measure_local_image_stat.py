@@ -337,10 +337,6 @@ def aggregate_local_stat(
     # Return scalar aggregate measurement.
     return result
 
-from typing import Any, Callable, Optional, Sequence, Union
-import numpy as np
-from numpy.typing import ArrayLike, DTypeLike, NDArray
-
 
 def aggregate_local_stat_along_axis(
     image: ArrayLike,

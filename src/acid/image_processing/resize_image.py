@@ -12,6 +12,9 @@ def downsample_local_mean(image:np.array,
     
     # check that kwargs does not contain keys that are already passed as dedicated arguments
     assert 'channel_axis' not in kwargs, "channel_axis can't be passed to kwargs, please use the dedicated argument"
+    
+    # check that kwargs does not contain output_shape key, as the output shape is
+    # determined by the factor argument and the input image shape
     assert 'output_shape' not in kwargs, "output_shape can't be passed to kwargs"
 
     # intialize a list to collect the new shape of the image after resizing

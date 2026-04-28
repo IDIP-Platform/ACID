@@ -18,7 +18,7 @@ def downsample_local_mean(image:np.array,
     assert 'output_shape' not in kwargs, "output_shape can't be passed to kwargs"
 
     # intialize a list to collect the new shape of the image after resizing
-    new_shape = []
+    output_shape = []
     
     # iterate through the image shape
     for p,s in enumerate(image.shape):
@@ -29,10 +29,13 @@ def downsample_local_mean(image:np.array,
         
         # downsize the axes and collect them to the axes to be downsized
         else:
-            new_shape.append(s//factor)
-
+            output_shape.append(s//factor)
+    
+    # convert output_shape to tuple
+    output_shape = tuple(output_shape)
+    
     # resize image
-    resized_img = resize_local_mean(image, new_shape, channel_axis=channel_axis, **kwargs)
+    resized_img = resize_local_mean(image, output_shape, channel_axis=channel_axis, **kwargs)
     
     # return dtype_image
     return resized_img

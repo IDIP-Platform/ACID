@@ -20,7 +20,11 @@ from skimage.filters import gaussian
 #         return filtered_stack
 
 def median_filter_image(image:np.array,
-                        kwargs:dict={})->np.array:
+                        **kwargs)->np.array:
+    if 'size' not in kwargs and 'footprint' not in kwargs:
+        kwargs['size'] = 3
+        print("neither size nor footprint specified for median filter, using default size of 3")
+    
     return median_filter(image, **kwargs)
 
 

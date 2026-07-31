@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
-from image_quality_control.measure_plls import compute_plls
+
+from acid.image_quality_control.measure_plls import compute_plls
 
 
 def run_all_tests():
@@ -52,7 +53,7 @@ def run_all_tests():
     def test_axis_slicing():
         img = np.zeros((3, 64, 64))
         img[0] = np.random.random((64, 64))
-        img[1] = np.linspace(0, 1, 64).reshape(64,1)
+        img[1] = np.linspace(0, 1, 64).reshape(64, 1)
         img[2] = 5
         slopes = compute_plls(img, axis=0)
         assert len(slopes) == 3
@@ -82,7 +83,7 @@ def run_all_tests():
     # ----------------------------------------
     def test_nan_image():
         img = np.ones((64, 64))
-        img[10,10] = np.nan
+        img[10, 10] = np.nan
         slope = compute_plls(img)
         assert np.isnan(slope) or np.isfinite(slope)
 
@@ -136,7 +137,7 @@ def run_all_tests():
     # 12 — Negative values
     # ----------------------------------------
     def test_negative_values():
-        img = np.random.random((64,64)) - 0.5  # [-0.5,0.5]
+        img = np.random.random((64, 64)) - 0.5  # [-0.5,0.5]
         slope = compute_plls(img)
         assert np.isfinite(slope) or np.isnan(slope)
 
@@ -144,7 +145,7 @@ def run_all_tests():
     # 13 — Very large image
     # ----------------------------------------
     def test_large_image():
-        img = np.random.random((512,512))
+        img = np.random.random((512, 512))
         slope = compute_plls(img)
         assert np.isfinite(slope) or np.isnan(slope)
 
@@ -172,22 +173,23 @@ def run_all_tests():
     # 16 — Min/max intensity
     # ----------------------------------------
     def test_min_max_intensity():
-        img_min = np.full((64,64), np.finfo(np.float32).min)
-        img_max = np.full((64,64), np.finfo(np.float32).max)
+        img_min = np.full((64, 64), np.finfo(np.float32).min)
+        img_max = np.full((64, 64), np.finfo(np.float32).max)
         slope_min = compute_plls(img_min)
         slope_max = compute_plls(img_max)
         assert np.isnan(slope_min) or np.isfinite(slope_min)
         assert np.isnan(slope_max) or np.isfinite(slope_max)
 
-
     # ----------------------------------------
     # 17 — Plotting mode (does not crash)
     # ----------------------------------------
     def test_plotting_mode():
-        img = np.random.random((64,64))
-        for p in (False,"all", "fft", "radial", "loglog"):
-            for ps in ("first","all"):
-                slope, _, freqs_fit, powers_fit = compute_plls(img, plot=p, plot_slices=ps, return_details=True)
+        img = np.random.random((64, 64))
+        for p in (False, "all", "fft", "radial", "loglog"):
+            for ps in ("first", "all"):
+                slope, _, freqs_fit, powers_fit = compute_plls(
+                    img, plot=p, plot_slices=ps, return_details=True
+                )
                 assert np.isfinite(slope) or np.isnan(slope)
                 assert len(freqs_fit) == len(powers_fit)
 
@@ -211,14 +213,13 @@ def run_all_tests():
         test_multichannel_image,
         test_single_pixel_zstack,
         test_min_max_intensity,
-        test_plotting_mode
+        test_plotting_mode,
     ]
 
     for tf in test_functions:
         run_test(tf.__name__, tf)
 
     print("\nAll tests completed successfully ✅")
-
 
 
 def plls_vs_blur(
@@ -261,7 +262,7 @@ def plls_vs_blur(
             blurred = gaussian_filter(image, sigma=sigma)
 
         # Compute PLLS
-        slope, _, _, _ = plls_func(blurred,**plls_func_kwargs)
+        slope, _, _, _ = plls_func(blurred, **plls_func_kwargs)
         slopes.append(slope)
 
     slopes = np.array(slopes)
@@ -276,9 +277,9 @@ def plls_vs_blur(
     plt.tight_layout()
     plt.show()
 
-    plt.savefig(r'C:\Users\aless\OneDrive\Desktop\Ale\lab\CIID_IDIP\others\MIDAscience_bioimage_consultation\20260120_IDIP_MIDAscience_meeting\plls_vs_blur_test.png')
+    plt.savefig(
+        r"C:\Users\aless\OneDrive\Desktop\Ale\lab\CIID_IDIP\others\MIDAscience_bioimage_consultation\20260120_IDIP_MIDAscience_meeting\plls_vs_blur_test.png"
+    )
 
     if return_values:
         return np.array(sigmas), slopes
-
-

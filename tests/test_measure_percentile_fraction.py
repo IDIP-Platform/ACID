@@ -3,7 +3,7 @@ import warnings
 import matplotlib.pyplot as plt
 from typing import Tuple
 
-from image_quality_control.measure_percentile_fraction import (
+from acid.image_quality_control.measure_percentile_fraction import (
     fraction_in_extreme_percentiles,
 )
 
@@ -122,7 +122,9 @@ def run_all_tests():
     # ------------------------------------------------------------------
     def test_return_thresholds_slicing():
         img = np.stack([np.linspace(0, 1, 10), np.linspace(1, 2, 10)])
-        b, t, lowt, hight = fraction_in_extreme_percentiles(img, axis=0, return_thresholds=True)
+        b, t, lowt, hight = fraction_in_extreme_percentiles(
+            img, axis=0, return_thresholds=True
+        )
         assert b.shape == (2,)
         assert lowt.shape == (2,)
         assert hight.shape == (2,)
@@ -215,7 +217,7 @@ def contamination_vs_saturation(
         images (reshaped to the original image dimensions) corresponding to the
         highest tested contamination fraction for saturation and minimum-value
         corruption respectively.  These may be ``None`` if ``n_steps`` is
-        zero.    """
+        zero."""
 
     # check that an image was actually provided
     if image is None:
@@ -259,9 +261,9 @@ def contamination_vs_saturation(
 
     # lists that will collect results for each corruption level
     bottom_sat = []  # bottom-percentile for saturated case
-    top_sat = []     # top-percentile for saturated case
-    bottom_zero = [] # bottom-percentile for zero case
-    top_zero = []    # top-percentile for zero case
+    top_sat = []  # top-percentile for saturated case
+    bottom_zero = []  # bottom-percentile for zero case
+    top_zero = []  # top-percentile for zero case
 
     # fixed RNG ensures reproducibility of which pixels are chosen
     rng = np.random.default_rng(0)
@@ -329,22 +331,22 @@ def contamination_vs_saturation(
                 idx = np.arange(count, dtype=int)
 
         # ----- saturated version -----
-        corrupted = flat.copy()              # start with original pixel values
-        corrupted[idx] = maxval             # set selected pixels to saturation value
+        corrupted = flat.copy()  # start with original pixel values
+        corrupted[idx] = maxval  # set selected pixels to saturation value
         b, t = fraction_in_extreme_percentiles(corrupted, percentiles=percentile_tuple)
-        bottom_sat.append(b)                # record bottom fraction result
-        top_sat.append(t)                   # record top fraction result
+        bottom_sat.append(b)  # record bottom fraction result
+        top_sat.append(t)  # record top fraction result
         if i == len(fractions) - 1:
             # reshape the highest-fraction corrupted data back into original shape
             max_corrupted_sat = corrupted.reshape(arr.shape)
 
         # "zeroed" version – actually set to the minimum value determined
         # earlier, which may not be literal zero (useful for signed/shifted data)
-        corrupted = flat.copy()              # restore original values
-        corrupted[idx] = minval             # set selected pixels to minimum
+        corrupted = flat.copy()  # restore original values
+        corrupted[idx] = minval  # set selected pixels to minimum
         b, t = fraction_in_extreme_percentiles(corrupted, percentiles=percentile_tuple)
-        bottom_zero.append(b)               # store bottom fraction
-        top_zero.append(t)                  # store top fraction
+        bottom_zero.append(b)  # store bottom fraction
+        top_zero.append(t)  # store top fraction
         if i == len(fractions) - 1:
             max_corrupted_min = corrupted.reshape(arr.shape)
 
@@ -359,17 +361,21 @@ def contamination_vs_saturation(
             raise ValueError("axes must be iterable with five elements")
         axes = (ax0, ax1, ax2, ax3, ax4)
 
-    axes[0].imshow(arr, cmap='gray', aspect='auto')
-    axes[0].set_title('Original image')
-    axes[0].axis('off') # hide axes for image display
+    axes[0].imshow(arr, cmap="gray", aspect="auto")
+    axes[0].set_title("Original image")
+    axes[0].axis("off")  # hide axes for image display
 
-    axes[1].imshow(max_corrupted_sat, cmap='gray', aspect='auto')
-    axes[1].set_title(f'Max-value/saturation \n corruption ({fractions[-1]:.2f} fraction)')
-    axes[1].axis('off') # hide axes for image display
+    axes[1].imshow(max_corrupted_sat, cmap="gray", aspect="auto")
+    axes[1].set_title(
+        f"Max-value/saturation \n corruption ({fractions[-1]:.2f} fraction)"
+    )
+    axes[1].axis("off")  # hide axes for image display
 
-    axes[2].imshow(max_corrupted_min, cmap='gray', aspect='auto')
-    axes[2].set_title(f'Minimum-value/underexposure \n corruption ({fractions[-1]:.2f} fraction)')
-    axes[2].axis('off') # hide axes for image display
+    axes[2].imshow(max_corrupted_min, cmap="gray", aspect="auto")
+    axes[2].set_title(
+        f"Minimum-value/underexposure \n corruption ({fractions[-1]:.2f} fraction)"
+    )
+    axes[2].axis("off")  # hide axes for image display
 
     # plot saturated results on left panel
     # axes[0].plot(fractions, bottom_sat, label="bottom")
@@ -388,9 +394,6 @@ def contamination_vs_saturation(
     axes[4].legend()
 
     # if we created our own figure, tidy layout/show; otherwise caller handles it
-    if 'fig' in locals():
+    if "fig" in locals():
         fig.tight_layout()
         plt.show()
-
-
-

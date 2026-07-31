@@ -1,8 +1,8 @@
 import os
-import numpy as np
+
+# import numpy as np
 # from aicsimageio.writers.ome_tiff_writer import OmeTiffWriter
 from tifffile import imwrite as tifffileimwrite
-
 
 # def aicsimageio_save_ometiff(data,
 #                              save_path:os.PathLike,
@@ -13,7 +13,7 @@ from tifffile import imwrite as tifffileimwrite
 
 #     Forms an ome.tiff file using aicsimageio.writers.ome_tiff_writer.OmeTiffWriter implementation
 #     (https://allencellmodeling.github.io/aicsimageio/aicsimageio.writers.html#aicsimageio.writers.ome_tiff_writer.OmeTiffWriter.build_ome)
-    
+
 #     Inputs:
 #     - data. array-like or list of array like. The data to be converted to ome.tif. Data is passed to the
 #     argument data in aicsimageio.writers.ome_tiff_writer.OmeTiffWriter ref to their documentation.
@@ -23,17 +23,19 @@ from tifffile import imwrite as tifffileimwrite
 #     Output:
 #     no output is provided, but an ome.tiff object is saved at the save_path.
 #     """
-    
+
 #     OmeTiffWriter.save(data,
 #                         save_path,
 #                         kwargs)
 
 
-def tifffile_save_ometiff(save_path:os.PathLike,
-                          data,
-                          imagej:bool=True,
-                          photometric:str|None=None,
-                          **kwargs):
+def tifffile_save_ometiff(
+    save_path: os.PathLike,
+    data,
+    imagej: bool = True,
+    photometric: str | None = None,
+    **kwargs,
+):
     """
     Forms an ome.tiff file using tifffile.imwrite (https://pypi.org/project/tifffile/) implementation.
 
@@ -49,16 +51,9 @@ def tifffile_save_ometiff(save_path:os.PathLike,
 
     Output:
     no output is provided, but an ome.tiff object is saved at the save_path.
-    
+
     """
     if photometric is None:
-        photometric="minisblack"
-    
-    tifffileimwrite(save_path,
-                     data,
-                     imagej=imagej,
-                     photometric=photometric,
-                     **kwargs)
-    
+        photometric = "minisblack"
 
-
+    tifffileimwrite(save_path, data, imagej=imagej, photometric=photometric, **kwargs)

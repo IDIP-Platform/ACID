@@ -1,21 +1,22 @@
-import math
+# import math
 import numpy as np
 import pandas as pd
 from skimage.feature import multiscale_basic_features
 from skimage.morphology import erosion, disk
 from skimage.measure import regionprops_table
 
-class MeasureHessianMatrix():
+
+class MeasureHessianMatrix:
     """
     Given an image (passed to __init__) and corresponding labelled objects (label_image) measures the statistics
     (by default mean, max, min and std) of the intensity distribution of the hessian matrix eigenvalues for each
     labelled object in a label image.
-    
+
     The hessian matrix eigenvalues are measurements of the intensity changes in the image in a neighbourhood of a pixel.
     Precisely, they are the second derivative of the intensity function on the image, thus they capture how steeply
     the intensity change changes. They are positive when the instensity change increases, negative when the intensity
     change decreases and they are 0 if the intensity change does not change.
-    
+
     Thus, relative to the actual intensity of the image, they capture the CURVATURE of the intensity
     (aka how BENT the intensity surface is):
     - large absolute values indicate a strong curvature.
@@ -46,7 +47,7 @@ class MeasureHessianMatrix():
 
     The eigenvectors indicate the directions of the reoriented axis (aka, the principal
     curvature directions).
-    
+
     ========= ========= =========
 
     The function, precisely:
@@ -117,20 +118,20 @@ class MeasureHessianMatrix():
     - image: The input image to analyze, as a NumPy array.
 
     ========= ========= =========
-    
+
     measure_obj_hessian_matrix_eigenval Inputs:
 
     - label_image. The label image to analyze, as a NumPy array. If axis is None, label_image must have the same shape
     as image. If axis is not None, label_image must have the same shape as image channels.
-    
+
     - sigma_min. float. Optional, default 1. The minimum sigma value for the hessian matrix. The parameter is passed to,
     and therefore behaves identically to what reported in skimage.feature.measure_basic_features sigma_min
     (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.multiscale_basic_features).
-    
+
     - sigma_max. float. Optional, default 1. The maximum sigma value for the hessian matrix. The parameter is passed to,
     and therefore behaves identically to what reported in skimage.feature.measure_basic_features sigma_max
     (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.multiscale_basic_features).
-    
+
     - num_sigma. int or None. Optional, default None. The number of sigma values to compute in the range sigma_min
     (included) and sigma_max (included). The parameter is passed to, and therefore behaves identically to what reported
     in skimage.feature.measure_basic_features num_sigma (https://scikit-image.org/docs/0.25.x/api/skimage.feature.html#skimage.feature.multiscale_basic_features).
@@ -172,16 +173,16 @@ class MeasureHessianMatrix():
     - sep. str. Optional, default '_'. The string to use to separate information bits in the column names of the output dataframe.
     It must be different than regionprops_kwargs['separator']. As a consequence, if the default separator is used for
     regionprops_kwargs, it can't be '-'.
-    
+
     ========= ========= =========
 
     measure_obj_hessian_matrix_eigenval Output:
-    
+
     pd.DataFrame. The dataframe structure and layout matches regionprops output: rows correspond to labelled objects
     in label_image, columns correspond to measurements. Per each image channel, per each sigma, the properties
     indicated in regionprops_kwargs (using the 'properties' and 'extra_properties' parameters) are computed per
     each eigenvalue.
-    
+
     If image has multiple channels, the channel index is indicated as the last number of the column name. It is
     separated from the rest of the column name by the string indicated in regionprops_kwarg['separator'].
 
@@ -190,7 +191,7 @@ class MeasureHessianMatrix():
     can be values with decimal points.
     """
 
-    def __init__(self, image:np.array):
+    def __init__(self, image: np.array):
         self.image = image
 
     # def default_sigma_num(x:float,y:float,factor:float) -> int:
@@ -213,52 +214,88 @@ class MeasureHessianMatrix():
     #         return 1*factor
     #     return val*factor
 
-    def measure_obj_hessian_matrix_eigenval(self,
-                                            label_image:np.array,
-                                            sigma_min:float=1,
-                                            sigma_max:float=1,
-                                            num_sigma:int|None=None,
-                                            axis:int|None=None,
-                                            mbf_kwargs:dict|None=None,
-                                            erosion_kwargs:dict|None=None,
-                                            regionprops_kwargs:dict|None=None,
-                                            erosion_warning:bool=True,
-                                            h_eigenval_position:int=-1,
-                                            sep:str|None=None)->pd.DataFrame:
+    def measure_obj_hessian_matrix_eigenval(
+        self,
+        label_image: np.array,
+        sigma_min: float = 1,
+        sigma_max: float = 1,
+        num_sigma: int | None = None,
+        axis: int | None = None,
+        mbf_kwargs: dict | None = None,
+        erosion_kwargs: dict | None = None,
+        regionprops_kwargs: dict | None = None,
+        erosion_warning: bool = True,
+        h_eigenval_position: int = -1,
+        sep: str | None = None,
+    ) -> pd.DataFrame:
         # use defaults
         if mbf_kwargs is None:
-            mbf_kwargs={}
-        
-        if erosion_kwargs is None:
-            erosion_kwargs={'footprint':disk(9)}
-        
-        if regionprops_kwargs is None:
-            regionprops_kwargs={'properties':['label', 'intensity_mean', 'intensity_max', 'intensity_min', 'intensity_std'],
-                                'separator':'-'}
-        
-        if sep is None:
-            sep='_'
+            mbf_kwargs = {}
 
-        assert 'image' not in mbf_kwargs, "image can't be passed to mbf_kwargs, as the image input to __init__ is used for processing"
-        assert 'sigma_min' not in mbf_kwargs, "sigma_min can't be passed to mbf_kwargs, use sigma_min argument instead"
-        assert 'sigma_max' not in mbf_kwargs, "sigma_max can't be passed to mbf_kwargs, use sigma_max argument instead"
-        assert 'num_sigma' not in mbf_kwargs, "num_sigma can't be passed to mbf_kwargs, use num_sigma argument instead"
-        assert 'channel_axis' not in mbf_kwargs, "channel_axis can't be passed to mbf_kwargs, use axis argument instead"
-        assert 'intensity' not in mbf_kwargs, "intensity can't be passed to mbf_kwargs as it is set to be False. Hessian eigenvalues can't be properly extracted if True"
-        assert 'edges' not in mbf_kwargs, "edges can't be passed to mbf_kwargs as it is set to be False. Hessian eigenvalues can't be properly extracted if True"
-        assert 'texture' not in mbf_kwargs, "texture can't be passed to mbf_kwargs as it is set to be True. Hessian eigenvalues can't be extracted otherwise"
-        assert h_eigenval_position==-1, "for the best it could be checked, the eigenvalues of hessian matrix are added in the last dimension by skimage.feature.multiscale_basic_features"
-        if 'separator' not in regionprops_kwargs:
-            assert sep!='-', "using '-' as sep can only be done together with passing a 'separator' different than '-' to regionprops_kwargs"
-            regionprops_kwargs = regionprops_kwargs.copy() # to avoid modifying the input dictionary
-            regionprops_kwargs['separator']='-'
+        if erosion_kwargs is None:
+            erosion_kwargs = {"footprint": disk(9)}
+
+        if regionprops_kwargs is None:
+            regionprops_kwargs = {
+                "properties": [
+                    "label",
+                    "intensity_mean",
+                    "intensity_max",
+                    "intensity_min",
+                    "intensity_std",
+                ],
+                "separator": "-",
+            }
+
+        if sep is None:
+            sep = "_"
+
+        assert (
+            "image" not in mbf_kwargs
+        ), "image can't be passed to mbf_kwargs, as the image input to __init__ is used for processing"
+        assert (
+            "sigma_min" not in mbf_kwargs
+        ), "sigma_min can't be passed to mbf_kwargs, use sigma_min argument instead"
+        assert (
+            "sigma_max" not in mbf_kwargs
+        ), "sigma_max can't be passed to mbf_kwargs, use sigma_max argument instead"
+        assert (
+            "num_sigma" not in mbf_kwargs
+        ), "num_sigma can't be passed to mbf_kwargs, use num_sigma argument instead"
+        assert (
+            "channel_axis" not in mbf_kwargs
+        ), "channel_axis can't be passed to mbf_kwargs, use axis argument instead"
+        assert (
+            "intensity" not in mbf_kwargs
+        ), "intensity can't be passed to mbf_kwargs as it is set to be False. Hessian eigenvalues can't be properly extracted if True"
+        assert (
+            "edges" not in mbf_kwargs
+        ), "edges can't be passed to mbf_kwargs as it is set to be False. Hessian eigenvalues can't be properly extracted if True"
+        assert (
+            "texture" not in mbf_kwargs
+        ), "texture can't be passed to mbf_kwargs as it is set to be True. Hessian eigenvalues can't be extracted otherwise"
+        assert (
+            h_eigenval_position == -1
+        ), "for the best it could be checked, the eigenvalues of hessian matrix are added in the last dimension by skimage.feature.multiscale_basic_features"
+        if "separator" not in regionprops_kwargs:
+            assert (
+                sep != "-"
+            ), "using '-' as sep can only be done together with passing a 'separator' different than '-' to regionprops_kwargs"
+            regionprops_kwargs = (
+                regionprops_kwargs.copy()
+            )  # to avoid modifying the input dictionary
+            regionprops_kwargs["separator"] = "-"
         else:
-            assert regionprops_kwargs['separator']!=sep, "sep and regionprops's separator must be different"
-            if regionprops_kwargs['separator']=='_':
-                print("WARNING: using '_' as regionprops separator can lead to wrong column names")
+            assert (
+                regionprops_kwargs["separator"] != sep
+            ), "sep and regionprops's separator must be different"
+            if regionprops_kwargs["separator"] == "_":
+                print(
+                    "WARNING: using '_' as regionprops separator can lead to wrong column names"
+                )
 
         # if axis is provided
-        if axis!=None:
+        if axis != None:
             # move channel axis in the last position, if it is provided
             img = np.moveaxis(self.image, axis, -1)
 
@@ -269,14 +306,14 @@ class MeasureHessianMatrix():
             ch_number = img.shape[-1]
 
             # get the number of eigenvalues
-            eigenv_number = len(img.shape)-1
-        
+            eigenv_number = len(img.shape) - 1
+
         else:
             # set img to be a copy of the input image (will be passed to multiscale_basic_feature's image)
             img = self.image.copy()
 
             # set ax to None (will be passed to multiscale_basic_feature's channel axis)
-            ax=None
+            ax = None
 
             # set the number of channels as 1
             ch_number = 1
@@ -284,52 +321,57 @@ class MeasureHessianMatrix():
             # get the number of eigenvalues
             eigenv_number = len(img.shape)
 
-
         # calculate hessian eigenvalues
-        h_eigenvals_i = multiscale_basic_features(img,
-                                                  sigma_min=sigma_min,
-                                                  sigma_max=sigma_max,
-                                                  num_sigma=num_sigma,
-                                                  channel_axis=ax,
-                                                  intensity=False,
-                                                  edges=False,
-                                                  texture=True,
-                                                  **mbf_kwargs)
-        
+        h_eigenvals_i = multiscale_basic_features(
+            img,
+            sigma_min=sigma_min,
+            sigma_max=sigma_max,
+            num_sigma=num_sigma,
+            channel_axis=ax,
+            intensity=False,
+            edges=False,
+            texture=True,
+            **mbf_kwargs,
+        )
+
         # calculate the number of sigmas which have been computed
-        if num_sigma!=None:
+        if num_sigma != None:
             computed_sigma = num_sigma
 
             # assertion statement: the number of sigma, times number of channels times number of eigenvalue should match
             # the hessian eigenvalues calculated by skimage.feature.multiscale_basic_features
-            tot_number = computed_sigma*ch_number*eigenv_number
-            assert tot_number==h_eigenvals_i.shape[h_eigenval_position]
-        
+            tot_number = computed_sigma * ch_number * eigenv_number
+            assert tot_number == h_eigenvals_i.shape[h_eigenval_position]
+
         else:
-            computed_sigma=int((h_eigenvals_i.shape[h_eigenval_position]/eigenv_number)/ch_number)
+            computed_sigma = int(
+                (h_eigenvals_i.shape[h_eigenval_position] / eigenv_number) / ch_number
+            )
 
             # assertion statement: the number of sigma, times number of channels times number of eigenvalue should match
             # the hessian eigenvalues calculated by skimage.feature.multiscale_basic_features
-            assert h_eigenvals_i.shape[h_eigenval_position]%eigenv_number==0
-            assert (h_eigenvals_i.shape[h_eigenval_position]/eigenv_number)%ch_number==0
+            assert h_eigenvals_i.shape[h_eigenval_position] % eigenv_number == 0
+            assert (
+                h_eigenvals_i.shape[h_eigenval_position] / eigenv_number
+            ) % ch_number == 0
 
         # form a dictionary mapping the calculated hessian eigenvalues to the corresponding eigenvalue order,
         # (potential) sigma and (potential) channel
-        mapper={}
-        i=0
+        mapper = {}
+        i = 0
         for ch in range(ch_number):
             for si_gma in range(computed_sigma):
                 for eigv in range(eigenv_number):
                     # mapper[i]=f"hessian{eigv}eigen{eigv}{sep}{si_gma}{regionprops_kwargs['separator']}{ch}"
-                    mapper[str(i)]=(eigv+1, si_gma, ch)
-                    i=i+1
+                    mapper[str(i)] = (eigv + 1, si_gma, ch)
+                    i = i + 1
 
         # erode labels
         eroded_label_image = erosion(label_image, **erosion_kwargs)
-        
+
         # check for cell loss due to erosion if erosion_warning is set to True
         if erosion_warning:
-            
+
             # get the number of labelled objects before erosion
             labels_before = np.unique(label_image)
 
@@ -338,15 +380,19 @@ class MeasureHessianMatrix():
 
             # print a warning message if the number of labels before and after erosion don't correspond
             if labels_before.shape != labels_after.shape:
-                print(f"WARNING: possible loss of labelled object due to erosion. Number of objects before erosion: {labels_before[0]-1}. Number of objects after erosion: {labels_after[0]-1}")
-        
+                print(
+                    f"WARNING: possible loss of labelled object due to erosion. Number of objects before erosion: {labels_before[0]-1}. Number of objects after erosion: {labels_after[0]-1}"
+                )
+
         # ensure eigenvalues are in the last position of h_eigenvals
-        h_eigenvals = np.moveaxis(h_eigenvals_i, h_eigenval_position,-1)
+        h_eigenvals = np.moveaxis(h_eigenvals_i, h_eigenval_position, -1)
 
         # measure intensities of hessian eigenvalues
-        h_eigen_measurement_i = pd.DataFrame(regionprops_table(eroded_label_image,
-                                                               intensity_image=h_eigenvals,
-                                                               **regionprops_kwargs))
+        h_eigen_measurement_i = pd.DataFrame(
+            regionprops_table(
+                eroded_label_image, intensity_image=h_eigenvals, **regionprops_kwargs
+            )
+        )
 
         # rename columns
         # initialize a dictionary to be used as a mapper for column renaming
@@ -354,49 +400,53 @@ class MeasureHessianMatrix():
 
         # iterate through the columns
         for clm in h_eigen_measurement_i.columns:
-            
+
             # split column name to separate the regionprops measurement and the h_eigenvals index
-            clm_split = clm.split(sep=regionprops_kwargs['separator'])
+            clm_split = clm.split(sep=regionprops_kwargs["separator"])
 
             # don't modify the column name if no h_eigenvals index position is present
             # these are non-intensity measurements as 'area', 'perimenter' etc... in addition, they are the 'label' column and the centroid
-            if len(clm_split)==1:
-                new_clm=clm
+            if len(clm_split) == 1:
+                new_clm = clm
 
             else:
                 # get eigenvalue order and sigma info
                 clm_eigenv, clm_sigma, clm_ch = mapper[clm_split[-1]]
 
                 # it the input image has no channels
-                if ch_number==1:
+                if ch_number == 1:
 
                     # if only 1 sigma was calculated
-                    if computed_sigma==1:
+                    if computed_sigma == 1:
                         # only add eigenval order info to the column
-                        new_clm = f"hessian{sep}eigv{sep}{clm_eigenv}{sep}{clm_split[0]}"
-                    
+                        new_clm = (
+                            f"hessian{sep}eigv{sep}{clm_eigenv}{sep}{clm_split[0]}"
+                        )
+
                     # if more than 1 sigma was calculated
                     else:
                         # add eigenval order and sigma info to the column
                         new_clm = f"hessian{sep}eigv{sep}{clm_eigenv}{sep}{clm_split[0]}{sep}{clm_sigma}"
-                
+
                 # if the input channel has more than a channel
                 else:
 
                     # if only 1 sigma was calculated
-                    if computed_sigma==1:
+                    if computed_sigma == 1:
                         # add eigenval order and channel to the column
                         new_clm = f"hessian{sep}eigv{sep}{clm_eigenv}{sep}{clm_split[0]}{regionprops_kwargs['separator']}{clm_ch}"
-                    
+
                     # if more than 1 sigma was calculated
                     else:
                         # add eigenval order, sigma and channel to the column
                         new_clm = f"hessian{sep}eigv{sep}{clm_eigenv}{sep}{clm_split[0]}{sep}{clm_sigma}{regionprops_kwargs['separator']}{clm_ch}"
-            
+
             # link old and new column names in the column mapper dictionary
-            column_mapper[clm]=new_clm
+            column_mapper[clm] = new_clm
 
         # rename columns of h_eigen_measurement_i
-        h_eigen_measurement = h_eigen_measurement_i.rename(column_mapper,axis=1, copy=True)
+        h_eigen_measurement = h_eigen_measurement_i.rename(
+            column_mapper, axis=1, copy=True
+        )
 
         return h_eigen_measurement

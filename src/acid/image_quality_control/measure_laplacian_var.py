@@ -1,4 +1,3 @@
-
 """
 This code was taken from here: https://medium.com/@nasuhcanturker/a-practical-way-to-detect-blurry-images-python-and-opencv-16c0a99f51df
 
@@ -8,9 +7,10 @@ This is code is not implemented properly for the current project. It is here as 
 
 """
 
-import os
+# import os
 import cv2
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 
 
 def is_blurry(image, threshold=1000.0):
@@ -82,7 +82,5 @@ def process_video(video_path, threshold=1000.0):
 
 
 # Example usage
-video_path = (
-    r"Path/video.mp4"  # Replace with your video path
-)
+video_path = r"Path/video.mp4"  # Replace with your video path
 process_video(video_path, threshold=1250.0)

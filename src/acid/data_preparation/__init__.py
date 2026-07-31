@@ -1,1 +1,1 @@
-all = ["format_str", "map_category", "train_test_split"]
+__all__ = ["format_str", "map_category", "train_test_split"]

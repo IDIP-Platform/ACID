@@ -1,99 +1,107 @@
-import datetime
-import pandas as pd
+# import datetime
+# import pandas as pd
 
-def try_string_to_integer(info_bit,default_return=None):
-        try:
-            subinfobit = int(info_bit)
-        except:
-            subinfobit = default_return
-        return subinfobit
 
-def extract_subinfo_bit(infobit:str,
-                        separator:str,
-                        subinfobit_position:int,
-                        extraction_method:str|None=None,
-                        default_return=None):
-    
+def try_string_to_integer(info_bit, default_return=None):
+    try:
+        subinfobit = int(info_bit)
+    except:
+        subinfobit = default_return
+    return subinfobit
+
+
+def extract_subinfo_bit(
+    infobit: str,
+    separator: str,
+    subinfobit_position: int,
+    extraction_method: str | None = None,
+    default_return=None,
+):
+
     try:
         # split infobit
         infobit_split = infobit.split(separator)
-        
+
         # get subinfobit
         subinfobit = infobit_split[subinfobit_position]
 
         # apply method if necessary
-        if extraction_method!=None:
+        if extraction_method != None:
 
-            if extraction_method=='try_int':
-                subinfobit = try_string_to_integer(subinfobit, default_return=subinfobit)
-    
+            if extraction_method == "try_int":
+                subinfobit = try_string_to_integer(
+                    subinfobit, default_return=subinfobit
+                )
+
     except:
         subinfobit = default_return
-    
+
     # return default if necessary
     return subinfobit
 
 
-def extract_name_metadata(file_name:str,
-                          separator:str|None=None,
-                          infobits:dict|None=None,
-                          replace_str:str|None=None,
-                          infobit_position:int=0,
-                          infobit_separator_position:int=1,
-                          subinfobit_position_position:int=2,
-                          extraction_method_position:int=3)->dict:
-    """
+def extract_name_metadata(
+    file_name: str,
+    separator: str | None = None,
+    infobits: dict | None = None,
+    replace_str: str | None = None,
+    infobit_position: int = 0,
+    infobit_separator_position: int = 1,
+    subinfobit_position_position: int = 2,
+    extraction_method_position: int = 3,
+) -> dict:
+    """ """
 
-    """
-    
     # set default separator
     if separator is None:
-        separator='_'
-    
+        separator = "_"
+
     # replace str in name if necessary
-    if replace_str!=None:
-        file_name = file_name.replace(' ', separator)
+    if replace_str != None:
+        file_name = file_name.replace(" ", separator)
 
     # split_input_file_name
     file_name_split = file_name.split(sep=separator)
 
     # intitialize the output dictionary
-    metadata_dict={}
+    metadata_dict = {}
 
-    if infobits!=None:
+    if infobits != None:
         # iterate through the metadata to extract
         for meta_data in infobits:
-            
+
             # get the information required to collect the infomation
             infobit_howto = infobits[meta_data]
-            
+
             # collect the information bit in the splitted file_name if required
-            if isinstance(infobit_howto,tuple):
-                
+            if isinstance(infobit_howto, tuple):
+
                 # get the information bit
                 infobit = file_name_split[infobit_howto[infobit_position]]
-                
+
                 # get the infobit_separator
                 infobit_separator = infobit_howto[infobit_separator_position]
-                
+
                 # get the subinfobit_position
                 subinfobit_position = infobit_howto[subinfobit_position_position]
-                
+
                 # get the extraction_method
                 extraction_method = infobit_howto[extraction_method_position]
-                
+
                 # get the subinfobit
-                subinfobit = extract_subinfo_bit(infobit=infobit,
-                                                separator=infobit_separator,
-                                                subinfobit_position=subinfobit_position,
-                                                extraction_method=extraction_method,
-                                                default_return=infobit)
+                subinfobit = extract_subinfo_bit(
+                    infobit=infobit,
+                    separator=infobit_separator,
+                    subinfobit_position=subinfobit_position,
+                    extraction_method=extraction_method,
+                    default_return=infobit,
+                )
 
                 # link subinfobit to meta_data in metadata_dict
-                metadata_dict[meta_data]=subinfobit
-            
+                metadata_dict[meta_data] = subinfobit
+
             else:
-                metadata_dict[meta_data]=infobit_howto
+                metadata_dict[meta_data] = infobit_howto
 
     return metadata_dict
 
@@ -116,12 +124,12 @@ def extract_name_metadata(file_name:str,
 # #     Inputs:
 # #     Input:
 # #     - files_list. iterable. List-like object with files names to extract metadata from. Elements are passed to extract_name_metadata function as file_name argument.
-    
+
 # #     - original_well_string_1. str. Optional. Default "Well". The string to be used in file_name to regognize the position of the well
 # #     information bit. It is expected that the well information bit corresponds to the 3 digits directly following original_well_string:
 # #     "original_well_string{CapitalLetter}{2-digits-number}" (default "Well{CapitalLetter}{2-digits-number}").
 # #     The parameter is  passed to extract_name_metadata function as original_well_string argument.
-    
+
 # #     - original_acquisition_settings_string_1. str. Optional. Default "Channel". The string to be used in file_name to recognize the position of
 # #     the acquisition_settings information bit. It is expected that the acquisition_settings information bit corresponds to the 11
 # #     digits directly following original_acquisition_settings_string: "original_acquisition_settings_string{3-digits-number},{3-digits-number},{3-digits-number}"
@@ -203,12 +211,12 @@ def extract_name_metadata(file_name:str,
 
 # #                 # add k to collect_dictionary and pair it with a list. Inside the list put the value linked to k in individual_file_dict
 # #                 collect_dictionary[k]=[individual_file_dict[k]]
-            
+
 # #             # if k is already present in collect_dictionary
 # #             else:
 # #                 # update the value linked to k in collect_dictionary, but appending the value linked to k in individual_file_dict
 # #                 collect_dictionary[k].append(individual_file_dict[k])
-        
+
 # #         return collect_dictionary
 
 
@@ -232,9 +240,8 @@ def extract_name_metadata(file_name:str,
 
 # #         # update the collection dictionary
 # #         add_metadata_to_dict(collection_dictionary, file_metadata_dict)
-    
+
 # #     # use collection dictionary to form a data frame
 # #     filename_metadata_df = pd.DataFrame.from_dict(collection_dictionary)
 
 # #     return filename_metadata_df
-

@@ -1,1 +1,1 @@
-all = ["display_illumination_correction"]
+__all__ = ["display_illumination_correction"]

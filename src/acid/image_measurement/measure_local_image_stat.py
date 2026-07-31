@@ -245,11 +245,6 @@ def local_map(
     return output
 
 
-from typing import Any, Callable, Optional, Sequence, Union
-import numpy as np
-from numpy.typing import ArrayLike, DTypeLike, NDArray
-
-
 def aggregate_local_stat(
     image: ArrayLike,
     local_func: Callable[[NDArray[np.number]], Union[int, float, np.number]],

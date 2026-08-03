@@ -1,0 +1,90 @@
+name: ✨ Feature Request
+description: Submit a proposal/request for a new feature
+
+title: "[FEAT]: "
+labels:
+  - "feature"
+  - "triage"
+
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **Note:** Please write your feature request in English to ensure it can be understood and addressed by the development team.
+
+  #--------------   Feature type    --------------
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: Please select what type of feature request you would like to propose.
+      options:
+        - Add new functionality to ACID
+        - Change existing functionality in ACID
+        - Remove existing functionality in ACID
+      multiple: false
+    validations:
+      required: true
+
+  #--------------   Feature description and motivation    --------------
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the feature request using the structure below.
+
+        **Example**
+
+        **Feature description**  
+        As an HPC user running ACID on large microscopy experiments,  
+        I want ACID to record fields of view that fail during processing without stopping the full experiment run,
+
+        **Motivation**  
+        Large microscopy datasets may contain corrupted ND2 files, missing channels, empty fields of view,
+        failed image quality checks, failed segmentations, or images with severe artifacts. One failed field
+        of view should not prevent the remaining valid fields of view from being processed. Structured failure
+        records would help users identify which images need manual review, which stage failed, why the failure
+        occurred, and whether the affected field of view should be excluded, fixed, or rerun.
+
+  - type: textarea
+    id: feature-description-and-motivation
+    attributes:
+      label: 🚀 The feature and motivation
+      description: >
+        Use the structure below. Replace the bracketed text with your feature request.
+        If this is connected to an existing GitHub issue, please include a link.
+      value: |
+        **Feature description**
+        As a [scientist, SSC developer, maintainer, or HPC user],
+        I want [a specific ACID capability, workflow change, or pipeline improvement],
+
+        **Motivation**
+        [Explain why this capability is needed for ACID. Describe the scientific, reproducibility,
+        usability, maintainability, testing, or HPC-readiness problem it solves. If relevant, mention
+        the affected pipeline step, such as ND2 import, field-of-view extraction, metadata generation,
+        train/test split, image quality control, background correction, segmentation, feature extraction,
+        or downstream measurements.]
+
+    validations:
+      required: true
+
+  #--------------   Additional context    --------------
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: >
+        Add any other context or screenshots about the feature request.
+
+  #--------------   Code of Conduct   --------------
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/IDIP-Platform/ACID/blob/main/CODE_OF_CONDUCT.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+
+  - type: markdown
+    attributes:
+      value: >
+        Thank you for your contribution! 🎉 The ACID Team

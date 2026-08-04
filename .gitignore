@@ -175,5 +175,5 @@ secondary_output/*
 data/*
 
 notebooks_new/data/*
-
 notebooks/data/*
+notebooks/secondary_output/*

@@ -1,6 +1,6 @@
 import pandas as pd
 from collections.abc import Sequence
-from utils.str_utils import extract_number, split_text_and_number
+from acid.utils.str_utils import extract_number, split_text_and_number
 
 
 def map_fov_categories(plate_layout_df:pd.DataFrame,
@@ -9,14 +9,14 @@ def map_fov_categories(plate_layout_df:pd.DataFrame,
                        well_column:str|None=None,
                        experiment_column:str|None=None,
                        treatment_column:str|None=None):
-    
+
     # set defaults
     if well_column is None:
         well_column='well'
-    
+
     if experiment_column is None:
         experiment_column='experiment'
-    
+
     if treatment_column is None:
         treatment_column='treatment'
 
@@ -34,17 +34,17 @@ def map_fov_categories_df(metadata_df:pd.DataFrame,
                           treatment__column:str|None=None,
                           wellasint_column:str|None=None,
                           drop_wellasint_column:bool=True)->pd.DataFrame:
-    
+
     # set defaults
     if well__column is None:
         well__column='well'
-    
+
     if experiment__column is None:
         experiment__column='experiment'
-    
+
     if treatment__column is None:
         treatment__column='treatment'
-    
+
     if wellasint_column is None:
         wellasint_column="int_well"
 
@@ -55,7 +55,7 @@ def map_fov_categories_df(metadata_df:pd.DataFrame,
     # add a column transforming wells in numbers
     original_metadata_df[wellasint_column] = original_metadata_df.apply(lambda row:
                                                                         extract_number(s=row[well__column]), axis=1)
-    
+
     # add a column with the treatment
     original_metadata_df[treatment__column] = original_metadata_df.apply(lambda row:
                                                                         map_fov_categories(plate_layout_df=original_plate_layout_df,
@@ -88,14 +88,14 @@ def map_layout_condition(condition_list:Sequence,
         If int or float, the function will try to convert the second part of the splat string
         in, respectively an integer or a float.
         If None (default), non type conversion will be tried.
-    
+
     regex: regex str|None.
         The regex expression to use for splitting the input string.
-    
+
     null_value. tuple. Optional, default (None, None).
         The value returned if the input string can't be split using the input regex expression.
 
-    
+
     Returns
     -------
     tuple
@@ -104,7 +104,7 @@ def map_layout_condition(condition_list:Sequence,
     """
     if regex is None:
         regex = r'^(.*?)(\d+)$'
-    
+
     prefixes = []
     suffixes = []
     for c in condition_list:
@@ -121,6 +121,3 @@ def map_layout_condition(condition_list:Sequence,
         return unique_prefixes, unique_suffixes
     else:
         return prefixes, suffixes
-
-
-

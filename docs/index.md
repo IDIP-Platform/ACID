@@ -17,6 +17,7 @@ and extracts cellular features.
 ## Start Here
 
 - [Installation](installation.md): set up ACID with `uv`, VS Code, and Jupyter.
+- [Learn](learn/quickstart.md): start with the quickstart tutorial.
 - [ACID Project](acid-project/project.md): read the project background and
   scientific scope.
 - [Data](data/input-data.md): understand expected input files, output folders,

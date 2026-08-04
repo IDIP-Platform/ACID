@@ -1,123 +1,50 @@
 # Installation
 
-ACID is a Python package for microscopy image processing, quality control,
-segmentation, and feature extraction workflows.
+Install ACID with `uv` from a local checkout.
 
 ## Requirements
 
 - Python `>=3.11,<3.13`
-- [`uv`](https://docs.astral.sh/uv/) for environment and dependency management
-
-Check your Python version:
-
-```bash
-python --version
-```
+- [`uv`](https://docs.astral.sh/uv/)
 
 ## Clone the Repository
 
-```bash
-git clone https://github.com/IDIP-Platform/ACID.git
-cd ACID
-```
-
-## One-Time Setup
-
-Run these steps once after cloning the repository.
-
-## Create the Environment
-
-Create a local virtual environment:
-
-```bash
-uv venv
-```
-
-Activate it:
-
-=== "Linux/macOS"
+=== "Linux"
 
     ```bash
-    source .venv/bin/activate
+    git clone https://github.com/IDIP-Platform/ACID.git
+    cd ACID
+    ```
+
+=== "macOS"
+
+    ```bash
+    git clone https://github.com/IDIP-Platform/ACID.git
+    cd ACID
     ```
 
 === "Windows PowerShell"
 
     ```powershell
-    .venv\Scripts\Activate.ps1
+    git clone https://github.com/IDIP-Platform/ACID.git
+    cd ACID
     ```
 
-## Install ACID
+## Install
 
-Install the package and its core dependencies:
-
-```bash
-uv sync
-```
-
-For editable development, install the local package in editable mode:
-
-```bash
-uv pip install -e .
-```
-
-## VS Code Setup
-
-When working in VS Code:
-
-1. Open the ACID repository folder.
-2. Open a terminal with **Terminal > New Terminal**.
-3. Create and activate the virtual environment.
-4. Run `uv sync`.
-5. Run `uv pip install -e .` for editable package development.
-6. Select the interpreter with **Python: Select Interpreter** and choose the
-   `.venv` Python executable.
-
-## Install Documentation Dependencies
-
-The documentation tools are kept in the optional `docs` dependency group.
-
-```bash
-uv sync --extra docs
-```
-
-To install all optional dependency groups:
-
-```bash
-uv sync --all-extras
-```
-
-## Run the Documentation Site Locally
-
-After installing the `docs` group, serve the documentation site with:
-
-```bash
-uv run zensical serve
-```
-
-## Use ACID in Notebooks
-
-If you want to use the environment from Jupyter or VS Code notebooks, install an
-IPython kernel:
-
-```bash
-uv pip install ipykernel
-python -m ipykernel install --user --name acid-env --display-name "ACID"
-```
-
-Then select the `ACID` kernel in your notebook editor.
-
-In VS Code notebooks, use the kernel selector in the top-right corner and choose
-the `ACID` kernel.
-
-## Daily Restart
-
-When returning to the project:
-
-=== "Linux/macOS"
+=== "Linux"
 
     ```bash
-    cd path/to/ACID
+    uv venv
+    source .venv/bin/activate
+    uv sync
+    uv pip install -e .
+    ```
+
+=== "macOS"
+
+    ```bash
+    uv venv
     source .venv/bin/activate
     uv sync
     uv pip install -e .
@@ -126,24 +53,76 @@ When returning to the project:
 === "Windows PowerShell"
 
     ```powershell
-    cd path\to\ACID
+    uv venv
     .venv\Scripts\Activate.ps1
     uv sync
     uv pip install -e .
     ```
 
-Run `uv sync` whenever `pyproject.toml` or `uv.lock` changes.
+## VS Code
 
-## Update Dependencies
+Open the repository folder, then select the project interpreter:
 
-When `pyproject.toml` or `uv.lock` changes, synchronize the environment again:
+=== "Linux"
 
-```bash
-uv sync
-```
+    `.venv/bin/python`
 
-For documentation work:
+=== "macOS"
 
-```bash
-uv sync --extra docs
-```
+    `.venv/bin/python`
+
+=== "Windows PowerShell"
+
+    `.venv\Scripts\python.exe`
+
+## Notebooks
+
+Install a Jupyter kernel:
+
+=== "Linux"
+
+    ```bash
+    uv pip install ipykernel
+    python -m ipykernel install --user --name acid-env --display-name "ACID"
+    ```
+
+=== "macOS"
+
+    ```bash
+    uv pip install ipykernel
+    python -m ipykernel install --user --name acid-env --display-name "ACID"
+    ```
+
+=== "Windows PowerShell"
+
+    ```powershell
+    uv pip install ipykernel
+    python -m ipykernel install --user --name acid-env --display-name "ACID"
+    ```
+
+Select the `ACID` kernel in VS Code or Jupyter.
+
+## Documentation
+
+=== "Linux"
+
+    ```bash
+    uv sync --extra docs
+    uv run zensical serve
+    ```
+
+=== "macOS"
+
+    ```bash
+    uv sync --extra docs
+    uv run zensical serve
+    ```
+
+=== "Windows PowerShell"
+
+    ```powershell
+    uv sync --extra docs
+    uv run zensical serve
+    ```
+
+Run `uv sync` again whenever `pyproject.toml` or `uv.lock` changes.

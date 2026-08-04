@@ -58,6 +58,9 @@ nav = [
     { "Dengue Cell Painting" = "acid-project/dengue-cell-painting.md" },
   ] },
   { "Installation" = "installation.md" },
+  { "Learn" = [
+    { "Quickstart" = "learn/quickstart.md" },
+  ] },
   { "Data" = [
     { "Input data" = "data/input-data.md" },
     { "Output data" = "data/output-data.md" },

@@ -20,12 +20,6 @@ repos:
     - --autofix
   - id: mixed-line-ending      # Ensure consistent line endings
 
-- repo: https://github.com/kynan/nbstripout
-  rev: 0.9.1
-  hooks:
-  - id: nbstripout     # Make sure that Jupyter notebooks under version control have their outputs stripped before committing
-    files: .ipynb
-
 - repo: https://github.com/pecigonzalo/pre-commit-shfmt
   rev: v2.2.0
   hooks:

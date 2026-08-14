@@ -1,0 +1,45 @@
+output:
+  directory: "data/proc/fov_proc"
+  secondary:
+    enabled: true
+    directory: "secondary_output"
+
+metadata:
+  directory: "data/proc/proc_metadata"
+  filename: "default"
+
+  default_selection:
+    include: ".csv"
+    exclude: null
+    date_source: "modified_time"
+    select: "newest"
+    filename_date_separator: "_"
+    filename_date_position: 0
+    filename_date_format: "%Y%m%d"
+
+  dataset_split:
+    column: "is_train" #"dataset_split"
+    labels:
+      train: 1
+      validation: 0
+      test: 3
+
+background_correction:
+  background_directory: "data/proc/background"
+
+  strategies:
+    dataset: 1
+    well: 2
+    grid_position: 3
+
+  default_selection:
+    include: ".ome.tif"
+    exclude: null
+
+  background_function_strategy : 1
+  background_function_timestamp : "default"
+  background_from_file_name : False
+  background_default_separator : "_"
+  background_default_date_position : 0
+  background_default_date_format : "%Y%m%d"
+  background_default_reverse : True

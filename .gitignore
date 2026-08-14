@@ -182,3 +182,5 @@ notebooks_legacy/secondary_output/*
 
 notebooks_refactoring/data/*
 notebooks_refactoring/secondary_output/*
+
+sandbox_edwin/data_example/*

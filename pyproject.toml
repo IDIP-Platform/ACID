@@ -40,15 +40,7 @@ dependencies = [
 acid = "acid:main"
 
 [project.optional-dependencies]
-dev = [
-    "pre-commit>=4.0.0",
-    "pytest>=9.1.1",
-    "pytest-cov>=7.1.0",
-]
-notebooks = [
-    "ipykernel>=6.31.0",
-    "nbstripout>=0.9.1",
-]
+
 
 [build-system]
 requires = ["hatchling"]
@@ -61,3 +53,17 @@ packages = ["src/acid"]
 [tool.pytest.ini_options]
 addopts = ["-p", "no:napari"]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.3",
+    "pre-commit>=4.0.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ipywidgets>=8.1.8",
+]
+
+notebooks = [
+    "ipykernel>=6.31.0",
+    "nbstripout>=0.9.1",
+]

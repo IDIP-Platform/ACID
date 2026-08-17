@@ -25,16 +25,19 @@ metadata:
       test: 3
 
 background_correction:
-  background_directory: "data/proc/background"
+  directory: "data/proc/background"
+  filename : "default"
+
+  default_selection:
+    include: ".ome.tif"
+    exclude: null
 
   strategies:
     dataset: 1
     well: 2
     grid_position: 3
 
-  default_selection:
-    include: ".ome.tif"
-    exclude: null
+
 
   background_function_strategy : 1
   background_function_timestamp : "default"

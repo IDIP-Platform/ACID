@@ -17,12 +17,12 @@ repos:
         args: ["--fix=lf"]
       - id: trailing-whitespace
 
-  #- repo: https://github.com/astral-sh/ruff-pre-commit
-  #  rev: v0.15.21
-  #  hooks:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.21
+    hooks:
   #    - id: ruff-check
   #      args: ["--fix"]
-  #    - id: ruff-format
+      - id: ruff-format
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1

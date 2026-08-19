@@ -1,0 +1,134 @@
+# Suggested hierarchy for the background-correction notebook.
+# Leaf variable names are preserved from config.yaml.
+
+project:
+    project_name: "ACID"
+
+input_field_of_view:
+    # Source field-of-view images and metadata columns used to identify them.
+    fov_directory: "data/proc/fov"
+    fov_column_name: "ome_tif_file_name"
+    gridpos_column_name: "scene_name"
+    well_column_name: "well"
+
+metadata:
+    loading:
+        # Metadata dataframe to open before background correction.
+        directory: "data/proc/proc_metadata"
+        filename: "default"
+
+        default_selection:
+            include: ".csv"
+            exclude:
+                - "part_4b"
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+    filtering:
+        dataset_split:
+            column: "is_train"
+            labels:
+                train: 1
+                validation: 0
+                test: 3
+
+    saving:
+        # Metadata dataframe written after background correction.
+        metadata_date_format: "%Y%m%d"
+        metadata_savingword: "metadata"
+        save_csv_index: false
+        metadata_file_suffix: "part_4b.csv"
+
+output:
+    # High-level output locations for this notebook run.
+    directory: "data/proc/fov_proc"
+    dtype: "float32"
+
+    secondary:
+        enabled: true
+        directory: "secondary_output"
+
+    image_files:
+        # Corrected field-of-view image naming and TIFF saving settings.
+        output_directory: "data/proc/fov_proc"
+        ome_suffix: ".ome.tif"
+        save_file_name_separator: "_"
+        fov_illumin_corrected_savingword: "bg"
+        save_imagej_compatible: true
+        photometric: "minisblack"
+
+background_correction:
+    background_function:
+        # Background function/image selection.
+        directory: "data/proc/background"
+        filename: "default"
+
+        default_selection:
+            include: ".ome.tif"
+            exclude: null
+
+        strategies:
+            dataset: 1
+            well: 2
+            grid_position: 3
+
+        background_function_strategy: 1
+        background_function_timestamp: "default"
+        background_from_file_name: false
+        background_default_separator: "_"
+        background_default_date_position: 0
+        background_default_date_format: "%Y%m%d"
+        background_default_reverse: true
+
+    correction_parameters:
+        # Parameters passed to the background-correction algorithm.
+        method: "division"
+        offset: 400
+        rescale_background: "max"
+        clip_corrected_image: false
+        min_clip_value: 0
+        max_clip_value: null
+        offset_background: true
+        output_dtype: "float32"
+
+    array_parameters:
+        # Array layout and numerical-stability parameters.
+        channel_axis: 0
+        epsilon: 1.0e-8
+        working_dtype: "float32"
+        zero_kwargs: null
+        verbose: true
+
+    metadata:
+        # Values used when building per-image metadata and dataframe updates.
+        null_value: .nan
+
+        processing_entries:
+            proc_img_meta_date_name: "processing_date_yymmdd"
+            proc_img_meta_dtype_name: "dtype"
+            processing_date_format: "%y%m%d"
+
+        image_metadata_entries:
+            illum_corr_method_metadata_entry: "illumination_correction_method"
+            illum_corr_offset_metadata_entry: "illumination_correction_offset"
+            illum_corr_rescale_metadata_entry: "illumination_correction_rescale_background"
+            illum_corr_clipping_metadata_entry: "illumination_correction_clipping"
+            illum_corr_clip_min_value_metadata_entry: "illumination_correction_min_clip_value"
+            illum_corr_clip_max_value_metadata_entry: "illumination_correction_max_clip_value"
+            illum_corr_offset_background_metadata_entry: "illumination_correction_offset_background"
+
+        dataframe_columns:
+            column_name_separator: "_"
+            illum_correct_df_date_clm_name: "illumination_correction_date"
+            illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+            illum_correct_df_method_clm_name: "illumination_correction_method"
+            illum_correct_df_offset_clm_name: "illumination_correction_offset"
+            illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+            illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+            illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+            illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+            illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+            illum_correct_df_meta_date_format: "%y%m%d"

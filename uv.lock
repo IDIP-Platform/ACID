@@ -47,12 +47,6 @@ dependencies = [
     { name = "torch-vision" },
 ]
 
-[package.optional-dependencies]
-docs = [
-    { name = "mkdocstrings-python" },
-    { name = "zensical" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "ipywidgets" },
@@ -60,6 +54,10 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+]
+docs = [
+    { name = "mkdocstrings-python" },
+    { name = "zensical" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -76,7 +74,6 @@ requires-dist = [
     { name = "jupyterlab", specifier = ">=4.5.6" },
     { name = "mahotas", specifier = ">=1.4.18" },
     { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=2.0.5" },
     { name = "napari", specifier = "==0.6.6" },
     { name = "numba", specifier = ">=0.64.0" },
     { name = "numpy", specifier = ">=2.4.3" },
@@ -94,9 +91,7 @@ requires-dist = [
     { name = "tifffile", specifier = ">=2026.3.3" },
     { name = "torch", specifier = ">=2.10.0" },
     { name = "torch-vision", specifier = ">=0.1.6.dev0" },
-    { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.52" },
 ]
-provides-extras = ["docs"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -105,6 +100,10 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "ruff", specifier = ">=0.16.3" },
+]
+docs = [
+    { name = "mkdocstrings-python", specifier = ">=2.0.5" },
+    { name = "zensical", specifier = ">=0.0.52" },
 ]
 notebooks = [
     { name = "ipykernel", specifier = ">=6.31.0" },

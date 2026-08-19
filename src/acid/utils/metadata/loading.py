@@ -36,7 +36,7 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     default_selection = metadata_config.get("default_selection", {})
 
     if _is_default_filename(filename):
-        logger.info(f'Filename: {filename}')
+        logger.debug(f"Default option enabled or empty string: {filename}")
         resolved_filename = _resolve_default_metadata_filename(
             directory=directory,
             default_selection=default_selection,
@@ -44,12 +44,15 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     else:
         resolved_filename = filename
 
+    logger.info(f"Metadata file to load: {resolved_filename}")
+
     metadata_path = directory / resolved_filename
 
     if not metadata_path.is_file():
         raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
     return pd.read_csv(metadata_path), resolved_filename
+
 
 # ----------------------------------------------------------
 # ---------------  HELPER FUNCTIONS  -----------------------
@@ -138,8 +141,7 @@ def _use_filename_date(default_selection: dict) -> bool:
         return False
 
     raise ValueError(
-        f'Invalid date_source {date_source!r}. '
-        'Expected "filename" or "modified_time".'
+        f'Invalid date_source {date_source!r}. Expected "filename" or "modified_time".'
     )
 
 

@@ -108,12 +108,20 @@ background_correction:
     save_imagej_compatible: true
     photometric: "minisblack"
 
-
+# =============================================================================
+# METADATA DATAFRAME FILE SAVING
+# =============================================================================
+#illum_correct_df_meta_date_format: "%y%m%d"
+#metadata_directory: "data/proc/proc_metadata"
+metadata_date_format: "%Y%m%d"
+project_name: "ACID"
+metadata_savingword: "metadata"
+save_csv_index: false
+metadata_file_suffix: "part_4b.csv"
 
 # =============================================================================
 # INPUT FIELD-OF-VIEW CONFIGURATION
 # =============================================================================
-
 
 gridpos_column_name: "scene_name"
 well_column_name: "well"
@@ -174,7 +182,7 @@ well_column_name: "well"
 # =============================================================================
 # METADATA DATAFRAME COLUMN NAMING
 # =============================================================================
-column_name_separator: "_"
+#column_name_separator: "_"
 #illum_correct_df_date_clm_name: "illumination_correction_date"
 #illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
 #illum_correct_df_method_clm_name: "illumination_correction_method"
@@ -184,16 +192,3 @@ column_name_separator: "_"
 #illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
 #illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
 #illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
-
-
-
-# =============================================================================
-# METADATA DATAFRAME FILE SAVING
-# =============================================================================
-#illum_correct_df_meta_date_format: "%y%m%d"
-metadata_directory: "data/proc/proc_metadata"
-metadata_date_format: "%Y%m%d"
-project_name: "ACID"
-metadata_savingword: "metadata"
-save_csv_index: false
-metadata_file_suffix: "part_4b.csv"

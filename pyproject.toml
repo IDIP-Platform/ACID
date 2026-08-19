@@ -1,3 +1,15 @@
+#=========================================================================
+#========================       BUILD TABLE       ========================
+#=========================================================================
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+
+#=========================================================================
+#===================       PROJECT METADATA TABLE       ==================
+#=========================================================================
 [project]
 name = "acid"
 version = "0.1.0"
@@ -36,16 +48,19 @@ dependencies = [
   "torch-vision>=0.1.6.dev0",
 ]
 
+[project.optional-dependencies]
+docs=[
+  "mkdocstrings-python>=2.0.5",
+  "zensical>=0.0.52",
+]
+
 [project.scripts]
 acid = "acid:main"
 
-[project.optional-dependencies]
 
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
+#=========================================================================
+#========================       TOOLS TABLE       ========================
+#=========================================================================
 [tool.hatch.build.targets.wheel]
 packages = ["src/acid"]
 

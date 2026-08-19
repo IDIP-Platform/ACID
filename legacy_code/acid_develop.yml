@@ -1,7 +1,6 @@
-name: acid
+name: acid_develop
 channels:
   - pytorch
-  - nvidia
   - conda-forge
   - defaults
 dependencies:
@@ -10,18 +9,24 @@ dependencies:
   - pip
   - numpy
   - matplotlib
-  - pandas
   - scipy
-  - scikit-image
+  - pandas
+  - dask
+  - numba
   - tifffile
+  - statsmodels
+  - scikit-image
   - scikit-learn
-  - pytorch=2.4.0
-  - torchvision=0.19.0
-  - torchaudio=2.4.0
-  - pytorch-cuda=12.1
+  - seaborn
+  - mahotas
+  - pytorch
+  - torchvision
+  - torchaudio
   - napari
+  - pycytominer
   - pip:
     - roifile
     - cellpose
+    - opencv-python
     - bioio
     - bioio-nd2

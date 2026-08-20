@@ -861,3 +861,50 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
 
     # Return the remapped label image and the mapping dictionary.
     return contained_labels_matched, mapping
+
+def exclude_label_on_edge(label_image:np.array)->np.array:
+    """
+    Remove labels touching the edges of the image.
+    Parameters:
+        label_image (ndarray): 2D or 3D label image (int).
+    Returns:
+        ndarray: New label image with edge-touching labels set to 0.
+    
+    NOTE: the function defines "edges" as: labels that touch the first or last index in any dimension.
+    Consequently, the function works on 2D and 3D arrays as the intuitive definition of "edge" for these situations
+    matches the above definition. For higher dimensional arrays, the function will exclude labels which touch their
+    first or last indexes.
+    """
+    # copy input image
+    label_image = label_image.copy()
+    
+    # Get image shape
+    img_shape = label_image.shape
+
+    # Initialize a set to collect unique labels on the edges
+    edge_labels = set()
+    
+    # Iterate through the dimensions of the label_image
+    for dim in range(label_image.ndim):
+
+        # initialize place-holders for slicing the array on the first and last indexes of the dimension
+        slc_start = [slice(None)] * label_image.ndim
+        slc_end = [slice(None)] * label_image.ndim
+        
+        # set 0 and -1 as indexes for the dim under iteration in the above initialized place-holders
+        slc_start[dim] = 0
+        slc_end[dim] = -1
+
+        # select unique labels at the edges for the dim and add them to the set collection
+        edge_labels.update(np.unique(label_image[tuple(slc_start)]))
+        edge_labels.update(np.unique(label_image[tuple(slc_end)]))
+
+    # Remove background
+    edge_labels.discard(0)
+
+    # Zero out edge-touching labels
+    mask = np.isin(label_image, list(edge_labels))
+    label_image[mask] = 0
+    
+    return label_image
+

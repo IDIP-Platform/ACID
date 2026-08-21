@@ -85,8 +85,8 @@ measurements for every cell that can then be plotted and analysed.
 
 | File | Stage | What it does | Conda environment
 |---|---|---|---|
-| `processing` | 1 | Preprocessing: shadow correction, equalization, median subtraction, denoising, contract enhancement | processing |
-| `segmentation_tracking_features` | 2-4 | Segment, track and extract features in one workflow | cellphepy |
+| `processing.ipynb or processing.py` | 1 | Preprocessing: shadow correction, equalization, median subtraction, denoising, contract enhancement | processing |
+| `segmentation_tracking_features.ipynb or segmentation_tracking_features.py` | 2-4 | Segment, track and extract features in one workflow | cellphepy |
 
 Two conda environments are used, because Cellpose / CellPhe / Java versions don't coexist cleanly.
 

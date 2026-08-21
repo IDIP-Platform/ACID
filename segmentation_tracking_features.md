@@ -18,18 +18,21 @@ flowchart LR
 %%{init: {'flowchart': {'nodeSpacing': 25, 'rankSpacing': 40}, 'themeVariables': {'fontSize': '13px'}}}%%
     subgraph c1[" "]
         direction TB
-        raw["<b>Raw data</b>"] --> proc["<b>Processing</b>
+        raw["<b>Raw data</b>"] --> proc["<b>Stage 1</b>
+        <b>Processing</b>
         1) Illumination correction
         2) Equalization
         3) Median subtraction
         4) Denoising
         5) Contrast enhancement"]
-        proc --> seg["<b>Segmentation</b>
+        proc --> seg["<b>Stage 2</b>
+        <b>Segmentation</b>
         1) cpsam
         2) cpsam_v2
         3) cpdino
         4) cpdino_vitb"]
-        seg --> track["<b>Tracking</b>
+        seg --> track["<b>Stage 3</b>
+        <b>Tracking</b>
         1) Overlap
         2) SimpleSparseLAP
         3) SparseLAP
@@ -37,7 +40,8 @@ flowchart LR
         5) AdvancedKalman"]
     end
  
-    feat["<b>Feature extraction</b>
+    feat["<b>Stage 4</b>
+    <b>Feature extraction</b>
     1) size
     2) shape
     3) texture

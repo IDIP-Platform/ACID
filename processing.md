@@ -16,25 +16,40 @@ steps were applied, so any file can be traced back to the settings that made it.
 
 Graph has to be fixed!
 ```mermaid
-flowchart TB
-    raw["Raw data processing"] --> shad["Shadow correction"]
-    shad --> equal["Equalization<br/><i>histogram matching</i>"]
-    equal --> med["Median subtraction<br/><i>dirt removal</i>"]
-    med --> den["Denoising"]
-    den --> ce["Contrast enhancement"]
-    med -.-> ce
+flowchart LR
+    %% Main pipeline
+    A["Raw data<br/>processing"] --> B["Shadow correction"]
+    B --> C["Equalization<br/><i>histogram matching</i>"]
+    C --> D["Median subtraction<br/><i>dirt removal</i>"]
+    D --> E["Denoising"]
+    E --> F["Contrast<br/>enhancement"]
 
-    shad --> basic["BaSiC"]
-    shad --> gauss["Gaussian filter<br/><i>sigma</i>"]
-    shad --> medf["Median filter<br/><i>sigma</i>"]
-    den --> n2v["Noise2Void"]
-    ce --> clahe["CLAHE"]
-    ce --> pct["Percentile stretch"]
-    ce --> sig["Sigmoid"]
-    ce --> gam["Gamma"]
+    %% Shadow correction methods
+    B --> G["BaSiC"]
+    B --> H["Gaussian filter<br/><i>sigma</i>"]
+    B --> I["Median filter<br/><i>sigma</i>"]
 
-    classDef green fill:#D9F2A8,stroke:#7AAE3A,stroke-width:1.5px,color:#2E3A1F;
-    class raw,shad,equal,med,den,ce,basic,gauss,medf,n2v,clahe,pct,sig,gam green;
+    %% Methods feed back into equalization
+    G --> C
+    H --> C
+    I --> C
+
+    %% Denoising methods
+    E --> J["Noise2Void"]
+    E --> K["non-local-means"]
+
+    %% Contrast enhancement methods
+    F --> L["Clahe"]
+    F --> M["Percentile<br/>stretch"]
+    F --> N["Sigmoid"]
+    F --> O["Gamma"]
+
+    %% Styling
+    classDef process fill:#d9f2a6,stroke:#5b9b24,stroke-width:2px,color:#1f2d16;
+    classDef method fill:#d9f2a6,stroke:#5b9b24,stroke-width:2px,color:#1f2d16;
+
+    class A,B,C,D,E,F process;
+    class G,H,I,J,K,L,M,N,O method;
 ```
 
 Each step has its own selectable method(s), shown branching below it. The dashed

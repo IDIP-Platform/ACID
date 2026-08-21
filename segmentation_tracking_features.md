@@ -1,4 +1,4 @@
-# segmentation, tracking and feature extraction
+# Segmentation, tracking and feature extraction
 
 [← Back to pipeline overview](README.md)
 
@@ -87,7 +87,7 @@ if it doesn't.)
 | `CP_NORMALIZE` | Percentile-stretch the input before segmenting (keep `True`). |
 | `SEGMENT_FRAMES` | `"all"`, `"last"`, or a list like `[0, 40, 79]`. |
 
-### Tracking (TrackMate)
+### Tracking (TrackMate using CellPhe)
 
 ```python
 TRACKER   = "Overlap"   # SimpleSparseLAP, SparseLAP, Kalman, AdvancedKalman, Overlap

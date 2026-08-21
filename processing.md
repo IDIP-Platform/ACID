@@ -1,4 +1,6 @@
-# processing
+# Processing
+
+[← Back to pipeline overview](README.md)
 
 Processing pipeline for DIC timelapse data. Takes raw ND2 files and produces
 cleaned, comparable image stacks ready for segmentation, tracking and features extraction.

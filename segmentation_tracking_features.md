@@ -13,6 +13,55 @@ Every file gets its own output folder named after the file, so results are
 traceable back to exactly which processed stack — and which model and tracker —
 produced them.
 
+```mermaid
+flowchart LR
+%%{init: {'flowchart': {'nodeSpacing': 25, 'rankSpacing': 40}, 'themeVariables': {'fontSize': '13px'}}}%%
+    subgraph c1[" "]
+        direction TB
+        raw["<b>Raw data</b>"] --> proc["<b>Processing</b>
+        1) Illumination correction
+        2) Equalization
+        3) Median subtraction
+        4) Denoising
+        5) Contrast enhancement"]
+        proc --> seg["<b>Segmentation</b>
+        1) cpsam
+        2) cpsam_v2
+        3) cpdino
+        4) cpdino_vitb"]
+        seg --> track["<b>Tracking</b>
+        1) Overlap
+        2) SimpleSparseLAP
+        3) SparseLAP
+        4) Kalman
+        5) AdvancedKalman"]
+    end
+ 
+    feat["<b>Feature extraction</b>
+    1) size
+    2) shape
+    3) texture
+    4) movement"]
+ 
+    c1 -->|texture| feat
+    c1 -->|masks| feat
+    c1 -->|movement| feat
+ 
+    classDef rawStyle fill:#F5CCE8,stroke:#C77DB1,color:#000
+    classDef procStyle fill:#D9F2A8,stroke:#7AAE3A,color:#000
+    classDef segStyle fill:#B3F0F0,stroke:#4FBFBF,color:#000
+    classDef trackStyle fill:#D9C2F0,stroke:#9B72C7,color:#000
+    classDef featStyle fill:#F5DFB8,stroke:#D0A860,color:#000
+ 
+    class raw rawStyle
+    class proc procStyle
+    class seg segStyle
+    class track trackStyle
+    class feat featStyle
+ 
+    style c1 fill:none,stroke:#333,stroke-width:1px
+```
+
 ## The three steps
 
 | Step | Tool | What it does |

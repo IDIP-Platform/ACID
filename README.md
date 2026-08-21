@@ -81,7 +81,7 @@ Measures each tracked cell at every frame (CellPhe): shape, texture and movement
 features. The output is one row per cell per frame, a time series of
 measurements for every cell that can then be plotted and analysed.
 
-## Repository layout
+## Running code
 
 | File | Stage | What it does | Conda environment
 |---|---|---|---|

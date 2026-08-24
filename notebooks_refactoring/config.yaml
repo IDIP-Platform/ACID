@@ -1,0 +1,384 @@
+# ========================================================================
+# ==================    Section 1. Project specifics    ==================
+# ========================================================================
+project:
+    name: ACID
+
+# =============================================================================
+# ==================    Section 2. Directories declaration   ==================
+# =============================================================================
+paths:
+    # base storage roots
+    data:
+        root: data
+        raw: ${paths.data.root}/raw
+        processed: ${paths.data.root}/proc
+
+    # Pipeline products: images, masks, background functions, feature tables.
+    artifacts:
+        field_of_views: ${paths.data.processed}/fov
+        backgrounds: ${paths.data.processed}/background
+        processed_field_of_views: ${paths.data.processed}/fov_proc
+        segmentations: ${paths.data.processed}/segmentation
+        measurements: ${paths.data.processed}/measurements
+
+    # Registry/catalog CSVs that track the pipeline.
+    metadata:
+        directory: ${paths.data.processed}/proc_metadata
+
+    # Auxiliary outputs, reports, plots, hyperparameter dumps.
+    auxiliary_outputs:
+        directory: ${paths.data.processed}/secondary_output
+
+
+# ========================================================================
+# ==================    Section X. Pipelines stages     ==================
+# ========================================================================
+stages:
+    # ---- Stage 1
+    extract_field_of_views:
+        pass
+
+    # ---- Stage 2
+    assign_dataset_splits:
+        pass
+
+    # ---- Stage 3
+    image_quality_control:
+        pass
+
+    # ---- Stage 4
+    calculate_background:
+        pass
+
+    # ---- Stage 5
+    apply_background_correction:
+        enabled: True
+
+        input:
+            filename: default
+            fov_directory: ${paths.artifacts.field_of_views}
+            background_directory: ${paths.artifacts.backgrounds}
+
+            metadata:
+
+
+
+
+    # ---- Stage 6
+    segment_objects:
+        enabled: True
+
+    # ---- Stage 7
+    extract_object_features:
+        enabled: True
+
+
+#=======================================================================================
+## NEW
+#input_field_of_view:
+#    fov_directory : "data/proc/fov"
+
+
+## Edwin proposal
+output:
+#    directory: "data/proc/fov_proc"
+    secondary:
+        enabled: true
+        directory: "secondary_output"
+
+    dtype: "float32"
+
+metadata:
+    #directory: "data/proc/proc_metadata"
+    filename: "default"
+
+    default_selection:
+        include: ".csv"
+        exclude: None
+            #- "part_4b"
+        date_source: "modified_time"
+        select: "newest"
+        filename_date_separator: "_"
+        filename_date_position: 0
+        filename_date_format: "%Y%m%d"
+
+    dataset_split:
+        column: "is_train" #"dataset_split"
+        labels:
+            train: 1
+            validation: 0
+            test: 3
+
+metadata_date_format: "%Y%m%d"
+project_name: "ACID"
+metadata_savingword: "metadata"
+save_csv_index: false
+metadata_file_suffix: "part_4b.csv"
+
+gridpos_column_name: "scene_name"
+well_column_name: "well"
+
+dataset_split:
+    column: "is_train" #"dataset_split"
+    labels:
+        train: 1
+        validation: 0
+        test: 3
+
+## ==============================================
+## ====    Stage 4. Background correction    ====
+## ==============================================
+background_correction:
+    #enabled: True
+    #directory: "data/proc/background"  # TODO: change to output directory
+    filename: "default"
+
+    metadata:
+        filename: "default"
+
+        default_selection:
+            include: ".csv"
+            exclude:
+                - "part_4b"
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+        dataset_split:
+            column: "is_train" #"dataset_split"
+            labels:
+                train: 1
+                validation: 0
+                test: 3
+
+    default_selection:
+        include: ".ome.tif"
+        exclude: null
+
+    strategies:
+        dataset: 1
+        well: 2
+        grid_position: 3
+
+    null_value: .nan
+
+    column_name_separator: "_"
+
+    background_function_strategy: 1
+    background_function_timestamp: "default"
+    background_from_file_name: False
+    background_default_separator: "_"
+    background_default_date_position: 0
+    background_default_date_format: "%Y%m%d"
+    background_default_reverse: True
+
+    illum_corr_method_metadata_entry: illumination_correction_method
+    illum_corr_offset_metadata_entry: illumination_correction_offset
+    illum_corr_rescale_metadata_entry: illumination_correction_rescale_background
+    illum_corr_clipping_metadata_entry: illumination_correction_clipping
+    illum_corr_clip_min_value_metadata_entry: illumination_correction_min_clip_value
+    illum_corr_clip_max_value_metadata_entry: illumination_correction_max_clip_value
+    illum_corr_offset_background_metadata_entry: illumination_correction_offset_background
+
+    illum_correct_df_date_clm_name: "illumination_correction_date"
+    illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+    illum_correct_df_method_clm_name: "illumination_correction_method"
+    illum_correct_df_offset_clm_name: "illumination_correction_offset"
+    illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+    illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+    illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+    illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+    illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+    illum_correct_df_meta_date_format: "%y%m%d"
+
+
+    fov_directory: "data/proc/fov"
+    fov_column_name : "ome_tif_file_name"
+
+    proc_img_meta_date_name: "processing_date_yymmdd"
+    proc_img_meta_dtype_name: "dtype"
+    processing_date_format: "%y%m%d"
+
+    output_dtype: "float32"
+    method: "division"
+    offset: 400
+    rescale_background: "max"
+    clip_corrected_image: false
+    min_clip_value: 0
+    max_clip_value: null
+    offset_background: true
+
+    channel_axis: 0
+    epsilon: 1.0e-8
+    working_dtype: "float32"
+    zero_kwargs: null
+    verbose: true
+
+    ome_suffix: ".ome.tif"
+    save_file_name_separator: "_"
+    fov_illumin_corrected_savingword: "bg"
+    output_directory: "data/proc/fov_proc"
+    save_imagej_compatible: true
+    photometric: "minisblack"
+
+
+## ==============================================
+## ====    Stage 5. Object Segmentation      ====
+## ==============================================
+object_segmentation:
+    enabled: True
+    output_directory: "data/proc/segmentation"
+
+    output_dtype: uint16
+
+    # set parameters 1: preprocessing
+    channel_axis: 0
+    nucleus_position: 0
+    concanavalin_position: 1
+    actin_position: 2
+
+    med_filter_nucleus: 3
+    med_filter_concactin_merge: 3
+    downsampling_factor: 2
+
+    # set parameters 2: model eval/predict/segment
+    flow_threshold: 0.4
+    cellprob_threshold: 0.0
+    diameter: 75
+
+    # set parameters 3. Resizing masks
+    order: 0
+    preserve_range: True
+    anti_aliasing: False
+
+    # set parameter 4. Update metadata
+    processing_date_format: "%y%m%d"
+    segmented_img_meta_separator: "_"
+    segmented_img_meta_processing_steps: "median filter nuclei. merge concanavalin and actin by average intensity and median filter the result. downsample channels. stack channels together: pos-0-nuclei, pos-1-merge. cell segmentation. upsample segmentation mask to original size."
+    segmented_img_meta_date_name: processing${object_segmentation.segmented_img_meta_separator}date${object_segmentation.segmented_img_meta_separator}yymmdd
+    segmented_img_meta_method_name: "method"
+    segmentation_method_name: "cellpose"
+    segmentation_method_version_name: "version"
+    segmented_img_meta_diameter_name: ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}diameter
+    segmented_img_meta_flow_threshold_name:  ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}flow${object_segmentation.segmented_img_meta_separator}threshold
+    segmented_img_meta_cellprob_threshold_name: ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}cellprob${object_segmentation.segmented_img_meta_separator}threshold
+    segmented_img_meta_downsampling_factor_name: downsampling${object_segmentation.segmented_img_meta_separator}factor
+    segmented_img_meta_nucleus_med_filter_size_name: nucleus${object_segmentation.segmented_img_meta_separator}median${object_segmentation.segmented_img_meta_separator}filter${object_segmentation.segmented_img_meta_separator}size
+    segmented_img_meta_concactin_merge_med_filter_size_name: concanavalin${object_segmentation.segmented_img_meta_separator}actin${object_segmentation.segmented_img_meta_separator}merge${object_segmentation.segmented_img_meta_separator}median${object_segmentation.segmented_img_meta_separator}filter${object_segmentation.segmented_img_meta_separator}size
+    segmented_img_meta_resize_order_name: upsampling${object_segmentation.segmented_img_meta_separator}resize${object_segmentation.segmented_img_meta_separator}order
+    segmented_img_meta_processing_name: processing${object_segmentation.segmented_img_meta_separator}steps
+    segmented_img_meta_dtype_name: "dtype"
+
+    preproc_img_meta_raw_file_name_entry: raw${object_segmentation.segmented_img_meta_separator}file${object_segmentation.segmented_img_meta_separator}name
+    preproc_img_meta_x_physic_px_size_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}x
+    preproc_img_meta_y_physic_px_size_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}y
+    preproc_img_meta_scene_file_name_entry: scene${object_segmentation.segmented_img_meta_separator}file${object_segmentation.segmented_img_meta_separator}name
+
+    preproc_img_meta_x_physic_px_size_unit_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}unit${object_segmentation.segmented_img_meta_separator}x
+    preproc_img_meta_y_physic_px_size_unit_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}unit${object_segmentation.segmented_img_meta_separator}y
+
+    # Set parameters 5. Output file
+    ome_suffix: ".ome.tif"
+    save_file_name_separator: "_"
+    project_name: ACID
+    save_csv_index: False
+    metadata_savingword: metadata
+    segmentation_savingword: segmentation
+    metadata_file_suffix: part${object_segmentation.save_file_name_separator}5.csv
+    metadata_date_format: "%Y%m%d"
+    hyperparameters_date_format: "%Y%m%d-%H%M%S"
+    hyperparameters_savingword: hyperparameters
+    hyperparameters_file_suffix: part${object_segmentation.save_file_name_separator}5.csv
+    save_imagej_compatible: True
+    photometric: "minisblack"
+
+
+
+    metadata:
+        directory: "data/proc/proc_metadata"
+        filename: "default"
+
+        default_selection:
+            include: "part_4b.csv"
+            exclude: None
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+        dataset_split:
+            column: "is_train" #"dataset_split"
+            labels:
+                train: 1
+                validation: 0
+                test: 3
+
+        segmentation_method_name: "cellpose"
+
+        column_name_separator: _
+
+
+        metadata_df_date_clm_name: segmentation_date
+        metadata_df_file_name_clm_name: segmentation_file_name
+        metadata_df_method_clm_name: segmentation_method
+        metadata_df_method_version_clm_name: segmentation_method_version
+        metadata_df_diameter_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}diameter
+        metadata_df_flow_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}flow${object_segmentation.metadata.column_name_separator}threshold
+        metadata_df_cellprob_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}cellprob${object_segmentation.metadata.column_name_separator}threshold
+        metadata_df_downsampling_factor_clm_name: downsampling${object_segmentation.metadata.column_name_separator}factor
+        metadata_df_nucleus_med_filter_size_name: nucleus${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
+        metadata_df_concactin_merge_med_filter_size_name: concactin${object_segmentation.metadata.column_name_separator}merge${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
+        metadata_df_resize_order_name: resize${object_segmentation.metadata.column_name_separator}order
+        metadata_df_output_dtype_name: output${object_segmentation.metadata.column_name_separator}dtype
+        metadata_df_meta_date_format: "%y%m%d"
+
+    null_value: .nan
+
+
+## ===============================================
+## ====    Stage 6. Extract Measurements      ====
+## ===============================================
+measurements:
+    metadata:
+        directory: "data/proc/proc_metadata"
+        filename: "default"
+
+        default_selection:
+            include: "csv"
+            exclude: None
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+    fov_directory: "data/proc/fov_proc"
+    segmentation_directory: "data/proc/segmentation"
+    output_directory: "data/proc/measurement"
+
+    fov_column_name: "illumination_correction_file_name"
+    segmentation_column_name: "segmentation_file_name"
+
+    channel_axis: 0
+    sigma: 3
+    preprocessing_steps: "move channel axis to last position; gaussian smoothing with sigma 3 along last axis; exclude labels touching image edge"
+
+    ome_suffix: ".ome.tif"
+    output_suffix: ".csv"
+    save_csv_index: false
+    null_value: .nan
+
+    metadata_df_date_clm_name: "features_extraction_date"
+    metadata_df_file_name_clm_name: "features_data_frame"
+    metadata_df_method_clm_name: "features_extraction_preprocessing"
+    metadata_df_meta_date_format: "%y%m%d"
+
+    metadata_savingword: "metadata"
+    metadata_file_suffix: "part_6.csv"
+    metadata_date_format: "%Y%m%d"
+    save_file_name_separator: "_"
+    project_name: "ACID"

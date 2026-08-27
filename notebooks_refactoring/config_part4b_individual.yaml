@@ -16,10 +16,6 @@ background_correction:
     runtime:
         verbose: true
 
-    dataset_selection:
-        is_train_column: "is_train"
-        train_val: 1
-
     dataset_split:
         column: "is_train" #"dataset_split"
         labels:
@@ -28,6 +24,7 @@ background_correction:
             test: 3
 
     background_function_selection:
+        directory: ${background_correction.paths.background_directory}
         background_function_strategy: 1
         file_selection:
             filename: "default"
@@ -86,6 +83,7 @@ background_correction:
             metadata_savingword: "metadata"
             metadata_file_suffix: "part_4b.csv"
             metadata_date_format: "%Y%m%d"
+            save_file_name_separator: "_"
             save_csv_index: false
 
     processing:
@@ -101,8 +99,10 @@ background_correction:
         max_clip_value: null
         offset_background: true
         zero_kwargs: null
+        verbose: false
 
     image_saving:
+        directory: ${background_correction.paths.output_directory}
         photometric: "minisblack"
         save_imagej_compatible: true
         save_file_name_separator: "_"

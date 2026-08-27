@@ -32,6 +32,7 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
         FileNotFoundError: If the resolved metadata file does not exist.
     """
     directory = Path(metadata_config["directory"])
+
     file_selection = metadata_config.get("file_selection", {})
 
     filename = file_selection.get("filename", "default")

@@ -1,0 +1,117 @@
+project_identity:
+    project_name: "ACID"
+
+
+background_correction:
+    paths:
+        background_directory: "data/proc/background"
+        metadata_directory: "data/proc/proc_metadata"
+        fov_directory: "data/proc/fov"
+        output_directory: "data/proc/fov_proc"
+
+    secondary_output:
+        enabled: true
+        directory: "secondary_output"
+
+    runtime:
+        verbose: true
+
+    dataset_selection:
+        is_train_column: "is_train"
+        train_val: 1
+
+    dataset_split:
+        column: "is_train" #"dataset_split"
+        labels:
+            train: 1
+            validation: 0
+            test: 3
+
+    background_function_selection:
+        background_function_strategy: 1
+        file_selection:
+            filename: "default"
+            include: ".ome.tif"
+            exclude: null
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+    metadata:
+        directory: ${background_correction.paths.metadata_directory}
+        file_selection:
+            filename: "default"
+            include: ".csv"
+            exclude:
+                - "part_4b"
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+        dataframe_columns:
+            fov_column_name: "ome_tif_file_name"
+            well_column_name: "well"
+            gridpos_column_name: "scene_name"
+            null_value: .nan
+            column_name_separator: "_"
+            ch_name_separator: "-"
+            illum_correct_df_date_clm_name: "illumination_correction_date"
+            illum_correct_df_meta_date_format: "%y%m%d"
+            illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+            illum_correct_df_method_clm_name: "illumination_correction_method"
+            illum_correct_df_offset_clm_name: "illumination_correction_offset"
+            illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+            illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+            illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+            illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+            illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+
+        image_metadata:
+            proc_img_meta_date_name: "processing_date_yymmdd"
+            processing_date_format: "%y%m%d"
+            proc_img_meta_dtype_name: "dtype"
+            illum_corr_method_metadata_entry: "illumination_correction_method"
+            illum_corr_offset_metadata_entry: "illumination_correction_offset"
+            illum_corr_rescale_metadata_entry: "illumination_correction_rescale_background"
+            illum_corr_clipping_metadata_entry: "illumination_correction_clipping"
+            illum_corr_clip_min_value_metadata_entry: "illumination_correction_min_clip_value"
+            illum_corr_clip_max_value_metadata_entry: "illumination_correction_max_clip_value"
+            illum_corr_offset_background_metadata_entry: "illumination_correction_offset_background"
+
+        saving:
+            metadata_savingword: "metadata"
+            metadata_file_suffix: "part_4b.csv"
+            metadata_date_format: "%Y%m%d"
+            save_csv_index: false
+
+    processing:
+        channel_axis: 0
+        method: "division"
+        offset: 400
+        epsilon: 1.0e-8
+        output_dtype: "float32"
+        working_dtype: "float32"
+        rescale_background: "max"
+        clip_corrected_image: false
+        min_clip_value: 0
+        max_clip_value: null
+        offset_background: true
+        zero_kwargs: null
+
+    image_saving:
+        photometric: "minisblack"
+        save_imagej_compatible: true
+        save_file_name_separator: "_"
+        fov_illumin_corrected_savingword: "bg"
+        ome_suffix: ".ome.tif"
+
+    graphs_saving:
+        save_graphs: true
+        graph_saving_directory: "data/proc/plots"
+        graph_date_format: "%Y%m%d"
+        graph_suffix: ".png"
+        graph_savingword: "illumination_correction"

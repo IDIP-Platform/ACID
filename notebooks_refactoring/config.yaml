@@ -4,6 +4,16 @@
 project:
     name: ACID
 
+# ==============================================================================
+# ==================    Section 2. Dataset splitting conf.    ==================
+# ==============================================================================
+dataset_split:
+    column: "is_train" #"dataset_split"
+    labels:
+        train: 1
+        validation: 0
+        test: 2
+
 # =============================================================================
 # ==================    Section 2. Directories declaration   ==================
 # =============================================================================
@@ -23,8 +33,7 @@ paths:
         measurements: ${paths.data.processed}/measurements
 
     # Registry/catalog CSVs that track the pipeline.
-    metadata:
-        directory: ${paths.data.processed}/proc_metadata
+    metadata: ${paths.data.processed}/proc_metadata
 
     # Auxiliary outputs, reports, plots, hyperparameter dumps.
     auxiliary_outputs:
@@ -56,11 +65,153 @@ stages:
         enabled: True
 
         input:
-            filename: default
-            fov_directory: ${paths.artifacts.field_of_views}
+            field_of_views_directory: ${paths.artifacts.field_of_views}
             background_directory: ${paths.artifacts.backgrounds}
 
-            metadata:
+        output:
+            directory: ${paths.artifacts.processed_field_of_views}
+            output_dtype: "float32"
+            ome_suffix: ".ome.tif"
+            save_file_name_separator: "_"
+            photometric: "minisblack"
+            save_imagej_compatible: true
+            fov_illumin_corrected_savingword: "bg"
+            proc_img_meta_date_name: "processing_date_yymmdd"
+            proc_img_meta_dtype_name: "dtype"
+            processing_date_format: "%y%m%d"
+
+        metadata:
+            directory: ${paths.metadata}
+            filename: default
+            default_selection:
+                include: ".csv"
+                exclude:
+                    - "part_4b"
+                date_source: "modified_time"
+                select: "newest"
+                filename_date_separator: "_"
+                filename_date_position: 0
+                filename_date_format: "%Y%m%d"
+
+            fov_column_name : "ome_tif_file_name"
+
+        strategies:
+            dataset: 1
+            well: 2
+            grid_position: 3
+
+        processing:
+            method: "division"
+            offset: 400
+            rescale_background: "max"
+            clip_corrected_image: false
+            min_clip_value: 0
+            max_clip_value: null
+            offset_background: true
+            channel_axis: 0
+            epsilon: 1.0e-8
+            working_dtype: "float32"
+            zero_kwargs: null  # REMOVE
+            verbose: true
+
+        output_columns:
+            illum_corr_method_metadata_entry: illumination_correction_method
+            illum_corr_offset_metadata_entry: illumination_correction_offset
+            illum_corr_rescale_metadata_entry: illumination_correction_rescale_background
+            illum_corr_clipping_metadata_entry: illumination_correction_clipping
+            illum_corr_clip_min_value_metadata_entry: illumination_correction_min_clip_value
+            illum_corr_clip_max_value_metadata_entry: illumination_correction_max_clip_value
+            illum_corr_offset_background_metadata_entry: illumination_correction_offset_background
+
+            illum_correct_df_method_clm_name: "illumination_correction_method"
+            illum_correct_df_offset_clm_name: "illumination_correction_offset"
+            illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+            illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+            illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+            illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+            illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+
+            illum_correct_df_date_clm_name: "illumination_correction_date"
+            illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+            illum_correct_df_meta_date_format: "%y%m%d"
+
+
+
+    #illum_correct_df_meta_date_format: "%y%m%d"
+    #fov_directory: "data/proc/fov"
+    #fov_column_name : "ome_tif_file_name"
+
+    proc_img_meta_date_name: "processing_date_yymmdd"
+    proc_img_meta_dtype_name: "dtype"
+    processing_date_format: "%y%m%d"
+
+    output_dtype: "float32"
+    method: "division"
+    offset: 400
+    rescale_background: "max"
+    clip_corrected_image: false
+    min_clip_value: 0
+    max_clip_value: null
+    offset_background: true
+
+    channel_axis: 0
+    epsilon: 1.0e-8
+    working_dtype: "float32"
+    zero_kwargs: null
+    verbose: true
+
+    ome_suffix: ".ome.tif"
+    save_file_name_separator: "_"
+    fov_illumin_corrected_savingword: "bg"
+    output_directory: "data/proc/fov_proc"
+    save_imagej_compatible: true
+    photometric: "minisblack"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -103,15 +254,10 @@ metadata:
         filename_date_position: 0
         filename_date_format: "%Y%m%d"
 
-    dataset_split:
-        column: "is_train" #"dataset_split"
-        labels:
-            train: 1
-            validation: 0
-            test: 3
+
 
 metadata_date_format: "%Y%m%d"
-project_name: "ACID"
+
 metadata_savingword: "metadata"
 save_csv_index: false
 metadata_file_suffix: "part_4b.csv"
@@ -119,12 +265,7 @@ metadata_file_suffix: "part_4b.csv"
 gridpos_column_name: "scene_name"
 well_column_name: "well"
 
-dataset_split:
-    column: "is_train" #"dataset_split"
-    labels:
-        train: 1
-        validation: 0
-        test: 3
+
 
 ## ==============================================
 ## ====    Stage 4. Background correction    ====
@@ -132,66 +273,72 @@ dataset_split:
 background_correction:
     #enabled: True
     #directory: "data/proc/background"  # TODO: change to output directory
-    filename: "default"
+    #filename: "default"
 
-    metadata:
-        filename: "default"
+    #metadata:
+    #    filename: "default"
 
-        default_selection:
-            include: ".csv"
-            exclude:
-                - "part_4b"
-            date_source: "modified_time"
-            select: "newest"
-            filename_date_separator: "_"
-            filename_date_position: 0
-            filename_date_format: "%Y%m%d"
+    #    default_selection:
+    #        include: ".csv"
+    #        exclude:
+    #            - "part_4b"
+    #        date_source: "modified_time"
+    #        select: "newest"
+    #        filename_date_separator: "_"
+    #        filename_date_position: 0
+    #        filename_date_format: "%Y%m%d"
 
-        dataset_split:
-            column: "is_train" #"dataset_split"
-            labels:
-                train: 1
-                validation: 0
-                test: 3
+    #    dataset_split:
+    #        column: "is_train" #"dataset_split"
+    #        labels:
+    #            train: 1
+    #            validation: 0
+    #            test: 3
 
     default_selection:
         include: ".ome.tif"
         exclude: null
 
-    strategies:
-        dataset: 1
-        well: 2
-        grid_position: 3
+    #strategies:
+    #    dataset: 1
+    #    well: 2
+    #    grid_position: 3
 
     null_value: .nan
 
     column_name_separator: "_"
 
-    background_function_strategy: 1
-    background_function_timestamp: "default"
-    background_from_file_name: False
-    background_default_separator: "_"
-    background_default_date_position: 0
-    background_default_date_format: "%Y%m%d"
-    background_default_reverse: True
+    # background_function_strategy: 1
+    # background_function_timestamp: "default"
+    # background_from_file_name: False
+    # background_default_separator: "_"
+    # background_default_date_position: 0
+    # background_default_date_format: "%Y%m%d"
+    # background_default_reverse: True
 
-    illum_corr_method_metadata_entry: illumination_correction_method
-    illum_corr_offset_metadata_entry: illumination_correction_offset
-    illum_corr_rescale_metadata_entry: illumination_correction_rescale_background
-    illum_corr_clipping_metadata_entry: illumination_correction_clipping
-    illum_corr_clip_min_value_metadata_entry: illumination_correction_min_clip_value
-    illum_corr_clip_max_value_metadata_entry: illumination_correction_max_clip_value
-    illum_corr_offset_background_metadata_entry: illumination_correction_offset_background
+    # illum_corr_method_metadata_entry: illumination_correction_method
+    # illum_corr_offset_metadata_entry: illumination_correction_offset
+    # illum_corr_rescale_metadata_entry: illumination_correction_rescale_background
+    # illum_corr_clipping_metadata_entry: illumination_correction_clipping
+    # illum_corr_clip_min_value_metadata_entry: illumination_correction_min_clip_value
+    # illum_corr_clip_max_value_metadata_entry: illumination_correction_max_clip_value
+    # illum_corr_offset_background_metadata_entry: illumination_correction_offset_background
 
-    illum_correct_df_date_clm_name: "illumination_correction_date"
-    illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
-    illum_correct_df_method_clm_name: "illumination_correction_method"
-    illum_correct_df_offset_clm_name: "illumination_correction_offset"
-    illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
-    illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
-    illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
-    illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
-    illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+    # illum_correct_df_method_clm_name: "illumination_correction_method"
+    # illum_correct_df_offset_clm_name: "illumination_correction_offset"
+    # illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+    # illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+    # illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+    # illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+    # illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+
+    # illum_correct_df_date_clm_name: "illumination_correction_date"
+    # illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+
+
+
+
+
     illum_correct_df_meta_date_format: "%y%m%d"
 
 

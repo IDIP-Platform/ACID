@@ -20,7 +20,7 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
 
     Args:
         metadata_config: Metadata configuration dictionary. Expected keys are
-            "directory", "filename", and optionally "default_selection".
+            "directory", "filename", and optionally "file_selection".
 
     Returns:
         A tuple containing the loaded dataframe and the resolved metadata file
@@ -32,14 +32,17 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
         FileNotFoundError: If the resolved metadata file does not exist.
     """
     directory = Path(metadata_config["directory"])
-    filename = metadata_config.get("filename", "default")
-    default_selection = metadata_config.get("default_selection", {})
+    file_selection = metadata_config.get("file_selection", {})
+
+    filename = file_selection.get("filename", "default")
+
+    logger.debug(f"File selection: {file_selection}")
 
     if _is_default_filename(filename):
         logger.debug(f"Default option enabled or empty string: {filename}")
         resolved_filename = _resolve_default_metadata_filename(
             directory=directory,
-            default_selection=default_selection,
+            file_selection=file_selection,
         )
     else:
         resolved_filename = filename
@@ -82,13 +85,13 @@ def _is_default_filename(filename: str | None) -> bool:
 
 def _resolve_default_metadata_filename(
     directory: Path,
-    default_selection: dict,
+    file_selection: dict,
 ) -> str:
     """Resolve the default metadata filename from selection settings.
 
     Args:
         directory: Directory containing metadata files.
-        default_selection: Configuration dictionary for default file selection.
+        file_selection: Configuration dictionary for default file selection.
 
     Returns:
         Resolved metadata filename.
@@ -99,8 +102,8 @@ def _resolve_default_metadata_filename(
     """
     metadata_files = list_directory_entries(
         directory=directory,
-        include=default_selection.get("include", None),
-        exclude=default_selection.get("exclude", None),
+        include=file_selection.get("include", None),
+        exclude=file_selection.get("exclude", None),
         files_only=True,
         return_paths=False,
     )
@@ -110,20 +113,20 @@ def _resolve_default_metadata_filename(
 
     return default_file_name(
         file_list=metadata_files,
-        from_file_name=_use_filename_date(default_selection),
+        from_file_name=_use_filename_date(file_selection),
         directory_path=directory,
-        separator=default_selection.get("filename_date_separator", "_"),
-        date_position=default_selection.get("filename_date_position", 0),
-        date_format=default_selection.get("filename_date_format", "%Y%m%d"),
-        reverse=_select_newest(default_selection),
+        separator=file_selection.get("filename_date_separator", "_"),
+        date_position=file_selection.get("filename_date_position", 0),
+        date_format=file_selection.get("filename_date_format", "%Y%m%d"),
+        reverse=_select_newest(file_selection),
     )
 
 
-def _use_filename_date(default_selection: dict) -> bool:
+def _use_filename_date(file_selection: dict) -> bool:
     """Return whether default selection should parse dates from filenames.
 
     Args:
-        default_selection: Configuration dictionary for default file selection.
+        file_selection: Configuration dictionary for default file selection.
 
     Returns:
         True if dates should be parsed from filenames. False if filesystem
@@ -132,7 +135,7 @@ def _use_filename_date(default_selection: dict) -> bool:
     Raises:
         ValueError: If "date_source" has an unsupported value.
     """
-    date_source = default_selection.get("date_source", "modified_time")
+    date_source = file_selection.get("date_source", "modified_time")
 
     if date_source == "filename":
         return True
@@ -145,11 +148,11 @@ def _use_filename_date(default_selection: dict) -> bool:
     )
 
 
-def _select_newest(default_selection: dict) -> bool:
+def _select_newest(file_selection: dict) -> bool:
     """Return whether default selection should choose the newest file.
 
     Args:
-        default_selection: Configuration dictionary for default file selection.
+        file_selection: Configuration dictionary for default file selection.
 
     Returns:
         True if the `newest` file should be selected. False if the `oldest` file
@@ -158,7 +161,7 @@ def _select_newest(default_selection: dict) -> bool:
     Raises:
         ValueError: If "select" has an unsupported value.
     """
-    select = default_selection.get("select", "newest")
+    select = file_selection.get("select", "newest")
 
     if select == "newest":
         return True

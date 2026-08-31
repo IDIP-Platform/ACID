@@ -33,11 +33,11 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     """
     directory = Path(metadata_config["directory"])
 
-    file_selection = metadata_config.get("file_selection", {})
+    file_selection = metadata_config.file_selection.get("file_selection", {})
 
     filename = file_selection.get("filename", "default")
 
-    logger.debug(f"File selection: {file_selection}")
+    logger.debug(f"Filename: {filename}")
 
     if _is_default_filename(filename):
         logger.debug(f"Default option enabled or empty string: {filename}")

@@ -1,7 +1,9 @@
 project_identity:
     project_name: "ACID"
 
-
+## ==============================================
+## ====    Stage 4. Background correction    ====
+## ==============================================
 background_correction:
     paths:
         background_directory: "data/proc/background"
@@ -115,3 +117,129 @@ background_correction:
         graph_date_format: "%Y%m%d"
         graph_suffix: ".png"
         graph_savingword: "illumination_correction"
+
+
+## ==============================================
+## ====    Stage 5. Object Segmentation      ====
+## ==============================================
+object_segmentation:
+    paths:
+        segmentation_directory: "data/proc/segmentation"
+        metadata_directory: "data/proc/proc_metadata"
+        fov_directory: "data/proc/fov"
+        output_directory: "data/proc/fov_proc"
+
+
+    runtime:
+        enabled: true
+        verbose: true
+
+
+    enabled: True
+    output_directory: "data/proc/segmentation"
+
+    output_dtype: uint16
+
+    # set parameters 1: preprocessing
+    channel_axis: 0
+    nucleus_position: 0
+    concanavalin_position: 1
+    actin_position: 2
+
+    med_filter_nucleus: 3
+    med_filter_concactin_merge: 3
+    downsampling_factor: 2
+
+    # set parameters 2: model eval/predict/segment
+    flow_threshold: 0.4
+    cellprob_threshold: 0.0
+    diameter: 75
+
+    # set parameters 3. Resizing masks
+    order: 0
+    preserve_range: True
+    anti_aliasing: False
+
+    # set parameter 4. Update metadata
+    processing_date_format: "%y%m%d"
+    segmented_img_meta_separator: "_"
+    segmented_img_meta_processing_steps: "median filter nuclei. merge concanavalin and actin by average intensity and median filter the result. downsample channels. stack channels together: pos-0-nuclei, pos-1-merge. cell segmentation. upsample segmentation mask to original size."
+    segmented_img_meta_date_name: processing${object_segmentation.segmented_img_meta_separator}date${object_segmentation.segmented_img_meta_separator}yymmdd
+    segmented_img_meta_method_name: "method"
+    segmentation_method_name: "cellpose"
+    segmentation_method_version_name: "version"
+    segmented_img_meta_diameter_name: ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}diameter
+    segmented_img_meta_flow_threshold_name:  ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}flow${object_segmentation.segmented_img_meta_separator}threshold
+    segmented_img_meta_cellprob_threshold_name: ${object_segmentation.segmentation_method_name}${object_segmentation.segmented_img_meta_separator}cellprob${object_segmentation.segmented_img_meta_separator}threshold
+    segmented_img_meta_downsampling_factor_name: downsampling${object_segmentation.segmented_img_meta_separator}factor
+    segmented_img_meta_nucleus_med_filter_size_name: nucleus${object_segmentation.segmented_img_meta_separator}median${object_segmentation.segmented_img_meta_separator}filter${object_segmentation.segmented_img_meta_separator}size
+    segmented_img_meta_concactin_merge_med_filter_size_name: concanavalin${object_segmentation.segmented_img_meta_separator}actin${object_segmentation.segmented_img_meta_separator}merge${object_segmentation.segmented_img_meta_separator}median${object_segmentation.segmented_img_meta_separator}filter${object_segmentation.segmented_img_meta_separator}size
+    segmented_img_meta_resize_order_name: upsampling${object_segmentation.segmented_img_meta_separator}resize${object_segmentation.segmented_img_meta_separator}order
+    segmented_img_meta_processing_name: processing${object_segmentation.segmented_img_meta_separator}steps
+    segmented_img_meta_dtype_name: "dtype"
+
+    preproc_img_meta_raw_file_name_entry: raw${object_segmentation.segmented_img_meta_separator}file${object_segmentation.segmented_img_meta_separator}name
+    preproc_img_meta_x_physic_px_size_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}x
+    preproc_img_meta_y_physic_px_size_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}y
+    preproc_img_meta_scene_file_name_entry: scene${object_segmentation.segmented_img_meta_separator}file${object_segmentation.segmented_img_meta_separator}name
+
+    preproc_img_meta_x_physic_px_size_unit_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}unit${object_segmentation.segmented_img_meta_separator}x
+    preproc_img_meta_y_physic_px_size_unit_entry: physical${object_segmentation.segmented_img_meta_separator}size${object_segmentation.segmented_img_meta_separator}unit${object_segmentation.segmented_img_meta_separator}y
+
+    # Set parameters 5. Output file
+    ome_suffix: ".ome.tif"
+    save_file_name_separator: "_"
+    project_name: ACID
+    save_csv_index: False
+    metadata_savingword: metadata
+    segmentation_savingword: segmentation
+    metadata_file_suffix: part${object_segmentation.save_file_name_separator}5.csv
+    metadata_date_format: "%Y%m%d"
+    hyperparameters_date_format: "%Y%m%d-%H%M%S"
+    hyperparameters_savingword: hyperparameters
+    hyperparameters_file_suffix: part${object_segmentation.save_file_name_separator}5.csv
+    save_imagej_compatible: True
+    photometric: "minisblack"
+
+
+
+    metadata:
+        directory: "data/proc/proc_metadata"
+        filename: "default"
+
+        default_selection:
+            include: "part_4b.csv"
+            exclude: None
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
+
+        dataset_split:
+            column: "is_train" #"dataset_split"
+            labels:
+                train: 1
+                validation: 0
+                test: 3
+
+        segmentation_method_name: "cellpose"
+
+        column_name_separator: _
+
+
+        metadata_df_date_clm_name: segmentation_date
+        metadata_df_file_name_clm_name: segmentation_file_name
+        metadata_df_method_clm_name: segmentation_method
+        metadata_df_method_version_clm_name: segmentation_method_version
+        metadata_df_diameter_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}diameter
+        metadata_df_flow_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}flow${object_segmentation.metadata.column_name_separator}threshold
+        metadata_df_cellprob_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}cellprob${object_segmentation.metadata.column_name_separator}threshold
+        metadata_df_downsampling_factor_clm_name: downsampling${object_segmentation.metadata.column_name_separator}factor
+        metadata_df_nucleus_med_filter_size_name: nucleus${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
+        metadata_df_concactin_merge_med_filter_size_name: concactin${object_segmentation.metadata.column_name_separator}merge${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
+        metadata_df_resize_order_name: resize${object_segmentation.metadata.column_name_separator}order
+        metadata_df_output_dtype_name: output${object_segmentation.metadata.column_name_separator}dtype
+        metadata_df_meta_date_format: "%y%m%d"
+
+    null_value: .nan

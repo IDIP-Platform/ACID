@@ -6,9 +6,9 @@ project_identity:
 ## ==============================================
 background_correction:
     paths:
-        background_directory: "data/proc/background"
-        metadata_directory: "data/proc/proc_metadata"
         fov_directory: "data/proc/fov"
+        metadata_directory: "data/proc/proc_metadata"
+        background_directory: "data/proc/background"
         output_directory: "data/proc/fov_proc"
 
     secondary_output:
@@ -16,6 +16,7 @@ background_correction:
         directory: "secondary_output"
 
     runtime:
+        enabled: true # Not used now
         verbose: true
 
     dataset_split:
@@ -124,36 +125,94 @@ background_correction:
 ## ==============================================
 object_segmentation:
     paths:
-        segmentation_directory: "data/proc/segmentation"
+        fov_directory: "data/proc/fov_proc"
+        fov_background_corrected: "data/proc/fov_proc"
         metadata_directory: "data/proc/proc_metadata"
-        fov_directory: "data/proc/fov"
-        output_directory: "data/proc/fov_proc"
+        output_directory: "data/proc/segmentation"
 
+    secondary_output:
+        enabled: true
+        directory: "secondary_output"
 
     runtime:
-        enabled: true
+        enabled: true # not used now
         verbose: true
 
+    dataset_split:
+        column: "is_train" #"dataset_split"
+        labels:
+            train: 1
 
-    enabled: True
-    output_directory: "data/proc/segmentation"
+            validation: 0
+            test: 3
 
-    output_dtype: uint16
+    metadata:
+        directory: ${object_segmentation.paths.metadata_directory}
+        filename: "default"
 
-    # set parameters 1: preprocessing
-    channel_axis: 0
-    nucleus_position: 0
-    concanavalin_position: 1
-    actin_position: 2
+        file_selection:
+            filename: "default"
+            include: "part_4b.csv"
+            exclude:
+                - "part_5"
+            date_source: "modified_time"
+            select: "newest"
+            filename_date_separator: "_"
+            filename_date_position: 0
+            filename_date_format: "%Y%m%d"
 
-    med_filter_nucleus: 3
-    med_filter_concactin_merge: 3
-    downsampling_factor: 2
+        segmentation_method_name: "cellpose"
 
-    # set parameters 2: model eval/predict/segment
-    flow_threshold: 0.4
-    cellprob_threshold: 0.0
-    diameter: 75
+        dataframe_columns:
+            illum_correct_df_file_name_clm_name: illumination_correction_file_name
+            null_value: .nan
+            column_name_separator: "_"
+
+            # Inherited from the stage before (stage 4)
+
+
+
+            metadata_df_date_clm_name: segmentation_date
+            metadata_df_file_name_clm_name: segmentation_file_name
+            metadata_df_method_clm_name: segmentation_method
+            metadata_df_method_version_clm_name: segmentation_method_version
+            metadata_df_diameter_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.dataframe_columns.column_name_separator}diameter
+            metadata_df_flow_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.dataframe_columns.column_name_separator}flow${object_segmentation.metadata.dataframe_columns.column_name_separator}threshold
+            metadata_df_cellprob_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.dataframe_columns.column_name_separator}cellprob${object_segmentation.metadata.dataframe_columns.column_name_separator}threshold
+            metadata_df_downsampling_factor_clm_name: downsampling${object_segmentation.metadata.dataframe_columns.column_name_separator}factor
+            metadata_df_nucleus_med_filter_size_name: nucleus${object_segmentation.metadata.dataframe_columns.column_name_separator}median${object_segmentation.metadata.dataframe_columns.column_name_separator}filter${object_segmentation.metadata.dataframe_columns.column_name_separator}size
+            metadata_df_concactin_merge_med_filter_size_name: concactin${object_segmentation.metadata.dataframe_columns.column_name_separator}merge${object_segmentation.metadata.dataframe_columns.column_name_separator}median${object_segmentation.metadata.dataframe_columns.column_name_separator}filter${object_segmentation.metadata.dataframe_columns.column_name_separator}size
+            metadata_df_resize_order_name: resize${object_segmentation.metadata.dataframe_columns.column_name_separator}order
+            metadata_df_output_dtype_name: output${object_segmentation.metadata.dataframe_columns.column_name_separator}dtype
+            metadata_df_meta_date_format: "%y%m%d"
+
+    processing:
+        model_backend: "cellpose"
+
+        output_dtype: uint16
+
+        # set parameters 1: preprocessing
+        channel_axis: 0
+        nucleus_position: 0
+        concanavalin_position: 1
+        actin_position: 2
+        med_filter_nucleus: 3
+        med_filter_concactin_merge: 3
+        downsampling_factor: 2
+
+        # set parameters 2: model eval/predict/segment
+        flow_threshold: 0.4
+        cellprob_threshold: 0.0
+        diameter: 75
+
+
+
+
+
+
+
+
+
 
     # set parameters 3. Resizing masks
     order: 0
@@ -203,43 +262,6 @@ object_segmentation:
 
 
 
-    metadata:
-        directory: "data/proc/proc_metadata"
-        filename: "default"
 
-        default_selection:
-            include: "part_4b.csv"
-            exclude: None
-            date_source: "modified_time"
-            select: "newest"
-            filename_date_separator: "_"
-            filename_date_position: 0
-            filename_date_format: "%Y%m%d"
-
-        dataset_split:
-            column: "is_train" #"dataset_split"
-            labels:
-                train: 1
-                validation: 0
-                test: 3
-
-        segmentation_method_name: "cellpose"
-
-        column_name_separator: _
-
-
-        metadata_df_date_clm_name: segmentation_date
-        metadata_df_file_name_clm_name: segmentation_file_name
-        metadata_df_method_clm_name: segmentation_method
-        metadata_df_method_version_clm_name: segmentation_method_version
-        metadata_df_diameter_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}diameter
-        metadata_df_flow_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}flow${object_segmentation.metadata.column_name_separator}threshold
-        metadata_df_cellprob_threshold_clm_name: ${object_segmentation.metadata.segmentation_method_name}${object_segmentation.metadata.column_name_separator}cellprob${object_segmentation.metadata.column_name_separator}threshold
-        metadata_df_downsampling_factor_clm_name: downsampling${object_segmentation.metadata.column_name_separator}factor
-        metadata_df_nucleus_med_filter_size_name: nucleus${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
-        metadata_df_concactin_merge_med_filter_size_name: concactin${object_segmentation.metadata.column_name_separator}merge${object_segmentation.metadata.column_name_separator}median${object_segmentation.metadata.column_name_separator}filter${object_segmentation.metadata.column_name_separator}size
-        metadata_df_resize_order_name: resize${object_segmentation.metadata.column_name_separator}order
-        metadata_df_output_dtype_name: output${object_segmentation.metadata.column_name_separator}dtype
-        metadata_df_meta_date_format: "%y%m%d"
 
     null_value: .nan

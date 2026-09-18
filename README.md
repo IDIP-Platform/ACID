@@ -4,7 +4,7 @@ Authors: Alessandro Ulivi (alessandro.ulivi.89@gmail.com)
 
 Creation (yyyy/mm/dd): 2025/11/21
 
-Status: ongoing (2026/08/20)
+Status: ongoing (2026/09/07)
 
 # Run the project (Windows):
 ## Start - One-time setup 
@@ -67,13 +67,13 @@ uv pip install -e .
 **Background and scope**\
 The project is carried out at the Center for Integrative Infectious Disease Research in Heidelberg (abbreviated to CIID; https://ciid-heidelberg.de/).
 
-The goal of the project is to build a model to classify cells non-infected with Dengue virus, infected with Dengue virus and non-treated, and infected with Dengue virus and treated with different compounds. The projects aims at establishing a Python-based pipeline of image processing, image quantification and data analysis.
+The goal of the project is to build a model to classify cells non-infected, infected with dengue virus and non-treated, and infected with dengue virus and treated with different compounds. The projects aims at establishing a Python-based pipeline of image processing, image quantification and data analysis.
 
-Samples are (...) cells.
+Samples are Huh-7 cells.
 
-The following conditions were analysed:
-- uninfected cells treated with (...). Negative control.
-- infected cells treated with (...). Positive control.
+The following conditions are analysed:
+- uninfected cells. Negative control.
+- infected cells. Positive control.
 - uninfected cells treated with NITD-688.
 - uninfected cells treated with JNJ-A07.
 - uninfected cells treated with JNJ-1802.
@@ -81,10 +81,10 @@ The following conditions were analysed:
 - infected cells treated with JNJ-A07.
 - infected cells treated with JNJ-1802.
 
-Data collection was carried on under grant (...) as a collaboration between the Infectious Diseases Imaging Platform of CIID (abbreviated in IDIP; https://www.idip-heidelberg.org) and the group of Prof. Dr. Christian Klein of the Institute of Pharmacy and Molecular Biology (abbreviated in IPMB) at the Univeristy of Heidelberg (https://www.ipmb.uni-heidelberg.de/en/about-us/head-of-the-institute). The current project is carried out within the SHIELD consortium (Horizon grand agreement n. 101191794).
+Data collection was carried on under grant Alliance Explore!Tech as a collaboration between the Infectious Diseases Imaging Platform of CIID (abbreviated as IDIP; https://www.idip-heidelberg.org) and the group of Prof. Dr. Mila M. Leuthold of the Institute of Pharmacy and Molecular Biology (abbreviated as IPMB) at the University of Heidelberg (https://www.ipmb.uni-heidelberg.de/en/about-us/head-of-the-institute). The current project is carried out within the SHIELD consortium (Horizon grand agreement n. 101191794).
 
 **Imaging strategy and raw file structure:**
-Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a (...) objective at IDIP (https://www.idip-heidelberg.org/crest). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every (...). Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.
+Samples were imaged at a Nikon Ti2 microscope equipped with CSU-W1 module for spinning disk imaging using a  Plan Fluor 40x/1.30 Oil objective at IDIP (https://www.idip-heidelberg.org/nikon-andor-spinning-disc). Samples were prepared in parallel into a multi-well plate and imaged on the same plate. The samples were imaged, live, for 48 hours, with an acquisition every 30 minutes. Per each condition, at each timepoint, 49 distinct fields of view were acquired. During the time-lapse imaging only transmitted light was acquired.
 
 At the end of the time-lapse imaging, the samples were fixed and stained by adapting the Cell Painting protocol (Bray et al., Nature Protocols, 2016, "Cell Painting, a high-content image-based assay for morphological profiling using multiplexed fluorescent dyes", DOI https://doi.org/10.1038/nprot.2016.105) to the project. Stained samples were re-acquired at the same microscope and with the same imaging conditions. The same 49 fields of view, per each condition, were re-acquired.
 

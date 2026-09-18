@@ -179,3 +179,7 @@ data/*
 notebooks/data/*
 notebooks/reports/*
 notebooks/secondary_output/*
+
+notebooks_refactored/data/*
+notebooks_refactored/reports/*
+notebooks_refactored/secondary_output/*

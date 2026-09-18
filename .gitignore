@@ -171,16 +171,11 @@ cython_debug/
 # secondary_output content
 secondary_output/*
 
-# Data folders
+# ============================
+# ====             Data folders              ====
+# ============================
 data/*
 
-notebooks_experimental/data/*
-notebooks_experimental/secondary_output/*
-
-notebooks_legacy/data/*
-notebooks_legacy/secondary_output/*
-
-notebooks_refactoring/data/*
-notebooks_refactoring/secondary_output/*
-
-sandbox_edwin/data_example/*
+notebooks/data/*
+notebooks/reports/*
+notebooks/secondary_output/*

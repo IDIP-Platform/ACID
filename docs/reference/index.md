@@ -1,6 +1,9 @@
 # Reference
 
-The reference documentation is generated from Python docstrings in `src/acid`
+Start with the [Configuration guide](configuration.md) to set up the refactored
+notebooks and look up accepted parameter values.
+
+The API reference below is generated from Python docstrings in `src/acid`
 with `mkdocstrings`.
 
 Use this section when you need details about functions, classes, and modules.

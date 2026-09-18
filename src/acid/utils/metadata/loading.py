@@ -6,7 +6,6 @@ import pandas as pd
 from acid.utils.filesystem.filesystem import list_directory_entries
 from acid.utils.get_defaults import default_file_name
 
-
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
@@ -19,8 +18,8 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     """Load a metadata CSV using explicit or default file selection.
 
     Args:
-        metadata_config: Metadata configuration dictionary. Expected keys are
-            "directory", "filename", and optionally "file_selection".
+        metadata_config: Metadata configuration with "directory" and
+            "file_selection" entries.
 
     Returns:
         A tuple containing the loaded dataframe and the resolved metadata file
@@ -33,7 +32,7 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     """
     directory = Path(metadata_config["directory"])
 
-    file_selection = metadata_config.file_selection.get("file_selection", {})
+    file_selection = metadata_config.get("file_selection", {})
 
     filename = file_selection.get("filename", "default")
 

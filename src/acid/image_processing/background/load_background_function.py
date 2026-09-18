@@ -7,6 +7,7 @@ from pathlib import Path
 
 import tifffile
 
+from acid.utils.filesystem.filesystem import list_directory_entries
 from acid.utils.get_defaults import (
     default_file_name,
     default_multifile_name,
@@ -30,6 +31,11 @@ class BackgroundFunctionStrategy(IntEnum):
 def load_background_function(background_config, metadata_df=None):
     strategy = background_config["background_function_strategy"]
     background_files = _list_background_files(background_config)
+
+    if not background_files:
+        raise ValueError(
+            f"No background function files match the selection in {background_config['directory']}"
+        )
 
     if strategy == BackgroundFunctionStrategy.DATASET:
         return _load_strategy_1_background(
@@ -73,20 +79,18 @@ def _load_strategy_1_background(
     automatically using the default-selection settings.
     """
     background_directory = Path(background_config["directory"])
-    background_function_timestamp = background_config.get("filename", "default")
+    selection = _selection_settings(background_config)
+    background_function_timestamp = selection.get("filename", "default")
 
     if _uses_default_background_timestamp(background_function_timestamp):
         background_filename = default_file_name(
             file_list=background_files,
-            from_file_name=background_config.get("background_from_file_name", False),
+            from_file_name=_use_filename_date(selection),
             directory_path=background_directory,
-            separator=background_config.get("background_default_separator", "_"),
-            date_position=background_config.get("background_default_date_position", 0),
-            date_format=background_config.get(
-                "background_default_date_format",
-                "%Y%m%d",
-            ),
-            reverse=background_config.get("background_default_reverse", True),
+            separator=selection.get("filename_date_separator", "_"),
+            date_position=selection.get("filename_date_position", 0),
+            date_format=selection.get("filename_date_format", "%Y%m%d"),
+            reverse=_select_newest(selection),
         )
     else:
         matching_files = [
@@ -151,7 +155,59 @@ def _list_background_files(background_config):
             f"Background function directory not found: {background_directory}"
         )
 
-    return [path.name for path in background_directory.iterdir() if path.is_file()]
+    selection = _selection_settings(background_config)
+    return list_directory_entries(
+        directory=background_directory,
+        include=selection.get("include"),
+        exclude=selection.get("exclude"),
+    )
+
+
+def _selection_settings(background_config):
+    if "file_selection" in background_config:
+        return background_config["file_selection"]
+
+    return {
+        "filename": background_config.get(
+            "filename",
+            background_config.get("background_function_timestamp", "default"),
+        ),
+        "include": background_config.get("default_bg_funct_file_target"),
+        "exclude": background_config.get("default_bg_funct_file_exclude"),
+        "date_source": (
+            "filename"
+            if background_config.get("background_from_file_name", False)
+            else "modified_time"
+        ),
+        "select": (
+            "newest"
+            if background_config.get("background_default_reverse", True)
+            else "oldest"
+        ),
+        "filename_date_separator": background_config.get(
+            "background_default_separator", "_"
+        ),
+        "filename_date_position": background_config.get(
+            "background_default_date_position", 0
+        ),
+        "filename_date_format": background_config.get(
+            "background_default_date_format", "%Y%m%d"
+        ),
+    }
+
+
+def _use_filename_date(selection):
+    date_source = selection.get("date_source", "modified_time")
+    if date_source not in {"filename", "modified_time"}:
+        raise ValueError(f"Invalid background date_source: {date_source!r}")
+    return date_source == "filename"
+
+
+def _select_newest(selection):
+    choice = selection.get("select", "newest")
+    if choice not in {"newest", "oldest"}:
+        raise ValueError(f"Invalid background select: {choice!r}")
+    return choice == "newest"
 
 
 def _load_condition_mapped_background(
@@ -172,20 +228,18 @@ def _load_condition_mapped_background(
         )
 
     background_directory = Path(background_config["directory"])
-    background_timestamp = background_config.get(
-        "background_function_timestamp",
-        "default",
-    )
+    selection = _selection_settings(background_config)
+    background_timestamp = selection.get("filename", "default")
 
     if _uses_default_background_timestamp(background_timestamp):
         background_file_names = default_multifile_name(
             file_list=background_files,
-            from_file_name=background_config.get("background_from_file_name"),
+            from_file_name=_use_filename_date(selection),
             directory_path=background_directory,
-            separator=background_config.get("background_default_separator"),
-            date_position=background_config.get("background_default_date_position"),
-            date_format=background_config.get("background_default_date_format"),
-            reverse=background_config.get("background_default_reverse"),
+            separator=selection.get("filename_date_separator", "_"),
+            date_position=selection.get("filename_date_position", 0),
+            date_format=selection.get("filename_date_format", "%Y%m%d"),
+            reverse=_select_newest(selection),
         )
 
         print("using the following files as default background function files:")

@@ -1,0 +1,554 @@
+# ============================================================================
+# Project properties
+# ============================================================================
+project_identity:
+    project_name: "ACID"
+
+# ============================================================================
+# Shared conventions
+# ============================================================================
+# Stages 1-4a are a configuration reference for future notebook refactoring.
+# The optimized notebooks for stages 4b, 5, and 6 read this file today.
+shared:
+    # Paths are relative to this configuration file.
+    paths:
+        raw_acquisitions_dir: "data/raw"
+        extracted_fov_dir: "data/processed/extracted_fov"
+        background_functions_dir: "data/processed/background_functions"
+        corrected_fov_dir: "data/processed/corrected_fov"
+        segmentation_masks_dir: "data/processed/segmentation_masks"
+        feature_tables_dir: "data/processed/feature_tables"
+        metadata_dir: "data/metadata"
+        quality_control_reports_dir: "reports/quality_control"
+        background_function_reports_dir: "reports/background_functions"
+        background_correction_reports_dir: "reports/background_correction"
+
+    dataset_split:
+        # These codes describe the planned three-way split, not legacy part 2.
+        column: "is_train"
+        labels:
+            train: 1
+            validation: 0   # old - "test"
+            test: 3
+
+    file_selection:
+        # Pin filename for reproducible runs; newest modified file can change.
+        filename: "default"
+        date_source: "modified_time"
+        select: "newest"
+        filename_date_separator: "_"
+        filename_date_position: 0
+        filename_date_format: "%Y%m%d"
+
+    naming:
+        separator: "_"
+        metadata_savingword: "metadata"
+        metadata_date_format: "%Y%m%d"
+        processing_date_format: "%y%m%d"
+        ome_suffix: ".ome.tif"
+        save_csv_index: false
+
+    image_saving:
+        photometric: "minisblack"
+        save_imagej_compatible: true
+
+    processing:
+        channel_axis: 0
+
+# ============================================================================
+# Stage 1: Field-of-view extraction
+# ============================================================================
+# Proposed settings extracted from the legacy notebook; not consumed yet.
+field_of_view_extraction:
+    acquisitions:
+        directory: ${shared.paths.raw_acquisitions_dir}
+        experiment_directory_selection:
+            include: null
+            exclude: [".pptx", ".csv", ".xlsx"]
+        file_selection:
+            include: ".nd2"
+            exclude: null
+
+    naming:
+        experiment_separator: ${shared.naming.separator}
+        sub_experiment_separator: "."
+        sub_experiment_separator_replacement: "p"
+        acquisition_filename_separator: ${shared.naming.separator}
+        experiment_index: -1
+        condition_1_bitinfo: [0, null, null, null]
+        infectious_organism_bitinfo: [1, null, null, null]
+        condition_2_bitinfo: [2, null, null, null]
+        imaging_hours_bitinfo: [3, null, null, null]
+        well_bitinfo: [-1, null, null, null]
+
+    image_metadata:
+        channels:
+            - "Hoechst"
+            - "Concanavalin-A-488"
+            - "Phalloidin-568"
+            - "anti-Nonstructural-Protein-3-647"
+            - "Differential-Interference-Contrast"
+        physical_size_unit: "micron"
+        location: "Center for Integrative Infectious Disease Research - Heidelberg (Germany)"
+        microscope: "Nikon Ti2 - CSU-W1 - spinning disc"
+        objective: "Nikon Apochromat Lambda-S 60x/1.40 Oil"
+        processing_date_format: ${shared.naming.processing_date_format}
+        dimensions_order_metadata_name: "dims_order"
+
+    image_saving:
+        directory: ${shared.paths.extracted_fov_dir}
+        xml_suffix: "str.xml"
+        ome_suffix: ${shared.naming.ome_suffix}
+        save_file_name_separator: ${shared.naming.separator}
+        photometric: ${shared.image_saving.photometric}
+        save_imagej_compatible: ${shared.image_saving.save_imagej_compatible}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_1.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+# ============================================================================
+# Stage 2: Dataset splitting
+# ============================================================================
+# Proposed three-way split; the legacy notebook and helper create only two sets.
+dataset_splitting:
+    dataset_split: ${shared.dataset_split}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_1.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+        dataframe_columns:
+            treatment_column_name: "treatment"
+            well_column_name: "well"
+            experiment_column_name: "experiment"
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_2.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    plate_layout:
+        directory: ${shared.paths.raw_acquisitions_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "plate_layout.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+
+    processing:
+        # Keep the legacy row-level unit, but divide its 30% holdout in half.
+        split_unit: "metadata_row"
+        train_fraction: 0.70
+        validation_fraction: 0.15
+        test_fraction: 0.15
+        random_state: 42
+        concat_kwargs: {}
+
+# ============================================================================
+# Stage 3: Quality control
+# ============================================================================
+# The legacy notebook selects training rows; future split coverage is undecided.
+quality_control:
+    dataset_split: ${shared.dataset_split}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_2.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+        dataframe_columns:
+            fov_column_name: "ome_tif_file_name"
+            flag_column_name: "flag"
+            null_value: .nan
+            channel_measurement_separator: "-"
+            plls_column_name: "plls"
+            skewness_column_name: "normalized_intensity_skewness"
+            mean_over_std_column_name: "mean_over_std"
+            well_column_name: "well"
+            experiment_column_name: "experiment"
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_3.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    processing:
+        fov_directory: ${shared.paths.extracted_fov_dir}
+        channel_axis: ${shared.processing.channel_axis}
+        median_smooth: true
+        median_size: 3
+        median_kwargs_axes_name: "axes"
+        normalize: [true]
+        ravel_kwargs: {}
+        mask: null
+        flag_value: 1
+        ok_value: 0
+        # Historical thresholds are not a complete QC policy: the legacy
+        # percentile calculation is disabled, and PLLS/top thresholds are absent.
+        mean_over_std_lowpass_thresholds: [9, 30, 2.1, 29, 24]
+        mean_over_std_highpass_thresholds: [1.5, 0.9, 1, 3, 8]
+        bottom_percentile_fraction_lowpass_thresholds: [0.023, 0.023, 0.022, 0.023, 0.0205]
+        bottom_percentile_fraction_highpass_thresholds: [0.02, 0.02, 0.02, 0.02, 0.02]
+
+    graphs_saving:
+        save_graphs: true
+        graph_saving_directory: ${shared.paths.quality_control_reports_dir}
+        graph_date_format: ${shared.naming.metadata_date_format}
+        graph_suffix: ".png"
+        mean_over_std_per_ch_exp_savingword: "mean_over_std_ch_exp"
+        mean_over_std_per_ch_well_savingword: "mean_over_std_ch_well"
+        perc_fract_per_ch_exp_savingword: "perc_fract_ch_exp"
+        perc_fract_per_ch_well_savingword: "perc_fract_ch_well"
+
+# ============================================================================
+# Stage 4a: Background-function calculation
+# ============================================================================
+# The legacy calculation uses unflagged training images, not holdout images.
+background_function_calculation:
+    dataset_split: ${shared.dataset_split}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_3.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+        dataframe_columns:
+            fov_column_name: "ome_tif_file_name"
+            well_column_name: "well"
+            experiment_column_name: "experiment"
+            gridpos_column_name: "scene_name"
+            flag_column_name: ${quality_control.metadata.dataframe_columns.flag_column_name}
+            null_value: .nan
+            column_name_separator: ${shared.naming.separator}
+            channel_name_separator: "-"
+            background_df_avg_method_clm_name: "background_funct_avg_method"
+            background_df_poly_order_x_clm_name: "background_funct_order_x"
+            background_df_poly_order_y_clm_name: "background_funct_order_y"
+            background_df_date_clm_name: "background_funct_date"
+            background_df_meta_date_format: ${shared.naming.processing_date_format}
+            background_df_meta_ballradius_name: "background_funct_ball_radius"
+            background_df_meta_whitebg_name: "background_funct_white_bg"
+            background_df_meta_gausmooth_name: "background_funct_gau_smooth"
+        image_metadata:
+            background_img_meta_date_name: "background_funct_date_yymmdd"
+            background_img_meta_date_format: ${shared.naming.processing_date_format}
+            background_img_meta_project_name: "project_name"
+            background_img_meta_avg_method_name: "background_funct_avg_method"
+            background_img_meta_poly_degree_name: "background_funct_poly_degree"
+            background_img_meta_ballradius_name: "background_funct_ball_radius"
+            background_img_meta_whitebg_name: "background_funct_white_bg"
+            background_img_meta_gausmooth_name: "background_funct_gau_smooth_size"
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_4a.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    processing:
+        fov_directory: ${shared.paths.extracted_fov_dir}
+        channel_axis: ${shared.processing.channel_axis}
+        background_function_strategy: 1
+        background_function_avg_method: "median"
+        background_fit_method: "simple"
+        polynomial_order_x: [1, 1, 1, 1, 1]
+        polynomial_order_y: [1, 1, 1, 1, 1]
+        ball_radius: 200
+        white_background: [false, false, false, false, true]
+        rolling_ball_kwargs: null
+        invert_kwargs: null
+        gau_smooth: 100
+        gaussian_kwargs: null
+        convolve_kwargs: null
+        dtype: null
+        n_workers: 5
+        map_kwargs: null
+        verbose: true
+        np_zero_kwargs: null
+        sample_df: false
+        sample_fraction: 0.5
+        sample_kwargs:
+            random_state: 42
+        axis_calc_bg: -1
+        verbose_calc_bg: true
+
+    image_saving:
+        directory: ${shared.paths.background_functions_dir}
+        save_avg_background_function_image: false
+        average_background_directory: ${shared.paths.background_function_reports_dir}
+        background_img_name_date_format: ${shared.naming.metadata_date_format}
+        background_img_savingword: "background"
+        non_polyfit_background_img_savingword: "bg_nofit"
+        background_img_file_suffix: ${shared.naming.ome_suffix}
+        background_img_dtype: "float32"
+        photometric: ${shared.image_saving.photometric}
+        save_imagej_compatible: ${shared.image_saving.save_imagej_compatible}
+        save_file_name_separator: ${shared.naming.separator}
+
+# ============================================================================
+# Stage 4b: Background correction
+# ============================================================================
+# The current optimized notebook processes training rows only. Processing
+# validation and test rows remains a future pipeline decision.
+background_correction:
+    dataset_split: ${shared.dataset_split}
+
+    background_function_selection:
+        directory: ${shared.paths.background_functions_dir}
+        # Must match the strategy used to produce the selected background files.
+        background_function_strategy: 1
+        well_column_name: ${background_correction.metadata.dataframe_columns.well_column_name}
+        gridpos_column_name: ${background_correction.metadata.dataframe_columns.gridpos_column_name}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: ".ome.tif"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_4a.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+
+        dataframe_columns:
+            fov_column_name: "ome_tif_file_name"
+            well_column_name: "well"
+            gridpos_column_name: "scene_name"
+            null_value: .nan
+            column_name_separator: ${shared.naming.separator}
+            illum_correct_df_date_clm_name: "illumination_correction_date"
+            illum_correct_df_meta_date_format: ${shared.naming.processing_date_format}
+            illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+            illum_correct_df_method_clm_name: "illumination_correction_method"
+            illum_correct_df_offset_clm_name: "illumination_correction_offset"
+            illum_correct_df_rescale_clm_name: "illumination_correction_rescale_background"
+            illum_correct_df_clipping_clm_name: "illumination_correction_clip_output"
+            illum_correct_df_clip_min_value_clm_name: "illumination_correction_min_clip_value"
+            illum_correct_df_clip_max_value_clm_name: "illumination_correction_max_clip_value"
+            illum_correct_df_offset_background_clm_name: "illumination_correction_offset_background"
+
+        image_metadata:
+            proc_img_meta_date_name: "processing_date_yymmdd"
+            processing_date_format: ${shared.naming.processing_date_format}
+            proc_img_meta_dtype_name: "dtype"
+            illum_corr_method_metadata_entry: "illumination_correction_method"
+            illum_corr_offset_metadata_entry: "illumination_correction_offset"
+            illum_corr_rescale_metadata_entry: "illumination_correction_rescale_background"
+            illum_corr_clipping_metadata_entry: "illumination_correction_clipping"
+            illum_corr_clip_min_value_metadata_entry: "illumination_correction_min_clip_value"
+            illum_corr_clip_max_value_metadata_entry: "illumination_correction_max_clip_value"
+            illum_corr_offset_background_metadata_entry: "illumination_correction_offset_background"
+
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_4b.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    processing:
+        channel_axis: ${shared.processing.channel_axis}
+        method: "division"
+        offset: 400
+        epsilon: 1.0e-8
+        output_dtype: "float32"
+        working_dtype: "float32"
+        rescale_background: "max"
+        clip_corrected_image: false
+        min_clip_value: 0
+        max_clip_value: null
+        offset_background: true
+        zero_kwargs: null
+        verbose: false
+
+    image_saving:
+        directory: ${shared.paths.corrected_fov_dir}
+        photometric: ${shared.image_saving.photometric}
+        save_imagej_compatible: ${shared.image_saving.save_imagej_compatible}
+        save_file_name_separator: ${shared.naming.separator}
+        fov_illumin_corrected_savingword: "bg"
+        ome_suffix: ${shared.naming.ome_suffix}
+
+    graphs_saving:
+        save_graphs: true
+        graph_saving_directory: ${shared.paths.background_correction_reports_dir}
+        graph_date_format: ${shared.naming.metadata_date_format}
+        graph_suffix: ".png"
+        graph_savingword: "illumination_correction"
+
+# ============================================================================
+# Stage 5: Object segmentation
+# ============================================================================
+# The current optimized notebook processes training rows only.
+object_segmentation:
+    dataset_split: ${shared.dataset_split}
+
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_4b.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+
+        segmentation_method_name: ${object_segmentation.processing.model_backend}
+
+        dataframe_columns:
+            illum_correct_df_file_name_clm_name: "illumination_correction_file_name"
+            null_value: .nan
+            metadata_df_date_clm_name: "segmentation_date"
+            metadata_df_file_name_clm_name: "segmentation_file_name"
+            metadata_df_method_clm_name: "segmentation_method"
+            metadata_df_method_version_clm_name: "segmentation_method_version"
+            metadata_df_diameter_clm_name: "cellpose_diameter"
+            metadata_df_flow_threshold_clm_name: "cellpose_flow_threshold"
+            metadata_df_cellprob_threshold_clm_name: "cellpose_cellprob_threshold"
+            metadata_df_downsampling_factor_clm_name: "downsampling_factor"
+            metadata_df_nucleus_med_filter_size_name: "nucleus_median_filter_size"
+            metadata_df_concactin_merge_med_filter_size_name: "concactin_merge_median_filter_size"
+            metadata_df_resize_order_name: "resize_order"
+            metadata_df_output_dtype_name: "output_dtype"
+            metadata_df_meta_date_format: ${shared.naming.processing_date_format}
+
+        image_metadata:
+            processing_date_format: ${shared.naming.processing_date_format}
+            preproc_img_meta_raw_file_name_entry: "raw_file_name"
+            preproc_img_meta_scene_file_name_entry: "scene_file_name"
+            preproc_img_meta_x_physic_px_size_entry: "physical_size_x"
+            preproc_img_meta_y_physic_px_size_entry: "physical_size_y"
+            preproc_img_meta_x_physic_px_size_unit_entry: "physical_size_unit_x"
+            preproc_img_meta_y_physic_px_size_unit_entry: "physical_size_unit_y"
+            segmented_img_meta_processing_steps: "median filter nuclei. merge concanavalin and actin by average intensity and median filter the result. downsample channels. stack channels together: pos-0-nuclei, pos-1-merge. cell segmentation. upsample segmentation mask to original size."
+            segmented_img_meta_date_name: "processing_date_yymmdd"
+            segmented_img_meta_method_name: "method"
+            segmentation_method_version_name: "version"
+            segmented_img_meta_diameter_name: "cellpose_diameter"
+            segmented_img_meta_flow_threshold_name: "cellpose_flow_threshold"
+            segmented_img_meta_cellprob_threshold_name: "cellpose_cellprob_threshold"
+            segmented_img_meta_downsampling_factor_name: "downsampling_factor"
+            segmented_img_meta_nucleus_med_filter_size_name: "nucleus_median_filter_size"
+            segmented_img_meta_concactin_merge_med_filter_size_name: "concanavalin_actin_merge_median_filter_size"
+            segmented_img_meta_resize_order_name: "upsampling_resize_order"
+            segmented_img_meta_processing_name: "processing_steps"
+            segmented_img_meta_dtype_name: "dtype"
+
+        saving:
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_5.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_file_name_separator: ${shared.naming.separator}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    processing:
+        model_backend: "cellpose"
+        output_dtype: "uint16"
+        channel_axis: ${shared.processing.channel_axis}
+        nucleus_position: 0
+        concanavalin_position: 1
+        actin_position: 2
+        med_filter_nucleus: 3
+        med_filter_concactin_merge: 3
+        downsampling_factor: 2
+        flow_threshold: 0.4
+        cellprob_threshold: 0.0
+        diameter: 75
+        order: 0
+        preserve_range: true
+        anti_aliasing: false
+
+    image_saving:
+        photometric: ${shared.image_saving.photometric}
+        save_imagej_compatible: ${shared.image_saving.save_imagej_compatible}
+        save_file_name_separator: ${shared.naming.separator}
+        segmentation_savingword: "segmentation"
+        ome_suffix: ${shared.naming.ome_suffix}
+
+# ============================================================================
+# Stage 6: Feature extraction
+# ============================================================================
+# Processes the rows supplied by stage 5 metadata; it does not resplit them.
+feature_extraction:
+    metadata:
+        directory: ${shared.paths.metadata_dir}
+        file_selection:
+            filename: ${shared.file_selection.filename}
+            include: "part_5.csv"
+            exclude: null
+            date_source: ${shared.file_selection.date_source}
+            select: ${shared.file_selection.select}
+            filename_date_separator: ${shared.file_selection.filename_date_separator}
+            filename_date_position: ${shared.file_selection.filename_date_position}
+            filename_date_format: ${shared.file_selection.filename_date_format}
+
+        dataframe_columns:
+            null_value: .nan
+            fov_column_name: "illumination_correction_file_name"
+            segmentation_column_name: "segmentation_file_name"
+            metadata_df_meta_date_format: ${shared.naming.processing_date_format}
+            metadata_df_date_clm_name: "features_extraction_date"
+            metadata_df_file_name_clm_name: "features_data_frame"
+            metadata_df_method_clm_name: "features_extraction_preprocessing"
+            preprocessing_steps: "move channel axis to last position; gaussian smoothing with sigma ${feature_extraction.processing.sigma} along last axis; exclude labels touching image edge"
+
+        saving:
+            save_file_name_separator: ${shared.naming.separator}
+            metadata_savingword: ${shared.naming.metadata_savingword}
+            metadata_file_suffix: "part_6.csv"
+            metadata_date_format: ${shared.naming.metadata_date_format}
+            save_csv_index: ${shared.naming.save_csv_index}
+
+    processing:
+        channel_axis: ${shared.processing.channel_axis}
+        sigma: 3
+        axes: -1
+
+    features_saving:
+        ome_suffix: ${shared.naming.ome_suffix}
+        output_suffix: ".csv"
+        save_csv_index: ${shared.naming.save_csv_index}

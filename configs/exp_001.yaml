@@ -1,0 +1,11 @@
+experiment:
+  id: "exp_001"
+  title: "Larger cell diameter"
+  description: "Compare segmentation with a larger diameter."
+  author: ""
+  created: null
+  notes: "Set shared input paths to your data before processing."
+
+object_segmentation:
+  processing:
+    diameter: 100

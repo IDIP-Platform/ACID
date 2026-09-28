@@ -19,4 +19,3 @@ segmentation, and feature extraction.
 
 Read the detailed workflow description in
 [Dengue Cell Painting](dengue-cell-painting.md).
-

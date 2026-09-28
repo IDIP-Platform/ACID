@@ -171,3 +171,18 @@ cython_debug/
 # secondary_output content
 secondary_output/*
 
+# VSCODE settings
+.vscode/
+
+# ===============================================
+# ====             Data folders              ====
+# ===============================================
+data/*
+
+notebooks/data/*
+notebooks/reports/*
+notebooks/secondary_output/*
+
+notebooks_refactored/data/*
+notebooks_refactored/reports/*
+notebooks_refactored/secondary_output/*

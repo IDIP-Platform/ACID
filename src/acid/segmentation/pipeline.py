@@ -20,6 +20,7 @@ import logging
 
 import numpy as np
 from omegaconf import DictConfig
+from skimage.transform import resize
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -124,3 +125,31 @@ def segment_objects(preprocessed_image: np.ndarray, model, config: DictConfig) -
         diameter=config.processing.diameter,
         channel_axis=config.processing.channel_axis,
     )
+
+
+def resize_segmentation_mask(
+    mask: np.ndarray, output_shape: tuple[int, ...], config: DictConfig
+) -> np.ndarray:
+    """Resize a label mask from the downsampled grid to full resolution.
+
+    Args:
+        mask (np.ndarray): Label mask returned by the model.
+        output_shape (tuple[int, ...]): Target shape, usually from
+            `get_channel_shape`.
+        config (DictConfig): The whole `object_segmentation` section. Reads
+            `processing.order` (`0` = nearest neighbour, keeps labels intact),
+            `processing.preserve_range` and `processing.anti_aliasing` (keep
+            `False` for label images), passed to `skimage.transform.resize`.
+
+    Returns:
+        np.ndarray: Resized mask with the dtype of `mask`.
+    """
+    resized_mask = resize(
+        mask,
+        output_shape=output_shape,
+        order=config.processing.order,
+        preserve_range=config.processing.preserve_range,
+        anti_aliasing=config.processing.anti_aliasing,
+    )
+
+    return resized_mask.astype(mask.dtype, copy=False)

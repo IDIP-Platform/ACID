@@ -5,6 +5,7 @@ from acid.segmentation.pipeline import (
     cast_mask_to_output_dtype,
     get_channel_shape,
     get_segmentation_metadata_columns,
+    resize_segmentation_mask,
     segment_objects,
 )
 
@@ -73,3 +74,13 @@ def test_segment_objects_passes_configured_settings_to_model(segmentation_config
             "channel_axis": processing.channel_axis,
         }
     ]
+
+
+def test_resize_segmentation_mask_upsamples_and_keeps_labels(segmentation_config):
+    mask = np.array([[0, 1], [2, 2]], dtype=np.int32)
+
+    resized = resize_segmentation_mask(mask, (4, 4), segmentation_config)
+
+    assert resized.shape == (4, 4)
+    assert resized.dtype == np.int32
+    assert set(np.unique(resized)) == {0, 1, 2}

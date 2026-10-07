@@ -1,9 +1,12 @@
+import types
+
 import numpy as np
 import pandas as pd
 import pytest
 import tifffile
 
 from acid.image_processing.background.apply_background_correction import (
+    apply_background_correction_for_fov,
     build_image_metadata,
     correct_background_image,
     get_background_for_fov,
@@ -106,3 +109,56 @@ def test_make_correction_success_result_records_processing_settings(correction_c
         correction_config.processing.offset
     )
     assert set(get_correction_metadata_columns(columns)) <= set(result)
+
+
+def test_apply_for_fov_writes_corrected_image(correction_config, write_fov):
+    directory, _ = write_fov()
+    columns = correction_config.metadata.dataframe_columns
+    row = pd.Series({columns.fov_column_name: "a.ome.tif"})
+
+    result = apply_background_correction_for_fov(
+        0,
+        row,
+        background(),
+        correction_config,
+        types.SimpleNamespace(extracted_fov_dir=str(directory)),
+    )
+
+    assert result["success"] is True, result["error_message"]
+    assert result["output_file"] == "a_bg.ome.tif"
+    assert result[columns.illum_correct_df_method_clm_name] == "division"
+    assert (directory.parent / "corrected" / "a_bg.ome.tif").is_file()
+
+
+def test_apply_for_fov_missing_file_reports_stage(correction_config, tmp_path):
+    columns = correction_config.metadata.dataframe_columns
+    row = pd.Series({columns.fov_column_name: "missing.ome.tif"})
+
+    result = apply_background_correction_for_fov(
+        0,
+        row,
+        background(),
+        correction_config,
+        types.SimpleNamespace(extracted_fov_dir=str(tmp_path)),
+    )
+
+    assert result["success"] is False
+    assert result["stage"] == "load_field_of_view"
+    assert result["input_file"] == "missing.ome.tif"
+    assert pd.isna(result[columns.illum_correct_df_file_name_clm_name])
+
+
+def test_apply_for_fov_empty_filename_reports_stage(correction_config, tmp_path):
+    columns = correction_config.metadata.dataframe_columns
+    row = pd.Series({columns.fov_column_name: np.nan})
+
+    result = apply_background_correction_for_fov(
+        0,
+        row,
+        background(),
+        correction_config,
+        types.SimpleNamespace(extracted_fov_dir=str(tmp_path)),
+    )
+
+    assert result["stage"] == "get_field_of_view_file"
+    assert result["input_file"] is None

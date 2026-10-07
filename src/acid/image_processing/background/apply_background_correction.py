@@ -10,7 +10,9 @@ from acid.image_processing.background.load_background_function import (
 from acid.image_processing.correct_background import correct_background
 from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
-from acid.utils.row_processing import make_success_result
+from acid.io.image_loading import load_field_of_view
+from acid.utils.metadata.rows import get_required_filename
+from acid.utils.row_processing import make_failure_result, make_success_result
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -174,4 +176,79 @@ def make_correction_success_result(row_index, field_of_view_file, output_file, c
             columns.illum_correct_df_clip_max_value_clm_name: processing.max_clip_value,
             columns.illum_correct_df_offset_background_clm_name: processing.offset_background,
         },
+    )
+
+
+def apply_background_correction_for_fov(
+    row_index, metadata_row, backgrounds, background_correction_config, paths
+):
+    """Correct, save and describe one field of view.
+
+    Every failing step returns a failure result naming that step in ``stage``
+    instead of raising, so one bad file does not stop the batch.
+    """
+    config = background_correction_config
+    columns = config.metadata.dataframe_columns
+    field_of_view_file = None
+
+    def failure(stage, error):
+        return make_failure_result(
+            row_index=row_index,
+            input_file=field_of_view_file,
+            error=error,
+            metadata_columns=get_correction_metadata_columns(columns),
+            null_value=columns.null_value,
+            stage=stage,
+        )
+
+    try:
+        field_of_view_file = get_required_filename(metadata_row, columns.fov_column_name)
+    except Exception as error:
+        return failure("get_field_of_view_file", error)
+
+    try:
+        field_of_view = load_field_of_view(field_of_view_file, paths.extracted_fov_dir)
+    except Exception as error:
+        return failure("load_field_of_view", error)
+
+    try:
+        image_metadata = build_image_metadata(
+            field_of_view_file=field_of_view_file,
+            fov_directory=paths.extracted_fov_dir,
+            config=config,
+        )
+    except Exception as error:
+        return failure("build_image_metadata", error)
+
+    try:
+        background = get_background_for_fov(
+            metadata_row=metadata_row,
+            backgrounds=backgrounds,
+            config=config.background_function_selection,
+        )
+    except Exception as error:
+        return failure("get_background_for_fov", error)
+
+    try:
+        corrected_image = correct_background_image(
+            image=field_of_view, background=background, config=config.processing
+        )
+    except Exception as error:
+        return failure("correct_background_image", error)
+
+    output_filename = make_output_filename(field_of_view_file, config.image_saving)
+    logger.info("Output filename: %s", output_filename)
+
+    try:
+        save_corrected_image(
+            output_filename=output_filename,
+            corrected_image=corrected_image,
+            image_metadata=image_metadata,
+            config=config.image_saving,
+        )
+    except Exception as error:
+        return failure("save_corrected_image", error)
+
+    return make_correction_success_result(
+        row_index, field_of_view_file, output_filename, config
     )

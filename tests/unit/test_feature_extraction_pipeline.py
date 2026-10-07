@@ -11,6 +11,7 @@ from acid.feature_extraction.pipeline import (
     merge_feature_tables,
     preprocess_field_of_view,
     preprocess_segmentation_mask,
+    save_features_dataframe,
 )
 
 
@@ -106,3 +107,16 @@ def test_merge_feature_tables_keeps_only_objects_with_eigenvalue_features():
 
 def test_make_features_output_filename_replaces_ome_suffix(feature_config):
     assert make_features_output_filename("a_bg.ome.tif", feature_config) == "a_bg.csv"
+
+
+def test_save_features_dataframe_writes_csv_into_given_directory(
+    feature_config, tmp_path
+):
+    features = pd.DataFrame({"label": [1, 2], "area": [4, 9]})
+
+    path = save_features_dataframe(
+        features, "a_bg.csv", feature_config, output_directory=tmp_path / "features"
+    )
+
+    assert path == tmp_path / "features" / "a_bg.csv"
+    pd.testing.assert_frame_equal(pd.read_csv(path), features)

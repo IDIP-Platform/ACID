@@ -12,6 +12,7 @@ docstring names the keys it reads.
 """
 
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -234,3 +235,38 @@ def make_features_output_filename(field_of_view_file: str, config: DictConfig) -
     stem = str(field_of_view_file).removesuffix(config.features_saving.ome_suffix)
 
     return f"{stem}{config.features_saving.output_suffix}"
+
+
+def save_features_dataframe(
+    features_df: pd.DataFrame,
+    output_filename: str,
+    config: DictConfig,
+    output_directory: str | Path,
+) -> Path:
+    """Save the feature table of one field of view as CSV.
+
+    Creates `output_directory` when it does not exist and overwrites an
+    existing file with the same name.
+
+    Args:
+        features_df (pd.DataFrame): Merged feature table, usually from
+            `merge_feature_tables`.
+        output_filename (str): File name, usually from
+            `make_features_output_filename`.
+        config (DictConfig): The whole `feature_extraction` section. Reads
+            `features_saving.save_csv_index`.
+        output_directory (str | Path): Target directory, usually
+            `shared.paths.feature_tables_dir`.
+
+    Returns:
+        Path: Full path of the written CSV file.
+    """
+    output_path = Path(output_directory) / output_filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    features_df.to_csv(
+        output_path,
+        index=config.features_saving.save_csv_index,
+    )
+
+    return output_path

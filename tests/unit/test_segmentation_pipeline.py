@@ -5,6 +5,7 @@ from acid.segmentation.pipeline import (
     cast_mask_to_output_dtype,
     get_channel_shape,
     get_segmentation_metadata_columns,
+    make_segmentation_output_filename,
     resize_segmentation_mask,
     segment_objects,
 )
@@ -84,3 +85,10 @@ def test_resize_segmentation_mask_upsamples_and_keeps_labels(segmentation_config
     assert resized.shape == (4, 4)
     assert resized.dtype == np.int32
     assert set(np.unique(resized)) == {0, 1, 2}
+
+
+def test_make_segmentation_output_filename(segmentation_config):
+    assert (
+        make_segmentation_output_filename("a_bg.ome.tif", segmentation_config)
+        == "a_bg_segmentation.ome.tif"
+    )

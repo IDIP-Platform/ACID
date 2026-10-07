@@ -17,6 +17,7 @@ its subsections; each docstring names the section and the keys it reads.
 """
 
 import logging
+from pathlib import Path
 
 import numpy as np
 from omegaconf import DictConfig
@@ -153,3 +154,33 @@ def resize_segmentation_mask(
     )
 
     return resized_mask.astype(mask.dtype, copy=False)
+
+
+def make_segmentation_output_filename(
+    field_of_view_file: str, config: DictConfig
+) -> str:
+    """Create the file name of a segmentation mask.
+
+    The saving word is inserted before the OME suffix, e.g. `a_bg.ome.tif`
+    becomes `a_bg_segmentation.ome.tif` with the default configuration.
+
+    Args:
+        field_of_view_file (str): File name (or path) of the corrected field of
+            view; only the name is used.
+        config (DictConfig): The whole `object_segmentation` section. Reads
+            `image_saving.ome_suffix`, `image_saving.save_file_name_separator`
+            and `image_saving.segmentation_savingword`.
+
+    Returns:
+        str: Mask file name without a directory.
+    """
+    field_of_view_file = Path(field_of_view_file)
+    suffix = config.image_saving.ome_suffix
+    stem = field_of_view_file.name.removesuffix(suffix)
+
+    return (
+        f"{stem}"
+        f"{config.image_saving.save_file_name_separator}"
+        f"{config.image_saving.segmentation_savingword}"
+        f"{suffix}"
+    )

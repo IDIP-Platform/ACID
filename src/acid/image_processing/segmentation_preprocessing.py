@@ -11,6 +11,9 @@ import logging
 import numpy as np
 from omegaconf import DictConfig
 
+from acid.image_processing.filter_image import median_filter_image
+from acid.image_processing.resize_image import downsample_local_mean
+
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
@@ -64,3 +67,58 @@ def merge_concanavalin_actin_channels(
         np.ndarray: Pixel-wise mean as `float64`, same shape as the inputs.
     """
     return np.mean(np.stack([concanavalin_channel, actin_channel], axis=0), axis=0)
+
+
+def preprocess_image_for_segmentation(
+    image: np.ndarray, config: DictConfig
+) -> np.ndarray:
+    """Build the two-channel, downsampled input image for the segmentation model.
+
+    Steps: select the nucleus, concanavalin and actin channels; average
+    concanavalin and actin; median-filter the nucleus and the merged channel;
+    stack them along `channel_axis`; downsample by local mean.
+
+    Args:
+        image (np.ndarray): Background-corrected field of view, e.g.
+            `(channels, y, x)`.
+        config (DictConfig): The `object_segmentation.processing` section.
+            Reads `channel_axis`, `nucleus_position`, `concanavalin_position`,
+            `actin_position`, `med_filter_nucleus`,
+            `med_filter_concactin_merge` (median filter sizes) and
+            `downsampling_factor`.
+
+    Returns:
+        np.ndarray: Image with two channels (nucleus, merged concanavalin and
+        actin) on `channel_axis` and spatial axes divided by
+        `downsampling_factor`, e.g. `(2, y / f, x / f)`.
+    """
+    nucleus_channel, concanavalin_channel, actin_channel = select_segmentation_channels(
+        image=image,
+        config=config,
+    )
+
+    concactin_merge = merge_concanavalin_actin_channels(
+        concanavalin_channel=concanavalin_channel,
+        actin_channel=actin_channel,
+    )
+
+    med_nucleus = median_filter_image(
+        nucleus_channel,
+        size=config.med_filter_nucleus,
+    )
+
+    med_concactin = median_filter_image(
+        concactin_merge,
+        size=config.med_filter_concactin_merge,
+    )
+
+    restacked_image = np.stack(
+        [med_nucleus, med_concactin],
+        axis=config.channel_axis,
+    )
+
+    return downsample_local_mean(
+        restacked_image,
+        factor=config.downsampling_factor,
+        channel_axis=config.channel_axis,
+    )

@@ -3,6 +3,7 @@ import pytest
 
 from acid.image_processing.segmentation_preprocessing import (
     merge_concanavalin_actin_channels,
+    preprocess_image_for_segmentation,
     select_segmentation_channels,
 )
 
@@ -35,3 +36,14 @@ def test_merge_concanavalin_actin_channels_averages_pixelwise():
     merged = merge_concanavalin_actin_channels(concanavalin, actin)
 
     np.testing.assert_array_equal(merged, [[1.0, 2.0], [2.0, 8.0]])
+
+
+def test_preprocess_image_for_segmentation_stacks_two_channels_and_downsamples(
+    processing_config,
+):
+    image = np.ones((5, 16, 16), dtype=np.uint16)
+
+    result = preprocess_image_for_segmentation(image, processing_config)
+
+    factor = processing_config.downsampling_factor
+    assert result.shape == (2, 16 // factor, 16 // factor)

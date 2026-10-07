@@ -24,7 +24,9 @@ from skimage.measure import regionprops_table
 
 from acid.feature_extraction.measure_hessian_matrix import MeasureHessianMatrix
 from acid.feature_extraction.measure_structure_tensor import MeasureStructureTensor
+from acid.io.image_loading import load_field_of_view, load_segmentation_mask
 from acid.utils.label_image_utils import exclude_label_on_edge
+from acid.utils.metadata.rows import get_required_filename
 from acid.utils.row_processing import make_success_result
 
 # ---- Setting built-in logging
@@ -315,3 +317,136 @@ def make_feature_success_result(
         },
         segmentation_file=segmentation_file,
     )
+
+
+def extract_features_for_fov(
+    row_index: Hashable,
+    metadata_row: pd.Series,
+    config: DictConfig,
+    properties: list[str],
+    extra_properties: list,
+    paths: DictConfig,
+) -> dict:
+    """Extract and save the per-object features of one field of view.
+
+    Steps: read the field-of-view and mask file names from the row, load both,
+    smooth the image (`preprocess_field_of_view`), drop edge objects
+    (`preprocess_segmentation_mask`), measure region properties, Hessian and
+    structure-tensor features, merge them, and save the table as CSV.
+    Unlike the other stages this function raises on failure;
+    `extract_features_batch` turns the exception into a failure record.
+
+    Args:
+        row_index (Hashable): Index of the row in the metadata dataframe.
+        metadata_row (pd.Series): The row; file names are read from
+            `metadata.dataframe_columns.fov_column_name` and
+            `metadata.dataframe_columns.segmentation_column_name`.
+        config (DictConfig): The whole `feature_extraction` section.
+        properties (list[str]): `regionprops` property names.
+        extra_properties (list): Custom `regionprops` property functions.
+        paths (DictConfig): The `shared.paths` section. Reads
+            `corrected_fov_dir`, `segmentation_masks_dir` and
+            `feature_tables_dir`.
+
+    Returns:
+        dict: Success record from `make_feature_success_result`.
+
+    Raises:
+        ValueError: If a file name is missing in the row.
+        OSError: If the field of view or the mask cannot be read.
+    """
+    logger.info("---------    ---------")
+
+    # 1. Extract the filename from the row
+    field_of_view_file = get_required_filename(
+        metadata_row=metadata_row,
+        column_name=config.metadata.dataframe_columns.fov_column_name,
+    )
+    logger.info(f"Field of view filename: {field_of_view_file}")
+
+    # 2. Load the field of view
+    field_of_view = load_field_of_view(field_of_view_file, paths.corrected_fov_dir)
+    logger.info(f"Working on {field_of_view_file}")
+
+    # 3. Extract the filename from the row
+    segmentation_file = get_required_filename(
+        metadata_row=metadata_row,
+        column_name=config.metadata.dataframe_columns.segmentation_column_name,
+    )
+    logger.info(f"Mask filename: {segmentation_file}")
+
+    # 4. Load segmentation mask
+    segmentation = load_segmentation_mask(
+        segmentation_file, paths.segmentation_masks_dir
+    )
+    logger.info(f"Fetched segmentation file: {segmentation_file}")
+
+    # 5. Preprocess field of view
+    preprocessed = preprocess_field_of_view(field_of_view, config)
+    logger.info(f"preprocessed fov: {preprocessed.shape}")
+
+    # 6. Preprocess segmentation mask
+    label_image = preprocess_segmentation_mask(segmentation)
+    logger.info(f"preprocessed label_image: {label_image.shape}")
+
+    # 7. Extract region proposed features
+    regionprops_features_df = extract_regionprops_features(
+        label_image=label_image,
+        intensity_image=preprocessed,
+        properties=properties,
+        extra_properties=extra_properties,
+    )
+    logger.info(
+        "Region properties features\t | Objects: %d | Features: %d",
+        regionprops_features_df.shape[0],
+        regionprops_features_df.shape[1],
+    )
+
+    # 8. Extract Hessian features
+    hessian_features_df = extract_hessian_features(
+        label_image=label_image,
+        intensity_image=preprocessed,
+    )
+    logger.info(
+        "Hessian features\t\t | Objects: %d | Features: %d",
+        hessian_features_df.shape[0],
+        hessian_features_df.shape[1],
+    )
+
+    # 9. Extract structure tensor features
+    structure_tensor_features_df = extract_structure_tensor_features(
+        label_image=label_image,
+        intensity_image=preprocessed,
+    )
+    logger.info(
+        "Structure tensor features\t | Objects: %d | Features: %d",
+        structure_tensor_features_df.shape[0],
+        structure_tensor_features_df.shape[1],
+    )
+
+    # 10. Merging all features into a single dataframe
+    merged_features = merge_feature_tables(
+        regionprops_features_df, hessian_features_df, structure_tensor_features_df
+    )
+    logger.debug("Merged features shape: %s", merged_features.shape)
+    logger.info("Feature extraction finished!")
+
+    # 11. Save metadata file with features
+    output_filename = make_features_output_filename(field_of_view_file, config)
+
+    output_path = save_features_dataframe(
+        features_df=merged_features,
+        output_filename=output_filename,
+        config=config,
+        output_directory=paths.feature_tables_dir,
+    )
+    logger.info(f"Output file: {output_path}")
+
+    return make_feature_success_result(
+        row_index=row_index,
+        field_of_view_file=field_of_view_file,
+        segmentation_file=segmentation_file,
+        output_file=output_filename,
+        config=config,
+    )
+

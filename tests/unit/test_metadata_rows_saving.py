@@ -9,6 +9,7 @@ from acid.utils.metadata.rows import get_required_filename
 from acid.utils.metadata.saving import (
     build_metadata_dataframe_filename,
     build_metadata_dataframe_path,
+    save_metadata_dataframe,
 )
 
 
@@ -62,3 +63,36 @@ def test_build_metadata_dataframe_path_joins_directory(tmp_path):
     )
 
     assert result == tmp_path / "20261006_proj_metadata_part_4.csv"
+
+
+def test_save_metadata_dataframe_creates_directory_and_writes_csv(tmp_path):
+    config = metadata_config(tmp_path / "nested")
+    frame = pd.DataFrame({"a": [1, 2]})
+
+    path = save_metadata_dataframe(
+        frame, config, "proj", timestamp=datetime(2026, 10, 6)
+    )
+
+    assert path.is_file()
+    pd.testing.assert_frame_equal(pd.read_csv(path), frame)
+
+
+def test_save_metadata_dataframe_works_with_every_stage_config(
+    default_config, tmp_path
+):
+    for stage in (
+        "field_of_view_extraction",
+        "dataset_splitting",
+        "quality_control",
+        "background_correction",
+        "object_segmentation",
+        "feature_extraction",
+    ):
+        stage_metadata = OmegaConf.to_container(
+            default_config[stage].metadata, resolve=True
+        )
+        stage_metadata["directory"] = str(tmp_path / stage)
+        path = save_metadata_dataframe(
+            pd.DataFrame({"a": [1]}), OmegaConf.create(stage_metadata), "proj"
+        )
+        assert path.is_file(), stage

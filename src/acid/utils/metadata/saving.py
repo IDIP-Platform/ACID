@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -39,3 +40,16 @@ def build_metadata_dataframe_filename(
             metadata_file_suffix,
         ]
     )
+
+
+def build_metadata_dataframe_path(
+    metadata_config, project_name: str, timestamp: datetime | None = None
+) -> Path:
+    """Build the full save path for a metadata dataframe."""
+    metadata_filename = build_metadata_dataframe_filename(
+        metadata_saving_config=metadata_config.saving,
+        project_name=project_name,
+        timestamp=timestamp,
+    )
+
+    return Path(metadata_config.directory) / metadata_filename

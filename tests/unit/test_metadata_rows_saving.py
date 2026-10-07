@@ -6,7 +6,10 @@ import pytest
 from omegaconf import OmegaConf
 
 from acid.utils.metadata.rows import get_required_filename
-from acid.utils.metadata.saving import build_metadata_dataframe_filename
+from acid.utils.metadata.saving import (
+    build_metadata_dataframe_filename,
+    build_metadata_dataframe_path,
+)
 
 
 def metadata_config(directory):
@@ -51,3 +54,11 @@ def test_build_metadata_dataframe_filename_uses_timestamp_and_suffix(tmp_path):
     )
 
     assert result == "20261006_proj_metadata_part_4.csv"
+
+
+def test_build_metadata_dataframe_path_joins_directory(tmp_path):
+    result = build_metadata_dataframe_path(
+        metadata_config(tmp_path), "proj", timestamp=datetime(2026, 10, 6)
+    )
+
+    assert result == tmp_path / "20261006_proj_metadata_part_4.csv"

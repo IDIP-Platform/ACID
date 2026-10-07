@@ -199,3 +199,33 @@ def extract_acquisition(acquisition: Path, cfg: DictConfig) -> list[pd.Series]:
         )
     return scenes_metadata_collection
 
+
+
+def extract_fields_of_view(acquisitions: list[Path], cfg: DictConfig) -> pd.DataFrame:
+    """Extract every scene of every acquisition and collect their metadata.
+
+    Args:
+        acquisitions (list[Path]): Acquisition files, usually from
+            `discover_acquisitions`.
+        cfg (DictConfig): The `field_of_view_extraction` section (see
+            `extract_acquisition`). `image_metadata.channels` must list
+            exactly five channel names.
+
+    Returns:
+        pd.DataFrame: One row per extracted field of view, in acquisition and
+        scene order.
+
+    Raises:
+        ValueError: If not exactly five channels are configured, or if no
+            field of view was extracted.
+    """
+    if len(cfg.image_metadata.channels) != 5:
+        raise ValueError("This extraction workflow requires five configured channels")
+    scenes = []
+    for acquisition in acquisitions:
+        logger.info("Extracting %s", acquisition)
+        scenes.extend(extract_acquisition(acquisition, cfg))
+    if not scenes:
+        raise ValueError("No fields of view were extracted")
+    return pd.concat(scenes, axis=1).T
+

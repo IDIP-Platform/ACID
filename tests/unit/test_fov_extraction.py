@@ -7,6 +7,7 @@ from acid.image_processing import fov_extraction
 from acid.image_processing.fov_extraction import (
     discover_acquisitions,
     extract_acquisition,
+    extract_fields_of_view,
 )
 
 
@@ -108,3 +109,29 @@ def test_extract_acquisition_saves_one_ome_tiff_per_scene(
     assert "<OME/>" in (tmp_path / "extracted" / f"{stem}_str.xml").read_text()
     assert fake_bioio[0]["experiment"] == "A07.4"
     assert fake_bioio[0]["raw_file_name"] == f"{stem}.nd2"
+
+
+def test_extract_fields_of_view_builds_one_row_per_scene(
+    extraction_config, tmp_path, fake_bioio
+):
+    (tmp_path / "extracted").mkdir()
+    experiment = tmp_path / "raw" / "experiment_A07.2"
+    acquisitions = [experiment / "H7_DENV2_MOI1_30h_fixed_stained_well1.nd2",
+                    experiment / "H7_DENV2_MOI1_30h_fixed_stained_well2.nd2"]
+
+    metadata_df = extract_fields_of_view(acquisitions, extraction_config)
+
+    assert metadata_df.shape[0] == 4
+    assert metadata_df["scene"].tolist() == ["A1", "A2", "A1", "A2"]
+
+
+def test_extract_fields_of_view_requires_five_channels(extraction_config):
+    extraction_config.image_metadata.channels = ["a", "b", "c", "d"]
+
+    with pytest.raises(ValueError, match="five configured channels"):
+        extract_fields_of_view([], extraction_config)
+
+
+def test_extract_fields_of_view_without_scenes_raises(extraction_config):
+    with pytest.raises(ValueError, match="No fields of view"):
+        extract_fields_of_view([], extraction_config)

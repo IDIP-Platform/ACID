@@ -14,8 +14,14 @@ import logging
 from collections.abc import Sequence
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 from omegaconf import DictConfig, OmegaConf
+
+from acid.image_processing.calculate_background_function import (
+    compute_simple_background,
+    get_polyfit_bg_funct_channel,
+)
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -76,4 +82,60 @@ def update_background_metadata(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd
         else:
             updated[name] = value
     return updated
+
+
+
+def fit_background(background: np.ndarray, cfg: DictConfig) -> np.ndarray:
+    """Smooth or fit an averaged background function.
+
+    With `"polyfit"` a 2D polynomial is fitted to every channel
+    (`get_polyfit_bg_funct_channel`); with `"simple"` every channel is
+    flattened with a rolling-ball background estimate and Gaussian smoothing
+    (`compute_simple_background`), in parallel over `n_workers` processes.
+
+    Args:
+        background (np.ndarray): Averaged background, e.g. `(channels, y, x)`,
+            from `calculate_backgrounds`.
+        cfg (DictConfig): The `background_function_calculation` section. Reads
+            `processing.background_fit_method` (`"polyfit"` or `"simple"`),
+            `processing.channel_axis`, `processing.verbose_calc_bg`; for
+            `"polyfit"` `processing.polynomial_order_x`/`_y` (one order per
+            channel); for `"simple"` `processing.ball_radius`,
+            `white_background` (one flag per channel), `rolling_ball_kwargs`,
+            `invert_kwargs`, `gau_smooth`, `gaussian_kwargs`,
+            `convolve_kwargs`, `dtype`, `n_workers` and `map_kwargs`.
+
+    Returns:
+        np.ndarray: Fitted background with the shape of `background`.
+
+    Raises:
+        ValueError: If `background_fit_method` is neither `"polyfit"` nor
+            `"simple"`.
+    """
+    proc = cfg.processing
+    if proc.background_fit_method == "polyfit":
+        return get_polyfit_bg_funct_channel(
+            background_function=background,
+            channel_axis=proc.channel_axis,
+            kx=tuple(proc.polynomial_order_x),
+            ky=tuple(proc.polynomial_order_y),
+            verbose=proc.verbose_calc_bg,
+        )
+    if proc.background_fit_method != "simple":
+        raise ValueError("background_fit_method must be polyfit or simple")
+    params = OmegaConf.to_container(proc, resolve=True)
+    return compute_simple_background(
+        background,
+        ball_radius=params["ball_radius"],
+        white_background=params["white_background"],
+        _rb_kwargs=params["rolling_ball_kwargs"],
+        invert_kwargs=params["invert_kwargs"],
+        gau_smooth=params["gau_smooth"],
+        gaussian_kwargs=params["gaussian_kwargs"],
+        convolve_kwargs=params["convolve_kwargs"],
+        dtype=params["dtype"],
+        axis=proc.channel_axis,
+        n_workers=proc.n_workers,
+        map_kwargs=params["map_kwargs"],
+    )
 

@@ -1,7 +1,9 @@
+import numpy as np
 import pandas as pd
 import pytest
 
 from acid.image_processing.background.compute_background_function import (
+    fit_background,
     update_background_metadata,
 )
 
@@ -42,3 +44,23 @@ def test_update_background_metadata_polyfit_records_polynomial_orders(
     separator = columns.channel_name_separator
     assert f"{columns.background_df_poly_order_x_clm_name}{separator}0" in updated
     assert "background_funct_ball_radius" not in updated
+
+
+def average_background():
+    return np.random.default_rng(0).random((5, 32, 32)) * 100 + 50
+
+
+@pytest.mark.parametrize("method", ["simple", "polyfit"])
+def test_fit_background_keeps_shape(background_config, method):
+    background_config.processing.background_fit_method = method
+
+    fitted = fit_background(average_background(), background_config)
+
+    assert fitted.shape == (5, 32, 32)
+
+
+def test_fit_background_rejects_unknown_method(background_config):
+    background_config.processing.background_fit_method = "bogus"
+
+    with pytest.raises(ValueError, match="polyfit or simple"):
+        fit_background(average_background(), background_config)

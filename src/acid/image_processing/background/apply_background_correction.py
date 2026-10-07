@@ -6,6 +6,7 @@ from pathlib import Path
 from acid.image_processing.background.load_background_function import (
     BackgroundFunctionStrategy,
 )
+from acid.image_processing.correct_background import correct_background
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -66,4 +67,29 @@ def make_output_filename(field_of_view_file, config):
         f"{config.save_file_name_separator}"
         f"{config.fov_illumin_corrected_savingword}"
         f"{suffix}"
+    )
+
+
+def correct_background_image(image, background, config):
+    """Apply background correction to one field-of-view image."""
+    correction_kwargs = {
+        "channel_axis": config.channel_axis,
+        "method": config.method,
+        "offset": config.offset,
+        "epsilon": config.epsilon,
+        "output_dtype": config.output_dtype,
+        "working_dtype": config.working_dtype,
+        "rescale_background": config.rescale_background,
+        "clip_corrected_image": config.clip_corrected_image,
+        "min_clip_value": config.min_clip_value,
+        "max_clip_value": config.max_clip_value,
+        "offset_background": config.offset_background,
+        "zero_kwargs": config.zero_kwargs,
+        "verbose": config.verbose,
+    }
+
+    return correct_background(
+        image=image,
+        background=background,
+        **correction_kwargs,
     )

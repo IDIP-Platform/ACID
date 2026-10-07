@@ -6,6 +6,7 @@ import pytest
 import tifffile
 
 from acid.feature_extraction.pipeline import (
+    extract_features_batch,
     extract_features_for_fov,
     extract_hessian_features,
     extract_regionprops_features,
@@ -189,3 +190,24 @@ def test_extract_features_for_fov_raises_on_missing_mask(feature_config, segment
             extra_properties=[],
             paths=segmented_fov,
         )
+
+
+def test_extract_features_batch_turns_errors_into_failure_results(
+    feature_config, segmented_fov
+):
+    columns = feature_config.metadata.dataframe_columns
+    metadata_df = pd.DataFrame(
+        {
+            columns.fov_column_name: ["a_bg.ome.tif", "x.ome.tif"],
+            columns.segmentation_column_name: ["a_bg_segmentation.ome.tif", "y.ome.tif"],
+        }
+    )
+
+    results = extract_features_batch(metadata_df, feature_config, segmented_fov)
+
+    assert results[0]["success"] is True
+    assert results[1]["success"] is False
+    assert results[1]["stage"] == "extract_features_for_fov"
+    assert results[1]["error_type"] == "OSError"
+    assert results[1]["segmentation_file"] == "y.ome.tif"
+    assert pd.isna(results[1][columns.metadata_df_file_name_clm_name])

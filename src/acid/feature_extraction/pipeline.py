@@ -22,12 +22,18 @@ from omegaconf import DictConfig
 from scipy.ndimage import gaussian_filter
 from skimage.measure import regionprops_table
 
+from acid.feature_extraction.default_regionprops import default_regionpros_props
+from acid.feature_extraction.extra_regionprops import regionpros_extra_props
 from acid.feature_extraction.measure_hessian_matrix import MeasureHessianMatrix
 from acid.feature_extraction.measure_structure_tensor import MeasureStructureTensor
 from acid.io.image_loading import load_field_of_view, load_segmentation_mask
 from acid.utils.label_image_utils import exclude_label_on_edge
 from acid.utils.metadata.rows import get_required_filename
-from acid.utils.row_processing import make_success_result
+from acid.utils.row_processing import (
+    make_failure_result,
+    make_success_result,
+    process_rows,
+)
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -450,3 +456,60 @@ def extract_features_for_fov(
         config=config,
     )
 
+
+
+def extract_features_batch(
+    metadata_df: pd.DataFrame,
+    config: DictConfig,
+    paths: DictConfig,
+    max_rows: int | None = None,
+) -> list[dict]:
+    """Extract features for every row of the metadata dataframe.
+
+    Uses `default_regionpros_props()` and `regionpros_extra_props()` as the
+    region properties. An exception in `extract_features_for_fov` is logged
+    and turned into a failure record with `stage="extract_features_for_fov"`,
+    so one bad file does not stop the batch.
+
+    Args:
+        metadata_df (pd.DataFrame): Rows to process, usually the segmentation
+            output metadata.
+        config (DictConfig): The whole `feature_extraction` section.
+        paths (DictConfig): The `shared.paths` section.
+        max_rows (int | None): If given, only the first `max_rows` rows are
+            processed, e.g. for a quick test run.
+
+    Returns:
+        list[dict]: One result record per row; each also has the key
+        `segmentation_file`. Failed rows have the feature metadata columns set
+        to `metadata.dataframe_columns.null_value`.
+    """
+    columns = config.metadata.dataframe_columns
+    properties = default_regionpros_props()
+    extra_properties = regionpros_extra_props()
+
+    def process_row(row_index, metadata_row):
+        try:
+            return extract_features_for_fov(
+                row_index=row_index,
+                metadata_row=metadata_row,
+                config=config,
+                properties=properties,
+                extra_properties=extra_properties,
+                paths=paths,
+            )
+        except Exception as error:
+            logger.exception("Feature extraction failed for row %s", row_index)
+            return make_failure_result(
+                row_index=row_index,
+                input_file=metadata_row.get(columns.fov_column_name),
+                error=error,
+                metadata_columns=get_feature_metadata_columns(columns),
+                null_value=columns.null_value,
+                stage="extract_features_for_fov",
+                segmentation_file=metadata_row.get(columns.segmentation_column_name),
+            )
+
+    return process_rows(
+        metadata_df, process_row, description="Extracting features", max_rows=max_rows
+    )

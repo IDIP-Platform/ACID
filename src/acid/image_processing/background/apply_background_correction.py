@@ -1,12 +1,15 @@
 """Apply a background function to every field of view in the metadata."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from acid.image_processing.background.load_background_function import (
     BackgroundFunctionStrategy,
 )
 from acid.image_processing.correct_background import correct_background
+from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
+from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -93,3 +96,37 @@ def correct_background_image(image, background, config):
         background=background,
         **correction_kwargs,
     )
+
+
+def build_image_metadata(field_of_view_file, fov_directory, config):
+    field_of_view_path = Path(fov_directory) / str(field_of_view_file)
+
+    image_metadata = extract_ometif_imagej_metadata(field_of_view_path)
+
+    metadata_cfg = config.metadata
+    image_metadata_cfg = metadata_cfg.image_metadata
+    processing_cfg = config.processing
+
+    processing_metadata = {
+        image_metadata_cfg.proc_img_meta_date_name: datetime.now().strftime(
+            image_metadata_cfg.processing_date_format
+        ),
+        image_metadata_cfg.proc_img_meta_dtype_name: processing_cfg.output_dtype,
+    }
+
+    background_correction_metadata = {
+        image_metadata_cfg.illum_corr_method_metadata_entry: processing_cfg.method,
+        image_metadata_cfg.illum_corr_offset_metadata_entry: processing_cfg.offset,
+        image_metadata_cfg.illum_corr_rescale_metadata_entry: processing_cfg.rescale_background,
+        image_metadata_cfg.illum_corr_clipping_metadata_entry: processing_cfg.clip_corrected_image,
+        image_metadata_cfg.illum_corr_clip_min_value_metadata_entry: processing_cfg.min_clip_value,
+        image_metadata_cfg.illum_corr_clip_max_value_metadata_entry: processing_cfg.max_clip_value,
+        image_metadata_cfg.illum_corr_offset_background_metadata_entry: processing_cfg.offset_background,
+    }
+
+    image_metadata.update(imagej_compatible_metadata_dict(processing_metadata))
+    image_metadata.update(
+        imagej_compatible_metadata_dict(background_correction_metadata)
+    )
+
+    return image_metadata

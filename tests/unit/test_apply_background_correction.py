@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from acid.image_processing.background.apply_background_correction import (
+    build_image_metadata,
     correct_background_image,
     get_background_for_fov,
     get_correction_metadata_columns,
@@ -60,3 +61,18 @@ def test_correct_background_image_divides_by_background(correction_config, write
 
     assert corrected.shape == image.shape
     assert corrected.dtype == np.dtype(correction_config.processing.output_dtype)
+
+
+def test_build_image_metadata_keeps_source_and_adds_correction_entries(
+    correction_config, write_fov
+):
+    directory, _ = write_fov()
+    image_metadata_cfg = correction_config.metadata.image_metadata
+
+    metadata = build_image_metadata("a.ome.tif", directory, correction_config)
+
+    assert metadata["custom_raw_file_name"] == "a.lif"
+    assert (
+        metadata[f"custom_{image_metadata_cfg.illum_corr_method_metadata_entry}"]
+        == "division"
+    )

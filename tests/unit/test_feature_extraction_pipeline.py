@@ -2,10 +2,18 @@ import numpy as np
 import pytest
 
 from acid.feature_extraction.pipeline import (
+    extract_regionprops_features,
     get_feature_metadata_columns,
     preprocess_field_of_view,
     preprocess_segmentation_mask,
 )
+
+
+def two_object_label_image():
+    label_image = np.zeros((10, 10), dtype=np.uint16)
+    label_image[2:4, 2:4] = 1
+    label_image[5:8, 5:8] = 2
+    return label_image
 
 
 @pytest.fixture
@@ -40,3 +48,14 @@ def test_preprocess_segmentation_mask_removes_edge_objects():
 
     assert set(np.unique(result)) == {0, 2}
     assert mask[0, 0] == 1
+
+
+def test_extract_regionprops_features_returns_one_row_per_object():
+    intensity = np.ones((10, 10, 3))
+
+    features = extract_regionprops_features(
+        two_object_label_image(), intensity, ["label", "area"], []
+    )
+
+    assert features["label"].tolist() == [1, 2]
+    assert features["area"].tolist() == [4, 9]

@@ -14,8 +14,10 @@ docstring names the keys it reads.
 import logging
 
 import numpy as np
+import pandas as pd
 from omegaconf import DictConfig
 from scipy.ndimage import gaussian_filter
+from skimage.measure import regionprops_table
 
 from acid.utils.label_image_utils import exclude_label_on_edge
 
@@ -93,3 +95,35 @@ def preprocess_segmentation_mask(segmentation: np.ndarray) -> np.ndarray:
         input is not modified.
     """
     return exclude_label_on_edge(segmentation)
+
+
+def extract_regionprops_features(
+    label_image: np.ndarray,
+    intensity_image: np.ndarray,
+    properties: list[str],
+    extra_properties: list,
+) -> pd.DataFrame:
+    """Measure standard and custom region properties of every object.
+
+    Args:
+        label_image (np.ndarray): Label mask, `(y, x)`; `0` is background.
+        intensity_image (np.ndarray): Image with channels last, `(y, x, c)`,
+            usually from `preprocess_field_of_view`.
+        properties (list[str]): `regionprops` property names, usually
+            `default_regionpros_props()`; include `"label"` so tables can be
+            merged.
+        extra_properties (list): Custom property functions, usually
+            `regionpros_extra_props()`.
+
+    Returns:
+        pd.DataFrame: One row per object. Multichannel properties become one
+        column per channel, e.g. `intensity_mean-0`.
+    """
+    return pd.DataFrame(
+        regionprops_table(
+            label_image,
+            intensity_image=intensity_image,
+            properties=properties,
+            extra_properties=extra_properties,
+        )
+    )

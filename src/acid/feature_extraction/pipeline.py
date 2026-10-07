@@ -12,6 +12,8 @@ docstring names the keys it reads.
 """
 
 import logging
+from collections.abc import Hashable
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +25,7 @@ from skimage.measure import regionprops_table
 from acid.feature_extraction.measure_hessian_matrix import MeasureHessianMatrix
 from acid.feature_extraction.measure_structure_tensor import MeasureStructureTensor
 from acid.utils.label_image_utils import exclude_label_on_edge
+from acid.utils.row_processing import make_success_result
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -270,3 +273,45 @@ def save_features_dataframe(
     )
 
     return output_path
+
+
+def make_feature_success_result(
+    row_index: Hashable,
+    field_of_view_file: str,
+    segmentation_file: str,
+    output_file: str,
+    config: DictConfig,
+) -> dict:
+    """Build the result record of one field of view whose features were saved.
+
+    Args:
+        row_index (Hashable): Index of the row in the metadata dataframe.
+        field_of_view_file (str): File name of the corrected field of view.
+        segmentation_file (str): File name of the segmentation mask; stored
+            under the extra key `segmentation_file`.
+        output_file (str): File name of the saved feature table.
+        config (DictConfig): The whole `feature_extraction` section. Reads the
+            column names in `metadata.dataframe_columns`,
+            `metadata_df_meta_date_format` and `preprocessing_steps` (the
+            recorded preprocessing description).
+
+    Returns:
+        dict: Result record (see `acid.utils.row_processing`) with the
+        extraction date, feature table file name and preprocessing description
+        in the metadata columns.
+    """
+    columns = config.metadata.dataframe_columns
+
+    return make_success_result(
+        row_index=row_index,
+        input_file=field_of_view_file,
+        output_file=output_file,
+        metadata_values={
+            columns.metadata_df_date_clm_name: datetime.now().strftime(
+                columns.metadata_df_meta_date_format
+            ),
+            columns.metadata_df_file_name_clm_name: output_file,
+            columns.metadata_df_method_clm_name: columns.preprocessing_steps,
+        },
+        segmentation_file=segmentation_file,
+    )

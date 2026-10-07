@@ -7,6 +7,7 @@ from acid.feature_extraction.pipeline import (
     extract_regionprops_features,
     extract_structure_tensor_features,
     get_feature_metadata_columns,
+    make_feature_success_result,
     make_features_output_filename,
     merge_feature_tables,
     preprocess_field_of_view,
@@ -120,3 +121,16 @@ def test_save_features_dataframe_writes_csv_into_given_directory(
 
     assert path == tmp_path / "features" / "a_bg.csv"
     pd.testing.assert_frame_equal(pd.read_csv(path), features)
+
+
+def test_make_feature_success_result_records_files_and_preprocessing(feature_config):
+    columns = feature_config.metadata.dataframe_columns
+
+    result = make_feature_success_result(
+        1, "a_bg.ome.tif", "a_bg_segmentation.ome.tif", "a_bg.csv", feature_config
+    )
+
+    assert list(result)[:4] == ["row_index", "input_file", "segmentation_file", "output_file"]
+    assert result["segmentation_file"] == "a_bg_segmentation.ome.tif"
+    assert result[columns.metadata_df_file_name_clm_name] == "a_bg.csv"
+    assert result[columns.metadata_df_method_clm_name] == columns.preprocessing_steps

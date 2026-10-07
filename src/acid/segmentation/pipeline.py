@@ -18,6 +18,7 @@ its subsections; each docstring names the section and the keys it reads.
 
 import logging
 
+import numpy as np
 from omegaconf import DictConfig
 
 # ---- Setting built-in logging
@@ -59,3 +60,19 @@ def get_segmentation_metadata_columns(dataframe_columns: DictConfig) -> list[str
         version and the segmentation settings).
     """
     return [dataframe_columns[key] for key in SEGMENTATION_METADATA_COLUMN_CONFIG_KEYS]
+
+
+def get_channel_shape(image: np.ndarray, channel_axis: int) -> tuple[int, ...]:
+    """Return the image shape without its channel axis.
+
+    Used as the target shape when the downsampled mask is resized back to
+    full resolution.
+
+    Args:
+        image (np.ndarray): Image with a channel axis, e.g. `(channels, y, x)`.
+        channel_axis (int): Index of the channel axis; must be non-negative.
+
+    Returns:
+        tuple[int, ...]: Shape of one channel, e.g. `(y, x)`.
+    """
+    return tuple(size for axis, size in enumerate(image.shape) if axis != channel_axis)

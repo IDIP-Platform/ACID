@@ -8,6 +8,7 @@ from acid.image_processing.background.apply_background_correction import (
     correct_background_image,
     get_background_for_fov,
     get_correction_metadata_columns,
+    make_correction_success_result,
     make_output_filename,
     save_corrected_image,
 )
@@ -89,3 +90,19 @@ def test_save_corrected_image_writes_tiff_into_configured_directory(correction_c
 
     assert path.parent.name == "corrected"
     np.testing.assert_array_equal(tifffile.imread(path), image)
+
+
+def test_make_correction_success_result_records_processing_settings(correction_config):
+    columns = correction_config.metadata.dataframe_columns
+
+    result = make_correction_success_result(
+        4, "a.ome.tif", "a_bg.ome.tif", correction_config
+    )
+
+    assert result["success"] is True
+    assert result["input_file"] == "a.ome.tif"
+    assert result[columns.illum_correct_df_file_name_clm_name] == "a_bg.ome.tif"
+    assert result[columns.illum_correct_df_offset_clm_name] == (
+        correction_config.processing.offset
+    )
+    assert set(get_correction_metadata_columns(columns)) <= set(result)

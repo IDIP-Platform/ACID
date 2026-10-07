@@ -10,6 +10,7 @@ from acid.image_processing.background.load_background_function import (
 from acid.image_processing.correct_background import correct_background
 from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
+from acid.utils.row_processing import make_success_result
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -149,3 +150,28 @@ def save_corrected_image(output_filename, corrected_image, image_metadata, confi
     )
 
     return output_path
+
+
+def make_correction_success_result(row_index, field_of_view_file, output_file, config):
+    """Build the result of one successfully corrected field of view."""
+    columns = config.metadata.dataframe_columns
+    processing = config.processing
+
+    return make_success_result(
+        row_index=row_index,
+        input_file=field_of_view_file,
+        output_file=output_file,
+        metadata_values={
+            columns.illum_correct_df_date_clm_name: datetime.now().strftime(
+                columns.illum_correct_df_meta_date_format
+            ),
+            columns.illum_correct_df_file_name_clm_name: output_file,
+            columns.illum_correct_df_method_clm_name: processing.method,
+            columns.illum_correct_df_offset_clm_name: processing.offset,
+            columns.illum_correct_df_rescale_clm_name: processing.rescale_background,
+            columns.illum_correct_df_clipping_clm_name: processing.clip_corrected_image,
+            columns.illum_correct_df_clip_min_value_clm_name: processing.min_clip_value,
+            columns.illum_correct_df_clip_max_value_clm_name: processing.max_clip_value,
+            columns.illum_correct_df_offset_background_clm_name: processing.offset_background,
+        },
+    )

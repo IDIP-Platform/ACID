@@ -1,6 +1,10 @@
+import numpy as np
 import pytest
 
-from acid.feature_extraction.pipeline import get_feature_metadata_columns
+from acid.feature_extraction.pipeline import (
+    get_feature_metadata_columns,
+    preprocess_field_of_view,
+)
 
 
 @pytest.fixture
@@ -16,3 +20,11 @@ def test_get_feature_metadata_columns(feature_config):
         "features_data_frame",
         "features_extraction_preprocessing",
     ]
+
+
+def test_preprocess_field_of_view_moves_channels_last(feature_config):
+    image = np.random.default_rng(0).random((5, 8, 6))
+
+    result = preprocess_field_of_view(image, feature_config)
+
+    assert result.shape == (8, 6, 5)

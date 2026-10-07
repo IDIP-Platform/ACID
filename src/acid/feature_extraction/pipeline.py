@@ -13,7 +13,9 @@ docstring names the keys it reads.
 
 import logging
 
+import numpy as np
 from omegaconf import DictConfig
+from scipy.ndimage import gaussian_filter
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -45,3 +47,31 @@ def get_feature_metadata_columns(dataframe_columns: DictConfig) -> list[str]:
         file name and the preprocessing description.
     """
     return [dataframe_columns[key] for key in FEATURE_METADATA_COLUMN_CONFIG_KEYS]
+
+
+def preprocess_field_of_view(field_of_view: np.ndarray, config: DictConfig) -> np.ndarray:
+    """Prepare a field of view for `skimage.measure.regionprops_table`.
+
+    Moves the channel axis to the last position (the layout `regionprops`
+    expects for multichannel intensity images) and applies a Gaussian filter.
+
+    Args:
+        field_of_view (np.ndarray): Background-corrected field of view, e.g.
+            `(channels, y, x)`.
+        config (DictConfig): The whole `feature_extraction` section. Reads
+            `processing.channel_axis`, `processing.sigma` and
+            `processing.axes`, the axes the filter runs along after the channel
+            axis has been moved last. With the default `axes: -1` the filter
+            smooths across channels, not across pixels.
+
+    Returns:
+        np.ndarray: Smoothed image with channels last, e.g. `(y, x, channels)`,
+        in the dtype of `field_of_view`.
+    """
+    preprocessed = np.moveaxis(field_of_view, config.processing.channel_axis, -1)
+
+    return gaussian_filter(
+        preprocessed,
+        sigma=config.processing.sigma,
+        axes=config.processing.axes,
+    )

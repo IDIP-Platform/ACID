@@ -4,6 +4,7 @@ import pytest
 from acid.image_processing.background.apply_background_correction import (
     get_background_for_fov,
     get_correction_metadata_columns,
+    make_output_filename,
 )
 
 
@@ -38,3 +39,7 @@ def test_get_background_for_fov_selects_by_strategy(correction_config):
     selection.background_function_strategy = 4
     with pytest.raises(ValueError, match="Invalid background_function_strategy"):
         get_background_for_fov(row, None, selection)
+
+
+def test_make_output_filename_inserts_savingword(correction_config):
+    assert make_output_filename("a.ome.tif", correction_config.image_saving) == "a_bg.ome.tif"

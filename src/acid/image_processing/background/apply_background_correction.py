@@ -1,6 +1,7 @@
 """Apply a background function to every field of view in the metadata."""
 
 import logging
+from pathlib import Path
 
 from acid.image_processing.background.load_background_function import (
     BackgroundFunctionStrategy,
@@ -49,4 +50,20 @@ def get_background_for_fov(metadata_row, backgrounds, config):
     raise ValueError(
         f"Invalid background_function_strategy: {strategy}. "
         "Please select either 1, 2 or 3."
+    )
+
+
+def make_output_filename(field_of_view_file, config):
+    """Create the output filename for a background-corrected field of view."""
+    field_of_view_file = Path(field_of_view_file)
+
+    suffix = config.ome_suffix
+    stem = field_of_view_file.name.removesuffix(suffix)
+    logger.debug("Stem: %s", stem)
+
+    return (
+        f"{stem}"
+        f"{config.save_file_name_separator}"
+        f"{config.fov_illumin_corrected_savingword}"
+        f"{suffix}"
     )

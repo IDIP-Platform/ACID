@@ -1,4 +1,5 @@
 import pandas as pd
+from omegaconf import DictConfig, OmegaConf
 from sklearn.model_selection import train_test_split
 
 
@@ -112,4 +113,49 @@ def add_train_test_split_clm(
     ), "Index order differs — result is not aligned to original."
 
     return result
+
+
+
+def split_dataset_train_test(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd.DataFrame:
+    """Add a reproducible train/test split column to the metadata.
+
+    Each metadata row (field of view) is assigned to train or test with
+    `add_train_test_split_clm`; the same `random_state` gives the same split.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata to split, one row per field of
+            view.
+        cfg (DictConfig): The `dataset_splitting` section. Reads
+            `processing.split_unit` (only `"metadata_row"` is supported),
+            `processing.test_fraction` (strictly between 0 and 1),
+            `processing.random_state`, `processing.concat_kwargs`,
+            `dataset_split.column` (name of the new column) and
+            `dataset_split.labels.train`/`test` (values written into it).
+
+    Returns:
+        pd.DataFrame: Metadata with the split column added.
+
+    Raises:
+        ValueError: If `split_unit` is not `"metadata_row"`, `test_fraction`
+            is not strictly between 0 and 1, or the train and test labels are
+            equal.
+    """
+    if cfg.processing.split_unit != "metadata_row":
+        raise ValueError("Only metadata_row splitting is implemented")
+    if not 0 < cfg.processing.test_fraction < 1:
+        raise ValueError("test_fraction must be between zero and one")
+    labels = cfg.dataset_split.labels
+    if labels.train == labels.test:
+        raise ValueError("Train and test labels must differ")
+    return add_train_test_split_clm(
+        df=metadata_df,
+        test_size=cfg.processing.test_fraction,
+        is_train_column=cfg.dataset_split.column,
+        train_val=labels.train,
+        test_val=labels.test,
+        train_test_split_kwargs={"random_state": cfg.processing.random_state},
+        concat_kwargs=OmegaConf.to_container(
+            cfg.processing.concat_kwargs, resolve=True
+        ),
+    )
 

@@ -17,6 +17,8 @@ import numpy as np
 from omegaconf import DictConfig
 from scipy.ndimage import gaussian_filter
 
+from acid.utils.label_image_utils import exclude_label_on_edge
+
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
@@ -75,3 +77,19 @@ def preprocess_field_of_view(field_of_view: np.ndarray, config: DictConfig) -> n
         sigma=config.processing.sigma,
         axes=config.processing.axes,
     )
+
+
+def preprocess_segmentation_mask(segmentation: np.ndarray) -> np.ndarray:
+    """Remove segmented objects that touch the image edge.
+
+    Edge objects are cut off by the field-of-view border, so their shape and
+    intensity features would be biased.
+
+    Args:
+        segmentation (np.ndarray): Label mask, `(y, x)`; `0` is background.
+
+    Returns:
+        np.ndarray: Copy of the mask with edge-touching labels set to `0`; the
+        input is not modified.
+    """
+    return exclude_label_on_edge(segmentation)

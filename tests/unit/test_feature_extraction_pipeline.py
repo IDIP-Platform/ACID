@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from acid.feature_extraction.pipeline import (
+    extract_hessian_features,
     extract_regionprops_features,
     get_feature_metadata_columns,
     preprocess_field_of_view,
@@ -14,6 +15,18 @@ def two_object_label_image():
     label_image[2:4, 2:4] = 1
     label_image[5:8, 5:8] = 2
     return label_image
+
+
+def large_object_label_image():
+    """Objects large enough to survive the radius-9 erosion of the eigenvalue features."""
+    label_image = np.zeros((100, 100), dtype=np.uint16)
+    label_image[5:35, 5:35] = 1
+    label_image[50:90, 50:90] = 2
+    return label_image
+
+
+def random_intensity(shape=(100, 100, 3)):
+    return np.random.default_rng(0).random(shape)
 
 
 @pytest.fixture
@@ -59,3 +72,10 @@ def test_extract_regionprops_features_returns_one_row_per_object():
 
     assert features["label"].tolist() == [1, 2]
     assert features["area"].tolist() == [4, 9]
+
+
+def test_extract_hessian_features_returns_one_row_per_object():
+    features = extract_hessian_features(large_object_label_image(), random_intensity())
+
+    assert features["label"].tolist() == [1, 2]
+    assert "hessian_eigv_1_intensity_mean-0" in features.columns

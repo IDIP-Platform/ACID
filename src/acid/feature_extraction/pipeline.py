@@ -19,6 +19,7 @@ from omegaconf import DictConfig
 from scipy.ndimage import gaussian_filter
 from skimage.measure import regionprops_table
 
+from acid.feature_extraction.measure_hessian_matrix import MeasureHessianMatrix
 from acid.utils.label_image_utils import exclude_label_on_edge
 
 # ---- Setting built-in logging
@@ -126,4 +127,30 @@ def extract_regionprops_features(
             properties=properties,
             extra_properties=extra_properties,
         )
+    )
+
+
+def extract_hessian_features(
+    label_image: np.ndarray, intensity_image: np.ndarray
+) -> pd.DataFrame:
+    """Measure Hessian-matrix eigenvalue statistics of every object.
+
+    Uses `MeasureHessianMatrix` with its defaults: the eigenvalues are
+    computed per channel and summarised (mean, max, min, std) inside each
+    object after eroding the mask with a disk of radius 9. Objects smaller
+    than about 19 pixels across vanish in the erosion and get no row.
+
+    Args:
+        label_image (np.ndarray): Label mask, `(y, x)`; `0` is background.
+        intensity_image (np.ndarray): Image with channels last, `(y, x, c)`.
+
+    Returns:
+        pd.DataFrame: One row per remaining object with a `label` column and
+        columns such as `hessian_eigv_1_intensity_mean-0`.
+    """
+    hessian_measurer = MeasureHessianMatrix(intensity_image)
+
+    return hessian_measurer.measure_obj_hessian_matrix_eigenval(
+        label_image=label_image,
+        axis=-1,
     )

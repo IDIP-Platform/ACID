@@ -17,12 +17,15 @@ its subsections; each docstring names the section and the keys it reads.
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from omegaconf import DictConfig
 from skimage.transform import resize
 
+from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
+from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -267,3 +270,72 @@ def copy_selected_field_of_view_metadata(
             segmentation_metadata[key] = value
 
     return segmentation_metadata
+
+
+def build_segmentation_image_metadata(
+    field_of_view_path: str | Path, mask: np.ndarray, model, config: DictConfig
+) -> dict:
+    """Build the ImageJ metadata of a segmentation mask.
+
+    Records the segmentation date, method and version, all segmentation
+    settings and the mask dtype, and copies provenance and pixel-size entries
+    from the field of view (see `copy_selected_field_of_view_metadata`).
+    Keys get the `custom_` prefix.
+
+    Args:
+        field_of_view_path (str | Path): Full path of the corrected field of
+            view whose ImageJ metadata is read.
+        mask (np.ndarray): Final mask; only its dtype is recorded.
+        model: Segmentation model; its `version` attribute is recorded
+            (`None` if missing).
+        config (DictConfig): The whole `object_segmentation` section. Reads the
+            entry names in `metadata.image_metadata` (`segmented_img_meta_*`,
+            `segmentation_method_version_name`, `processing_date_format`),
+            `metadata.segmentation_method_name` and the settings in
+            `processing` (`diameter`, `flow_threshold`, `cellprob_threshold`,
+            `downsampling_factor`, `med_filter_nucleus`,
+            `med_filter_concactin_merge`, `order`, `output_dtype`).
+
+    Returns:
+        dict: ImageJ-compatible metadata for `save_segmentation_mask`.
+
+    Raises:
+        FileNotFoundError: If `field_of_view_path` does not exist.
+    """
+    field_of_view_metadata = extract_ometif_imagej_metadata(field_of_view_path)
+
+    processing_steps = (
+        config.metadata.image_metadata.segmented_img_meta_processing_steps
+    )
+
+    if config.processing.output_dtype is not None:
+        processing_steps = f"{processing_steps} change output data type to {config.processing.output_dtype} for saving."
+
+    segmentation_metadata = {
+        config.metadata.image_metadata.segmented_img_meta_date_name: datetime.now().strftime(
+            config.metadata.image_metadata.processing_date_format
+        ),
+        config.metadata.image_metadata.segmented_img_meta_method_name: config.metadata.segmentation_method_name,
+        config.metadata.image_metadata.segmentation_method_version_name: getattr(
+            model, "version", None
+        ),
+        config.metadata.image_metadata.segmented_img_meta_diameter_name: config.processing.diameter,
+        config.metadata.image_metadata.segmented_img_meta_flow_threshold_name: config.processing.flow_threshold,
+        config.metadata.image_metadata.segmented_img_meta_cellprob_threshold_name: config.processing.cellprob_threshold,
+        config.metadata.image_metadata.segmented_img_meta_downsampling_factor_name: config.processing.downsampling_factor,
+        config.metadata.image_metadata.segmented_img_meta_nucleus_med_filter_size_name: config.processing.med_filter_nucleus,
+        config.metadata.image_metadata.segmented_img_meta_concactin_merge_med_filter_size_name: (
+            config.processing.med_filter_concactin_merge
+        ),
+        config.metadata.image_metadata.segmented_img_meta_resize_order_name: config.processing.order,
+        config.metadata.image_metadata.segmented_img_meta_processing_name: processing_steps,
+        config.metadata.image_metadata.segmented_img_meta_dtype_name: str(mask.dtype),
+    }
+
+    imagej_metadata = imagej_compatible_metadata_dict(segmentation_metadata)
+
+    return copy_selected_field_of_view_metadata(
+        segmentation_metadata=imagej_metadata,
+        field_of_view_metadata=field_of_view_metadata,
+        config=config,
+    )

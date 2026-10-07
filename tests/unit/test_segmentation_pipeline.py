@@ -3,6 +3,7 @@ import pytest
 import tifffile
 
 from acid.segmentation.pipeline import (
+    build_segmentation_image_metadata,
     cast_mask_to_output_dtype,
     copy_selected_field_of_view_metadata,
     get_channel_shape,
@@ -130,3 +131,21 @@ def test_copy_selected_field_of_view_metadata_keeps_only_matching_entries(
         f"custom_{entries.preproc_img_meta_raw_file_name_entry}": "a.nd2",
         f"custom_{entries.preproc_img_meta_x_physic_px_size_entry}": 0.65,
     }
+
+
+def test_build_segmentation_image_metadata_records_model_and_settings(
+    segmentation_config, write_fov
+):
+    directory, _ = write_fov()
+    entries = segmentation_config.metadata.image_metadata
+    mask = np.zeros((16, 16), dtype=np.uint16)
+
+    metadata = build_segmentation_image_metadata(
+        directory / "a.ome.tif", mask, FakeModel(), segmentation_config
+    )
+
+    assert metadata[f"custom_{entries.segmentation_method_version_name}"] == "0.0"
+    assert metadata[f"custom_{entries.segmented_img_meta_dtype_name}"] == "uint16"
+    assert metadata[f"custom_{entries.segmented_img_meta_diameter_name}"] == (
+        segmentation_config.processing.diameter
+    )

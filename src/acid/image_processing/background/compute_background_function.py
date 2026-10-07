@@ -11,7 +11,7 @@ Functions take the `background_function_calculation` configuration section
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from datetime import datetime
 
 import numpy as np
@@ -19,8 +19,10 @@ import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
 from acid.image_processing.calculate_background_function import (
+    calculate_background_function,
     compute_simple_background,
     get_polyfit_bg_funct_channel,
+    import_fov,
 )
 
 # ---- Setting built-in logging
@@ -138,4 +140,81 @@ def fit_background(background: np.ndarray, cfg: DictConfig) -> np.ndarray:
         n_workers=proc.n_workers,
         map_kwargs=params["map_kwargs"],
     )
+
+
+
+def calculate_backgrounds(
+    metadata_df: pd.DataFrame, fov_shape: tuple[int, ...], cfg: DictConfig
+) -> dict[Hashable | None, np.ndarray]:
+    """Average fields of view into one background function per group.
+
+    The grouping follows `processing.background_function_strategy`:
+    `1` uses all rows as one group (key `None`), `2` groups by well and `3`
+    by grid position. For every group the fields of view are stacked
+    (optionally sampled) and averaged pixel-wise.
+
+    Args:
+        metadata_df (pd.DataFrame): Rows to use, usually unflagged training
+            fields of view.
+        fov_shape (tuple[int, ...]): Shape of one field of view, e.g.
+            `(channels, y, x)`, from `get_fov_ch_shape`.
+        cfg (DictConfig): The `background_function_calculation` section. Reads
+            `processing.background_function_strategy`,
+            `processing.fov_directory`, `processing.axis_calc_bg` (must be
+            `-1` or `len(fov_shape)`, the appended stack axis),
+            `processing.background_function_avg_method` (e.g. `"median"`),
+            `processing.verbose_calc_bg`, `processing.np_zero_kwargs`,
+            `processing.sample_df`, `processing.sample_fraction`,
+            `processing.sample_kwargs` and, in `metadata.dataframe_columns`,
+            `fov_column_name`, `well_column_name` and `gridpos_column_name`.
+
+    Returns:
+        dict[Hashable | None, np.ndarray]: Averaged background with the shape
+        `fov_shape` for each group key.
+
+    Raises:
+        ValueError: If the strategy is not 1, 2 or 3, a grouping value is
+            missing, `axis_calc_bg` is invalid, or sampling selects no image
+            for a group.
+    """
+    proc = cfg.processing
+    columns = cfg.metadata.dataframe_columns
+    strategy = proc.background_function_strategy
+    if strategy == 1:
+        groups = [(None, metadata_df)]
+    elif strategy in (2, 3):
+        column = (
+            columns.well_column_name if strategy == 2 else columns.gridpos_column_name
+        )
+        if metadata_df[column].isna().any():
+            raise ValueError(f"Missing background grouping values in {column}")
+        groups = metadata_df.groupby(column, sort=False)
+    else:
+        raise ValueError("background_function_strategy must be 1, 2 or 3")
+    if proc.axis_calc_bg not in (-1, len(fov_shape)):
+        raise ValueError("axis_calc_bg must select the appended image-stack axis")
+    backgrounds = {}
+    for key, rows in groups:
+        stack = import_fov(
+            df=rows,
+            fov_dir=proc.fov_directory,
+            fov_clm=columns.fov_column_name,
+            fov_shape=fov_shape,
+            verbose=proc.verbose_calc_bg,
+            np_zero_kwargs=OmegaConf.to_container(proc.np_zero_kwargs)
+            if proc.np_zero_kwargs is not None
+            else None,
+            sample_df=proc.sample_df,
+            sample_fraction=proc.sample_fraction,
+            sample_kwargs=OmegaConf.to_container(proc.sample_kwargs),
+        )
+        if stack.shape[-1] == 0:
+            raise ValueError(f"Sampling selected no images for background group {key}")
+        backgrounds[key] = calculate_background_function(
+            stack,
+            method=proc.background_function_avg_method,
+            axis=-1,
+            verbose=proc.verbose_calc_bg,
+        )
+    return backgrounds
 

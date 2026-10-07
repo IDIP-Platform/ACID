@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
+import tifffile
 
 from acid.image_processing.background.compute_background_function import (
+    calculate_backgrounds,
     fit_background,
     update_background_metadata,
 )
@@ -64,3 +66,62 @@ def test_fit_background_rejects_unknown_method(background_config):
 
     with pytest.raises(ValueError, match="polyfit or simple"):
         fit_background(average_background(), background_config)
+
+
+@pytest.fixture
+def fov_metadata(background_config, tmp_path):
+    """Three small fields of view, two in well1 and one in well2."""
+    directory = tmp_path / "fov"
+    directory.mkdir()
+    rng = np.random.default_rng(0)
+    for index in range(3):
+        image = (rng.random((5, 32, 32)) * 100 + 50).astype(np.uint16)
+        tifffile.imwrite(directory / f"f{index}.tif", image)
+    background_config.processing.fov_directory = str(directory)
+    columns = background_config.metadata.dataframe_columns
+    return pd.DataFrame(
+        {
+            columns.fov_column_name: ["f0.tif", "f1.tif", "f2.tif"],
+            columns.well_column_name: ["well1", "well1", "well2"],
+        }
+    )
+
+
+def test_calculate_backgrounds_dataset_strategy_gives_one_background(
+    background_config, fov_metadata
+):
+    background_config.processing.background_function_strategy = 1
+
+    backgrounds = calculate_backgrounds(fov_metadata, (5, 32, 32), background_config)
+
+    assert list(backgrounds) == [None]
+    assert backgrounds[None].shape == (5, 32, 32)
+
+
+def test_calculate_backgrounds_well_strategy_gives_one_background_per_well(
+    background_config, fov_metadata
+):
+    background_config.processing.background_function_strategy = 2
+
+    backgrounds = calculate_backgrounds(fov_metadata, (5, 32, 32), background_config)
+
+    assert list(backgrounds) == ["well1", "well2"]
+
+
+def test_calculate_backgrounds_rejects_unknown_strategy(background_config):
+    background_config.processing.background_function_strategy = 4
+
+    with pytest.raises(ValueError, match="must be 1, 2 or 3"):
+        calculate_backgrounds(pd.DataFrame(), (5, 32, 32), background_config)
+
+
+def test_calculate_backgrounds_rejects_missing_well_for_well_strategy(
+    background_config,
+):
+    background_config.processing.background_function_strategy = 2
+    well = background_config.metadata.dataframe_columns.well_column_name
+
+    with pytest.raises(ValueError, match="Missing background grouping values"):
+        calculate_backgrounds(
+            pd.DataFrame({well: ["A1", None]}), (5, 32, 32), background_config
+        )

@@ -20,6 +20,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.measure import regionprops_table
 
 from acid.feature_extraction.measure_hessian_matrix import MeasureHessianMatrix
+from acid.feature_extraction.measure_structure_tensor import MeasureStructureTensor
 from acid.utils.label_image_utils import exclude_label_on_edge
 
 # ---- Setting built-in logging
@@ -151,6 +152,32 @@ def extract_hessian_features(
     hessian_measurer = MeasureHessianMatrix(intensity_image)
 
     return hessian_measurer.measure_obj_hessian_matrix_eigenval(
+        label_image=label_image,
+        axis=-1,
+    )
+
+
+def extract_structure_tensor_features(
+    label_image: np.ndarray, intensity_image: np.ndarray
+) -> pd.DataFrame:
+    """Measure structure-tensor eigenvalue statistics of every object.
+
+    Uses `MeasureStructureTensor` with its defaults: the eigenvalues are
+    computed per channel and summarised (mean, max, min, std) inside each
+    object after eroding the mask. As with `extract_hessian_features`, small
+    objects can vanish in the erosion and get no row.
+
+    Args:
+        label_image (np.ndarray): Label mask, `(y, x)`; `0` is background.
+        intensity_image (np.ndarray): Image with channels last, `(y, x, c)`.
+
+    Returns:
+        pd.DataFrame: One row per remaining object with a `label` column and
+        columns such as `str_tens_eigv_1_intensity_mean-0`.
+    """
+    structure_tensor_measurer = MeasureStructureTensor(intensity_image)
+
+    return structure_tensor_measurer.measure_obj_struct_tensor_eigenval(
         label_image=label_image,
         axis=-1,
     )

@@ -4,6 +4,7 @@ import pytest
 from acid.feature_extraction.pipeline import (
     extract_hessian_features,
     extract_regionprops_features,
+    extract_structure_tensor_features,
     get_feature_metadata_columns,
     preprocess_field_of_view,
     preprocess_segmentation_mask,
@@ -79,3 +80,12 @@ def test_extract_hessian_features_returns_one_row_per_object():
 
     assert features["label"].tolist() == [1, 2]
     assert "hessian_eigv_1_intensity_mean-0" in features.columns
+
+
+def test_extract_structure_tensor_features_returns_one_row_per_object():
+    features = extract_structure_tensor_features(
+        large_object_label_image(), random_intensity()
+    )
+
+    assert features["label"].tolist() == [1, 2]
+    assert "str_tens_eigv_1_intensity_mean-0" in features.columns

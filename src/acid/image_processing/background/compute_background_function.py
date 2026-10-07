@@ -13,6 +13,7 @@ Functions take the `background_function_calculation` configuration section
 import logging
 from collections.abc import Hashable, Sequence
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ from acid.image_processing.calculate_background_function import (
     get_polyfit_bg_funct_channel,
     import_fov,
 )
+from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -217,4 +219,111 @@ def calculate_backgrounds(
             verbose=proc.verbose_calc_bg,
         )
     return backgrounds
+
+
+
+def save_backgrounds(
+    backgrounds: dict[Hashable | None, np.ndarray], cfg: DictConfig, project_name: str
+) -> list[dict]:
+    """Fit and save the background function of every group as an OME-TIFF.
+
+    Each background is fitted with `fit_background`, cast to
+    `background_img_dtype` and saved as
+    `<date><sep><project><sep><savingword>[<sep><group>]<suffix>`, e.g.
+    `20261007_ACID_background.ome.tif` for the dataset strategy. The ImageJ
+    metadata records the date, project, averaging method and the fit
+    parameters (and the well or grid position for strategies 2 and 3). If
+    `save_avg_background_function_image` is true, the unfitted average is
+    also saved to `average_background_directory`.
+
+    Args:
+        backgrounds (dict[Hashable | None, np.ndarray]): Output of
+            `calculate_backgrounds`.
+        cfg (DictConfig): The `background_function_calculation` section. Reads
+            `image_saving.*` (`directory`, `background_img_name_date_format`,
+            `background_img_savingword`, `save_file_name_separator`,
+            `background_img_file_suffix`, `background_img_dtype`,
+            `save_imagej_compatible`, `photometric`,
+            `save_avg_background_function_image`,
+            `average_background_directory`,
+            `non_polyfit_background_img_savingword`), the entry names in
+            `metadata.image_metadata` and the settings in `processing` (see
+            `fit_background`).
+        project_name (str): Project name inserted into file names and
+            metadata.
+
+    Returns:
+        list[dict]: One entry per group with keys `group`, `output_file`
+        (full path as string) and `shape`.
+    """
+    proc, saving, meta = cfg.processing, cfg.image_saving, cfg.metadata.image_metadata
+    output = Path(saving.directory)
+    output.mkdir(parents=True, exist_ok=True)
+    saved = []
+    for key, background in backgrounds.items():
+        fitted = fit_background(background, cfg)
+        image_metadata = {
+            meta.background_img_meta_date_name: datetime.now()
+            .astimezone()
+            .strftime(meta.background_img_meta_date_format),
+            meta.background_img_meta_project_name: project_name,
+            meta.background_img_meta_avg_method_name: proc.background_function_avg_method,
+        }
+        if proc.background_fit_method == "polyfit":
+            image_metadata[meta.background_img_meta_poly_degree_name] = (
+                f"kx: {list(proc.polynomial_order_x)}, ky: {list(proc.polynomial_order_y)}, order: None"
+            )
+        else:
+            params = OmegaConf.to_container(proc, resolve=True)
+            image_metadata.update(
+                {
+                    meta.background_img_meta_ballradius_name: params["ball_radius"],
+                    meta.background_img_meta_whitebg_name: params["white_background"],
+                    meta.background_img_meta_gausmooth_name: params["gau_smooth"],
+                }
+            )
+        if key is not None:
+            image_metadata[
+                "well" if proc.background_function_strategy == 2 else "grid_position"
+            ] = str(key)
+        parts = [
+            datetime.now()
+            .astimezone()
+            .strftime(saving.background_img_name_date_format),
+            project_name,
+            saving.background_img_savingword,
+        ]
+        if key is not None:
+            parts.append(str(key))
+        filename = (
+            saving.save_file_name_separator.join(parts)
+            + saving.background_img_file_suffix
+        )
+        path = output / filename
+        tifffile_save_ometiff(
+            str(path),
+            data=fitted.astype(saving.background_img_dtype),
+            imagej=saving.save_imagej_compatible,
+            photometric=saving.photometric,
+            metadata=image_metadata,
+        )
+        if saving.save_avg_background_function_image:
+            directory = Path(saving.average_background_directory)
+            directory.mkdir(parents=True, exist_ok=True)
+            parts[2] = saving.non_polyfit_background_img_savingword
+            average_path = directory / (
+                saving.save_file_name_separator.join(parts)
+                + saving.background_img_file_suffix
+            )
+            tifffile_save_ometiff(
+                str(average_path),
+                data=background.astype(saving.background_img_dtype),
+                imagej=saving.save_imagej_compatible,
+                photometric=saving.photometric,
+                metadata={
+                    meta.background_img_meta_avg_method_name: proc.background_function_avg_method
+                },
+            )
+        saved.append({"group": key, "output_file": str(path), "shape": fitted.shape})
+    return saved
 

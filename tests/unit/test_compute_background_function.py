@@ -6,6 +6,7 @@ import tifffile
 from acid.image_processing.background.compute_background_function import (
     calculate_backgrounds,
     fit_background,
+    save_backgrounds,
     update_background_metadata,
 )
 
@@ -125,3 +126,18 @@ def test_calculate_backgrounds_rejects_missing_well_for_well_strategy(
         calculate_backgrounds(
             pd.DataFrame({well: ["A1", None]}), (5, 32, 32), background_config
         )
+
+
+def test_save_backgrounds_writes_fitted_background_per_group(background_config, tmp_path):
+    background_config.processing.background_function_strategy = 2
+    backgrounds = {"well1": average_background(), "well2": average_background()}
+
+    saved = save_backgrounds(backgrounds, background_config, "proj")
+
+    names = sorted(path.name for path in (tmp_path / "backgrounds").iterdir())
+    assert [entry["group"] for entry in saved] == ["well1", "well2"]
+    assert len(names) == 2
+    assert names[0].endswith("_proj_background_well1.ome.tif")
+    image = tifffile.imread(saved[0]["output_file"])
+    assert image.shape == (5, 32, 32)
+    assert image.dtype == np.dtype(background_config.image_saving.background_img_dtype)

@@ -226,3 +226,44 @@ def save_segmentation_mask(
     )
 
     return output_path
+
+
+def copy_selected_field_of_view_metadata(
+    segmentation_metadata: dict, field_of_view_metadata: dict, config: DictConfig
+) -> dict:
+    """Copy provenance and pixel-size entries of the field of view into the mask metadata.
+
+    An entry is copied when its key contains one of the configured entry
+    names (raw file name, scene file name, physical pixel size and its unit
+    in x and y). All other field-of-view entries are dropped.
+
+    Args:
+        segmentation_metadata (dict): Mask metadata to extend; modified in
+            place.
+        field_of_view_metadata (dict): ImageJ metadata of the corrected field
+            of view.
+        config (DictConfig): The whole `object_segmentation` section. Reads
+            `metadata.image_metadata.preproc_img_meta_raw_file_name_entry`,
+            `preproc_img_meta_scene_file_name_entry`,
+            `preproc_img_meta_x_physic_px_size_entry`,
+            `preproc_img_meta_y_physic_px_size_entry`,
+            `preproc_img_meta_x_physic_px_size_unit_entry` and
+            `preproc_img_meta_y_physic_px_size_unit_entry`.
+
+    Returns:
+        dict: `segmentation_metadata` with the selected entries added.
+    """
+    metadata_keywords = [
+        config.metadata.image_metadata.preproc_img_meta_raw_file_name_entry,
+        config.metadata.image_metadata.preproc_img_meta_scene_file_name_entry,
+        config.metadata.image_metadata.preproc_img_meta_x_physic_px_size_entry,
+        config.metadata.image_metadata.preproc_img_meta_y_physic_px_size_entry,
+        config.metadata.image_metadata.preproc_img_meta_x_physic_px_size_unit_entry,
+        config.metadata.image_metadata.preproc_img_meta_y_physic_px_size_unit_entry,
+    ]
+
+    for key, value in field_of_view_metadata.items():
+        if any(keyword in key for keyword in metadata_keywords):
+            segmentation_metadata[key] = value
+
+    return segmentation_metadata

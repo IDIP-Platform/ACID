@@ -4,6 +4,7 @@ import tifffile
 
 from acid.segmentation.pipeline import (
     cast_mask_to_output_dtype,
+    copy_selected_field_of_view_metadata,
     get_channel_shape,
     get_segmentation_metadata_columns,
     make_segmentation_output_filename,
@@ -108,3 +109,24 @@ def test_save_segmentation_mask_writes_tiff_into_given_directory(
 
     assert path == tmp_path / "out" / "a_segmentation.ome.tif"
     np.testing.assert_array_equal(tifffile.imread(path), mask)
+
+
+def test_copy_selected_field_of_view_metadata_keeps_only_matching_entries(
+    segmentation_config,
+):
+    entries = segmentation_config.metadata.image_metadata
+    field_of_view_metadata = {
+        f"custom_{entries.preproc_img_meta_raw_file_name_entry}": "a.nd2",
+        f"custom_{entries.preproc_img_meta_x_physic_px_size_entry}": 0.65,
+        "custom_unrelated_entry": "drop me",
+    }
+
+    result = copy_selected_field_of_view_metadata(
+        {"custom_segmentation": "x"}, field_of_view_metadata, segmentation_config
+    )
+
+    assert result == {
+        "custom_segmentation": "x",
+        f"custom_{entries.preproc_img_meta_raw_file_name_entry}": "a.nd2",
+        f"custom_{entries.preproc_img_meta_x_physic_px_size_entry}": 0.65,
+    }

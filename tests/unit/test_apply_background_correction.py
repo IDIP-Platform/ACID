@@ -15,6 +15,7 @@ from acid.image_processing.background.apply_background_correction import (
     make_correction_success_result,
     make_output_filename,
     save_corrected_image,
+    update_metadata_with_correction_results,
 )
 
 
@@ -181,3 +182,23 @@ def test_batch_returns_one_result_per_row(correction_config, write_fov):
 
     assert [result["row_index"] for result in results] == [7, 8]
     assert [result["success"] for result in results] == [True, False]
+
+
+def test_update_metadata_with_correction_results_fills_columns_per_row(
+    correction_config, write_fov
+):
+    directory, _ = write_fov()
+    columns = correction_config.metadata.dataframe_columns
+    metadata_df = pd.DataFrame({columns.fov_column_name: ["a.ome.tif", "missing.ome.tif"]})
+    results = apply_background_correction_batch(
+        metadata_df,
+        background(),
+        correction_config,
+        types.SimpleNamespace(extracted_fov_dir=str(directory)),
+    )
+
+    updated = update_metadata_with_correction_results(metadata_df, results, columns)
+
+    file_column = columns.illum_correct_df_file_name_clm_name
+    assert updated.loc[0, file_column] == "a_bg.ome.tif"
+    assert pd.isna(updated.loc[1, file_column])

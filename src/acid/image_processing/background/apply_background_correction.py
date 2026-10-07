@@ -16,6 +16,7 @@ from acid.utils.row_processing import (
     make_failure_result,
     make_success_result,
     process_rows,
+    update_metadata_with_results,
 )
 from acid.utils.save_image import tifffile_save_ometiff
 
@@ -269,4 +270,16 @@ def apply_background_correction_batch(
         ),
         description="Applying background correction",
         max_rows=max_rows,
+    )
+
+
+def update_metadata_with_correction_results(
+    metadata_df, results, dataframe_columns, copy_dataframe=True
+):
+    """Write background-correction results into the metadata dataframe."""
+    return update_metadata_with_results(
+        metadata_df,
+        results,
+        get_correction_metadata_columns(dataframe_columns),
+        copy_dataframe=copy_dataframe,
     )

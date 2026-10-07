@@ -1,6 +1,25 @@
-"""Per-row processing results shared by the pipeline stages."""
+"""Per-row processing results shared by the pipeline stages.
+
+Stages that process one field of view per metadata row (background
+correction, segmentation, feature extraction) return one result record per
+row instead of raising on the first bad file. Every record has the same common
+keys:
+
+- `row_index`: index of the row in the metadata dataframe,
+- `input_file`: file name that was processed (`None` if it could not be read
+  from the row),
+- `output_file`: file name that was written (`None` on failure),
+- `success`: `True` or `False`,
+- `stage`: name of the step that failed (`None` on success),
+- `error_type`, `error_message`: exception class name and message on failure,
+
+followed by the stage-specific metadata columns that
+`update_metadata_with_results` writes back into the metadata dataframe.
+"""
 
 import logging
+from collections.abc import Callable, Hashable, Iterable
+from typing import Any
 
 import pandas as pd
 from tqdm.auto import tqdm
@@ -15,16 +34,28 @@ logger = logging.getLogger(__name__)
 
 
 def make_success_result(
-    row_index, input_file, output_file, metadata_values: dict, **extra_fields
+    row_index: Hashable,
+    input_file: str,
+    output_file: str,
+    metadata_values: dict[str, Any],
+    **extra_fields,
 ) -> dict:
     """Build the result record of a successfully processed metadata row.
 
     Args:
-        row_index: Index of the processed row in the metadata dataframe.
-        input_file: Name of the file that was processed.
-        output_file: Name of the file that was written.
-        metadata_values: Stage-specific metadata columns and their values.
-        **extra_fields: Additional identifiers, e.g. ``segmentation_file``.
+        row_index (Hashable): Index of the processed row in the metadata
+            dataframe.
+        input_file (str): File name that was processed.
+        output_file (str): File name that was written.
+        metadata_values (dict[str, Any]): Stage-specific metadata column names
+            mapped to the values recorded for this row, e.g. processing date,
+            output file name and processing parameters.
+        **extra_fields: Additional identifiers placed right after `input_file`,
+            e.g. `segmentation_file` in feature extraction.
+
+    Returns:
+        dict: Result record with the common keys described in the module
+        docstring, `success=True`, followed by `metadata_values`.
     """
     return {
         "row_index": row_index,
@@ -40,17 +71,32 @@ def make_success_result(
 
 
 def make_failure_result(
-    row_index,
-    input_file,
+    row_index: Hashable,
+    input_file: str | None,
     error: Exception,
-    metadata_columns,
-    null_value,
+    metadata_columns: Iterable[str],
+    null_value: Any,
     stage: str | None = None,
     **extra_fields,
 ) -> dict:
     """Build the result record of a metadata row whose processing failed.
 
-    All ``metadata_columns`` are set to ``null_value``.
+    Args:
+        row_index (Hashable): Index of the row in the metadata dataframe.
+        input_file (str | None): File name that was being processed, or `None`
+            if it could not be read from the row.
+        error (Exception): The exception that stopped the processing.
+        metadata_columns (Iterable[str]): Stage-specific metadata column names;
+            each is set to `null_value`.
+        null_value (Any): Value written for missing results, usually
+            `metadata.dataframe_columns.null_value` (`NaN` by default).
+        stage (str | None): Name of the step that failed, e.g.
+            `"load_field_of_view"`.
+        **extra_fields: Additional identifiers placed right after `input_file`.
+
+    Returns:
+        dict: Result record with `success=False`, `output_file=None`, the
+        error type and message, and every metadata column set to `null_value`.
     """
     return {
         "row_index": row_index,
@@ -66,12 +112,32 @@ def make_failure_result(
 
 
 def update_metadata_with_results(
-    metadata_df: pd.DataFrame, results: list[dict], metadata_columns, copy_dataframe=True
+    metadata_df: pd.DataFrame,
+    results: list[dict],
+    metadata_columns: Iterable[str],
+    copy_dataframe: bool = True,
 ) -> pd.DataFrame:
-    """Write the metadata columns of per-row results back into the metadata.
+    """Write the metadata columns of per-row results into the metadata dataframe.
+
+    Rows are matched by `row_index`. Columns that do not exist yet are added
+    and filled with `pd.NA` for rows without a result. All `metadata_columns`
+    are cast to `object` dtype so that numbers, strings and `NaN` can coexist.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata dataframe whose rows were processed.
+        results (list[dict]): Result records from `make_success_result` or
+            `make_failure_result`.
+        metadata_columns (Iterable[str]): Names of the columns to copy from the
+            results.
+        copy_dataframe (bool): If `True`, `metadata_df` is left unchanged and a
+            modified copy is returned.
+
+    Returns:
+        pd.DataFrame: Metadata with the result columns filled in. If `results`
+        is empty, the (copied) input is returned unchanged.
 
     Raises:
-        KeyError: If a metadata column is missing from the results.
+        KeyError: If a name in `metadata_columns` is missing from the results.
     """
     metadata_columns = list(metadata_columns)
 
@@ -103,14 +169,28 @@ def update_metadata_with_results(
     return metadata_df
 
 
-def process_rows(metadata_df: pd.DataFrame, process_row, description: str, max_rows=None):
-    """Call ``process_row(row_index, metadata_row)`` for each row and collect results.
+def process_rows(
+    metadata_df: pd.DataFrame,
+    process_row: Callable[[Hashable, pd.Series], dict],
+    description: str,
+    max_rows: int | None = None,
+) -> list[dict]:
+    """Process metadata rows one by one and collect their result records.
+
+    Shows a progress bar (`tqdm.auto`, so it works in notebooks and scripts).
+    `process_row` is expected to catch its own errors and return a failure
+    record; an exception it raises stops the whole loop.
 
     Args:
-        metadata_df: Rows to process.
-        process_row: Callable returning one result dict per row.
-        description: Progress-bar label.
-        max_rows: Process only the first ``max_rows`` rows when given.
+        metadata_df (pd.DataFrame): Rows to process, in index order.
+        process_row (Callable[[Hashable, pd.Series], dict]): Called as
+            `process_row(row_index, metadata_row)`; returns one result record.
+        description (str): Label of the progress bar.
+        max_rows (int | None): If given, only the first `max_rows` rows are
+            processed, e.g. for a quick test run.
+
+    Returns:
+        list[dict]: One result record per processed row, in row order.
     """
     row_indices = metadata_df.index
     if max_rows is not None:

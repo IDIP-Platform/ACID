@@ -18,6 +18,7 @@ from acid.segmentation.pipeline import (
     resize_segmentation_mask,
     save_segmentation_mask,
     segment_objects,
+    update_metadata_with_segmentation_results,
 )
 
 
@@ -246,3 +247,22 @@ def test_apply_segmentation_batch_returns_one_result_per_row(
 
     assert [result["row_index"] for result in results] == [3, 4]
     assert [result["success"] for result in results] == [True, False]
+
+
+def test_update_metadata_with_segmentation_results_fills_columns_per_row(
+    segmentation_config, write_fov, tmp_path
+):
+    directory, _ = write_fov()
+    columns = segmentation_config.metadata.dataframe_columns
+    metadata_df = pd.DataFrame(
+        {columns.illum_correct_df_file_name_clm_name: ["a.ome.tif", "missing.ome.tif"]}
+    )
+    results = apply_segmentation_batch(
+        metadata_df, FakeModel(), segmentation_config, paths_for(directory, tmp_path)
+    )
+
+    updated = update_metadata_with_segmentation_results(metadata_df, results, columns)
+
+    file_column = columns.metadata_df_file_name_clm_name
+    assert updated.loc[0, file_column] == "a_segmentation.ome.tif"
+    assert pd.isna(updated.loc[1, file_column])

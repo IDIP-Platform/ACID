@@ -37,6 +37,7 @@ from acid.utils.row_processing import (
     make_failure_result,
     make_success_result,
     process_rows,
+    update_metadata_with_results,
 )
 from acid.utils.save_image import tifffile_save_ometiff
 
@@ -560,4 +561,34 @@ def apply_segmentation_batch(
         ),
         description="Applying object segmentation",
         max_rows=max_rows,
+    )
+
+
+def update_metadata_with_segmentation_results(
+    metadata_df: pd.DataFrame,
+    results: list[dict],
+    dataframe_columns: DictConfig,
+    copy_dataframe: bool = True,
+) -> pd.DataFrame:
+    """Write segmentation results into the metadata dataframe.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata whose rows were processed.
+        results (list[dict]): Output of `apply_segmentation_batch`.
+        dataframe_columns (DictConfig): The
+            `object_segmentation.metadata.dataframe_columns` section.
+        copy_dataframe (bool): If `True`, `metadata_df` is left unchanged.
+
+    Returns:
+        pd.DataFrame: Metadata with the 12 segmentation columns filled in;
+        failed rows hold `null_value`, rows without a result hold `pd.NA`.
+
+    Raises:
+        KeyError: If the results lack one of the segmentation columns.
+    """
+    return update_metadata_with_results(
+        metadata_df,
+        results,
+        get_segmentation_metadata_columns(dataframe_columns),
+        copy_dataframe=copy_dataframe,
     )

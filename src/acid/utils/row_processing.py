@@ -2,6 +2,8 @@
 
 import logging
 
+import pandas as pd
+
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
@@ -60,3 +62,41 @@ def make_failure_result(
         "error_message": str(error),
         **dict.fromkeys(metadata_columns, null_value),
     }
+
+
+def update_metadata_with_results(
+    metadata_df: pd.DataFrame, results: list[dict], metadata_columns, copy_dataframe=True
+) -> pd.DataFrame:
+    """Write the metadata columns of per-row results back into the metadata.
+
+    Raises:
+        KeyError: If a metadata column is missing from the results.
+    """
+    metadata_columns = list(metadata_columns)
+
+    if copy_dataframe:
+        metadata_df = metadata_df.copy()
+
+    if not results:
+        return metadata_df
+
+    results_df = pd.DataFrame.from_records(results).set_index("row_index")
+
+    missing_result_columns = [
+        column for column in metadata_columns if column not in results_df.columns
+    ]
+    if missing_result_columns:
+        raise KeyError(f"Results are missing metadata columns: {missing_result_columns}")
+
+    missing_metadata_columns = [
+        column for column in metadata_columns if column not in metadata_df.columns
+    ]
+    metadata_df = metadata_df.assign(
+        **{column: pd.NA for column in missing_metadata_columns}
+    )
+    metadata_df = metadata_df.astype(dict.fromkeys(metadata_columns, "object"))
+    metadata_df.loc[results_df.index, metadata_columns] = results_df[
+        metadata_columns
+    ].to_numpy()
+
+    return metadata_df

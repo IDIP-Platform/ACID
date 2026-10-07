@@ -1,6 +1,12 @@
 import numpy as np
+import pandas as pd
+import pytest
 
-from acid.utils.row_processing import make_failure_result, make_success_result
+from acid.utils.row_processing import (
+    make_failure_result,
+    make_success_result,
+    update_metadata_with_results,
+)
 
 COLUMNS = ["out_date", "out_file"]
 
@@ -46,3 +52,34 @@ def test_make_failure_result_fills_metadata_with_null_value():
     assert result["error_type"] == "OSError"
     assert result["error_message"] == "boom"
     assert all(np.isnan(result[column]) for column in COLUMNS)
+
+
+def test_update_metadata_with_results_adds_missing_columns_and_values():
+    metadata_df = pd.DataFrame({"fov": ["a", "b"]}, index=[10, 11])
+    results = [
+        make_success_result(10, "a", "a_out", {"out_date": "d", "out_file": "a_out"}),
+        make_failure_result(11, "b", OSError("x"), COLUMNS, np.nan),
+    ]
+
+    updated = update_metadata_with_results(metadata_df, results, COLUMNS)
+
+    assert updated.loc[10, "out_file"] == "a_out"
+    assert pd.isna(updated.loc[11, "out_file"])
+    assert "out_file" not in metadata_df.columns
+
+
+def test_update_metadata_with_results_empty_results_returns_copy():
+    metadata_df = pd.DataFrame({"fov": ["a"]})
+
+    updated = update_metadata_with_results(metadata_df, [], COLUMNS)
+
+    pd.testing.assert_frame_equal(updated, metadata_df)
+    assert updated is not metadata_df
+
+
+def test_update_metadata_with_results_rejects_results_without_columns():
+    metadata_df = pd.DataFrame({"fov": ["a"]})
+    results = [{"row_index": 0, "out_date": "d"}]
+
+    with pytest.raises(KeyError, match="out_file"):
+        update_metadata_with_results(metadata_df, results, COLUMNS)

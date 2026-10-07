@@ -23,6 +23,8 @@ import numpy as np
 from omegaconf import DictConfig
 from skimage.transform import resize
 
+from acid.utils.save_image import tifffile_save_ometiff
+
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
@@ -184,3 +186,43 @@ def make_segmentation_output_filename(
         f"{config.image_saving.segmentation_savingword}"
         f"{suffix}"
     )
+
+
+def save_segmentation_mask(
+    output_filename: str,
+    mask: np.ndarray,
+    image_metadata: dict,
+    config: DictConfig,
+    output_directory: str | Path,
+) -> Path:
+    """Save one segmentation mask as an OME-TIFF.
+
+    Creates `output_directory` when it does not exist and overwrites an
+    existing file with the same name.
+
+    Args:
+        output_filename (str): Mask file name, usually from
+            `make_segmentation_output_filename`.
+        mask (np.ndarray): Full-resolution label mask, `(y, x)`.
+        image_metadata (dict): ImageJ-compatible metadata written into the
+            file, usually from `build_segmentation_image_metadata`.
+        config (DictConfig): The whole `object_segmentation` section. Reads
+            `image_saving.save_imagej_compatible` and `image_saving.photometric`.
+        output_directory (str | Path): Target directory, usually
+            `shared.paths.segmentation_masks_dir`.
+
+    Returns:
+        Path: Full path of the written file.
+    """
+    output_path = Path(output_directory) / output_filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    tifffile_save_ometiff(
+        output_path,
+        data=mask,
+        imagej=config.image_saving.save_imagej_compatible,
+        photometric=config.image_saving.photometric,
+        metadata=image_metadata,
+    )
+
+    return output_path

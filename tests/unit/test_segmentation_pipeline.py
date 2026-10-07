@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import tifffile
 
 from acid.segmentation.pipeline import (
     cast_mask_to_output_dtype,
@@ -7,6 +8,7 @@ from acid.segmentation.pipeline import (
     get_segmentation_metadata_columns,
     make_segmentation_output_filename,
     resize_segmentation_mask,
+    save_segmentation_mask,
     segment_objects,
 )
 
@@ -92,3 +94,17 @@ def test_make_segmentation_output_filename(segmentation_config):
         make_segmentation_output_filename("a_bg.ome.tif", segmentation_config)
         == "a_bg_segmentation.ome.tif"
     )
+
+
+def test_save_segmentation_mask_writes_tiff_into_given_directory(
+    segmentation_config, tmp_path
+):
+    mask = np.arange(16, dtype=np.uint16).reshape(4, 4)
+
+    path = save_segmentation_mask(
+        "a_segmentation.ome.tif", mask, {"custom_x": "1"}, segmentation_config,
+        output_directory=tmp_path / "out",
+    )
+
+    assert path == tmp_path / "out" / "a_segmentation.ome.tif"
+    np.testing.assert_array_equal(tifffile.imread(path), mask)

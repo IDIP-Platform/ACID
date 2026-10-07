@@ -3,6 +3,7 @@
 import logging
 
 import pandas as pd
+from tqdm.auto import tqdm
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -100,3 +101,22 @@ def update_metadata_with_results(
     ].to_numpy()
 
     return metadata_df
+
+
+def process_rows(metadata_df: pd.DataFrame, process_row, description: str, max_rows=None):
+    """Call ``process_row(row_index, metadata_row)`` for each row and collect results.
+
+    Args:
+        metadata_df: Rows to process.
+        process_row: Callable returning one result dict per row.
+        description: Progress-bar label.
+        max_rows: Process only the first ``max_rows`` rows when given.
+    """
+    row_indices = metadata_df.index
+    if max_rows is not None:
+        row_indices = row_indices[:max_rows]
+
+    return [
+        process_row(row_index, metadata_df.loc[row_index])
+        for row_index in tqdm(row_indices, desc=description)
+    ]

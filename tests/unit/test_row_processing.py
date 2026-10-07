@@ -5,6 +5,7 @@ import pytest
 from acid.utils.row_processing import (
     make_failure_result,
     make_success_result,
+    process_rows,
     update_metadata_with_results,
 )
 
@@ -83,3 +84,16 @@ def test_update_metadata_with_results_rejects_results_without_columns():
 
     with pytest.raises(KeyError, match="out_file"):
         update_metadata_with_results(metadata_df, results, COLUMNS)
+
+
+def test_process_rows_passes_index_and_row_and_respects_max_rows():
+    metadata_df = pd.DataFrame({"fov": ["a", "b", "c"]}, index=[5, 6, 7])
+
+    results = process_rows(
+        metadata_df,
+        lambda row_index, row: {"row_index": row_index, "fov": row["fov"]},
+        description="test",
+        max_rows=2,
+    )
+
+    assert results == [{"row_index": 5, "fov": "a"}, {"row_index": 6, "fov": "b"}]

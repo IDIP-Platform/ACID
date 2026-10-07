@@ -22,12 +22,18 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from omegaconf import DictConfig
 from skimage.transform import resize
 
 from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
-from acid.utils.row_processing import make_success_result
+from acid.image_processing.segmentation_preprocessing import (
+    preprocess_image_for_segmentation,
+)
+from acid.io.image_loading import load_field_of_view
+from acid.utils.metadata.rows import get_required_filename
+from acid.utils.row_processing import make_failure_result, make_success_result
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -395,4 +401,126 @@ def make_segmentation_success_result(
             columns.metadata_df_resize_order_name: processing.order,
             columns.metadata_df_output_dtype_name: str(mask_dtype),
         },
+    )
+
+
+def apply_segmentation_for_fov(
+    row_index: Hashable,
+    metadata_row: pd.Series,
+    model,
+    config: DictConfig,
+    paths: DictConfig,
+) -> dict:
+    """Segment, resize, save and describe one field of view.
+
+    Runs these steps in order; the name in brackets is the `stage` reported if
+    the step fails: read the file name (`get_field_of_view_file`), load the
+    corrected image (`load_field_of_view`), build the model input
+    (`preprocess_image_for_segmentation`), run the model
+    (`segment_preprocessed_image`), resize the mask to full resolution
+    (`resize_segmentation_mask`), build its metadata
+    (`build_segmentation_image_metadata`), save it (`save_segmentation_mask`).
+    The mask is cast to `processing.output_dtype` before saving.
+    A failing step returns a failure record instead of raising, so one bad
+    file does not stop the batch.
+
+    Args:
+        row_index (Hashable): Index of the row in the metadata dataframe.
+        metadata_row (pd.Series): The row; its file name is read from
+            `metadata.dataframe_columns.illum_correct_df_file_name_clm_name`
+            (the output of background correction).
+        model: Segmentation model, see `segment_objects`.
+        config (DictConfig): The whole `object_segmentation` section.
+        paths (DictConfig): The `shared.paths` section. Reads
+            `corrected_fov_dir` and `segmentation_masks_dir`.
+
+    Returns:
+        dict: Success record from `make_segmentation_success_result`, or
+        failure record with the segmentation metadata columns set to
+        `metadata.dataframe_columns.null_value`.
+    """
+    columns = config.metadata.dataframe_columns
+    field_of_view_file = None
+
+    def failure(stage, error):
+        return make_failure_result(
+            row_index=row_index,
+            input_file=field_of_view_file,
+            error=error,
+            metadata_columns=get_segmentation_metadata_columns(columns),
+            null_value=columns.null_value,
+            stage=stage,
+        )
+
+    try:
+        field_of_view_file = get_required_filename(
+            metadata_row, columns.illum_correct_df_file_name_clm_name
+        )
+    except Exception as error:
+        return failure("get_field_of_view_file", error)
+
+    try:
+        image = load_field_of_view(field_of_view_file, paths.corrected_fov_dir)
+    except Exception as error:
+        return failure("load_field_of_view", error)
+
+    try:
+        preprocessed_image = preprocess_image_for_segmentation(
+            image=image, config=config.processing
+        )
+    except Exception as error:
+        return failure("preprocess_image_for_segmentation", error)
+    logger.debug("Preprocessing image shape: %s", preprocessed_image.shape)
+
+    try:
+        masks, _flows, _styles = segment_objects(
+            preprocessed_image=preprocessed_image, model=model, config=config
+        )
+    except Exception as error:
+        return failure("segment_preprocessed_image", error)
+    logger.debug("Number of segmented objects: %d", np.unique(masks).size - 1)
+
+    channel_shape = get_channel_shape(image, config.processing.channel_axis)
+    logger.info("Channel shape: %s", channel_shape)
+
+    try:
+        mask = resize_segmentation_mask(
+            mask=masks, output_shape=channel_shape, config=config
+        )
+    except Exception as error:
+        return failure("resize_segmentation_mask", error)
+
+    mask = cast_mask_to_output_dtype(mask, config.processing.output_dtype)
+
+    try:
+        image_metadata = build_segmentation_image_metadata(
+            field_of_view_path=Path(paths.corrected_fov_dir) / field_of_view_file,
+            mask=mask,
+            model=model,
+            config=config,
+        )
+    except Exception as error:
+        return failure("build_segmentation_image_metadata", error)
+
+    try:
+        output_filename = make_segmentation_output_filename(field_of_view_file, config)
+        save_segmentation_mask(
+            output_filename=output_filename,
+            mask=mask,
+            image_metadata=image_metadata,
+            config=config,
+            output_directory=paths.segmentation_masks_dir,
+        )
+    except Exception as error:
+        logger.error("Error saving masks")
+        return failure("save_segmentation_mask", error)
+    logger.info("Output file: %s", output_filename)
+
+    return make_segmentation_success_result(
+        row_index=row_index,
+        input_file=field_of_view_file,
+        output_file=output_filename,
+        mask_dtype=mask.dtype,
+        model=model,
+        config=config,
     )

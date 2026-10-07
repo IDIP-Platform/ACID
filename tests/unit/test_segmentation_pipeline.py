@@ -1,8 +1,12 @@
+import types
+
 import numpy as np
+import pandas as pd
 import pytest
 import tifffile
 
 from acid.segmentation.pipeline import (
+    apply_segmentation_for_fov,
     build_segmentation_image_metadata,
     cast_mask_to_output_dtype,
     copy_selected_field_of_view_metadata,
@@ -166,3 +170,63 @@ def test_make_segmentation_success_result_fills_all_metadata_columns(
     assert result[columns.metadata_df_method_version_clm_name] == "0.0"
     assert result[columns.metadata_df_output_dtype_name] == "uint16"
     assert set(get_segmentation_metadata_columns(columns)) <= set(result)
+
+
+def paths_for(directory, tmp_path):
+    return types.SimpleNamespace(
+        corrected_fov_dir=str(directory),
+        segmentation_masks_dir=str(tmp_path / "masks"),
+    )
+
+
+def test_apply_segmentation_for_fov_saves_full_size_mask(
+    segmentation_config, write_fov, tmp_path
+):
+    directory, _ = write_fov()
+    columns = segmentation_config.metadata.dataframe_columns
+    row = pd.Series({columns.illum_correct_df_file_name_clm_name: "a.ome.tif"})
+
+    result = apply_segmentation_for_fov(
+        0, row, FakeModel(), segmentation_config, paths_for(directory, tmp_path)
+    )
+
+    assert result["success"] is True, result["error_message"]
+    assert result["output_file"] == "a_segmentation.ome.tif"
+    mask = tifffile.imread(tmp_path / "masks" / "a_segmentation.ome.tif")
+    assert mask.shape == (16, 16)
+    assert mask.dtype == np.uint16
+    assert mask.max() == 1
+
+
+def test_apply_segmentation_for_fov_missing_file_reports_stage(
+    segmentation_config, tmp_path
+):
+    columns = segmentation_config.metadata.dataframe_columns
+    row = pd.Series({columns.illum_correct_df_file_name_clm_name: "missing.ome.tif"})
+
+    result = apply_segmentation_for_fov(
+        0, row, FakeModel(), segmentation_config, paths_for(tmp_path, tmp_path)
+    )
+
+    assert result["success"] is False
+    assert result["stage"] == "load_field_of_view"
+    assert pd.isna(result[columns.metadata_df_file_name_clm_name])
+
+
+def test_apply_segmentation_for_fov_model_error_reports_stage(
+    segmentation_config, write_fov, tmp_path
+):
+    directory, _ = write_fov()
+    columns = segmentation_config.metadata.dataframe_columns
+    row = pd.Series({columns.illum_correct_df_file_name_clm_name: "a.ome.tif"})
+
+    class BrokenModel(FakeModel):
+        def eval(self, image, **kwargs):
+            raise RuntimeError("CUDA out of memory")
+
+    result = apply_segmentation_for_fov(
+        0, row, BrokenModel(), segmentation_config, paths_for(directory, tmp_path)
+    )
+
+    assert result["stage"] == "segment_preprocessed_image"
+    assert result["error_message"] == "CUDA out of memory"

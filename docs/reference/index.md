@@ -15,6 +15,7 @@ For workflow-level explanations, start with the user guide or notebooks.
 | --- | --- |
 | [Data preparation](data-preparation.md) | Metadata formatting, category mapping, and train/test splitting. |
 | [Image processing](image-processing.md) | Metadata extraction, filtering, resizing, background correction, and image output. |
+| [Segmentation](segmentation.md) | Object segmentation stage: model input preparation, segmentation, mask saving. |
 | [Image quality control](image-quality-control.md) | QC metrics, flags, and display helpers. |
 | [Image measurement](image-measurement.md) | Global and local image statistics. |
 | [Feature extraction](feature-extraction.md) | Haralick, Hessian, structure tensor, intensity, and region-based features. |

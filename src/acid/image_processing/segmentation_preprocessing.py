@@ -47,3 +47,20 @@ def select_segmentation_channels(
         unstacked_image[config.concanavalin_position],
         unstacked_image[config.actin_position],
     )
+
+
+def merge_concanavalin_actin_channels(
+    concanavalin_channel: np.ndarray, actin_channel: np.ndarray
+) -> np.ndarray:
+    """Average the concanavalin and actin channels pixel by pixel.
+
+    The merged channel outlines the cell body for the segmentation model.
+
+    Args:
+        concanavalin_channel (np.ndarray): Concanavalin channel, `(y, x)`.
+        actin_channel (np.ndarray): Actin channel with the same shape.
+
+    Returns:
+        np.ndarray: Pixel-wise mean as `float64`, same shape as the inputs.
+    """
+    return np.mean(np.stack([concanavalin_channel, actin_channel], axis=0), axis=0)

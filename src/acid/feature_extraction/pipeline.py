@@ -181,3 +181,37 @@ def extract_structure_tensor_features(
         label_image=label_image,
         axis=-1,
     )
+
+
+def merge_feature_tables(
+    regionprops_features_df: pd.DataFrame,
+    hessian_features: pd.DataFrame,
+    structure_tensor_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Merge the per-object feature tables on the `label` column.
+
+    Uses right joins, so only objects present in the structure-tensor table
+    (and the Hessian table) are kept; objects that vanished in their erosion
+    step are dropped from the result.
+
+    Args:
+        regionprops_features_df (pd.DataFrame): Output of
+            `extract_regionprops_features`.
+        hessian_features (pd.DataFrame): Output of `extract_hessian_features`.
+        structure_tensor_features (pd.DataFrame): Output of
+            `extract_structure_tensor_features`.
+
+    Returns:
+        pd.DataFrame: One row per kept object with all feature columns.
+    """
+    merged_features = regionprops_features_df.merge(
+        hessian_features,
+        on="label",
+        how="right",
+    )
+
+    return merged_features.merge(
+        structure_tensor_features,
+        on="label",
+        how="right",
+    )

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from acid.feature_extraction.pipeline import (
@@ -6,6 +7,7 @@ from acid.feature_extraction.pipeline import (
     extract_regionprops_features,
     extract_structure_tensor_features,
     get_feature_metadata_columns,
+    merge_feature_tables,
     preprocess_field_of_view,
     preprocess_segmentation_mask,
 )
@@ -89,3 +91,13 @@ def test_extract_structure_tensor_features_returns_one_row_per_object():
 
     assert features["label"].tolist() == [1, 2]
     assert "str_tens_eigv_1_intensity_mean-0" in features.columns
+
+
+def test_merge_feature_tables_keeps_only_objects_with_eigenvalue_features():
+    regionprops = pd.DataFrame({"label": [1, 2], "area": [10, 20]})
+    hessian = pd.DataFrame({"label": [2], "h": [0.5]})
+    tensor = pd.DataFrame({"label": [2], "t": [0.1]})
+
+    merged = merge_feature_tables(regionprops, hessian, tensor)
+
+    assert merged.to_dict("records") == [{"label": 2, "area": 20, "h": 0.5, "t": 0.1}]

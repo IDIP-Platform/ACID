@@ -6,6 +6,7 @@ import pytest
 import tifffile
 
 from acid.image_processing.background.apply_background_correction import (
+    apply_background_correction_batch,
     apply_background_correction_for_fov,
     build_image_metadata,
     correct_background_image,
@@ -162,3 +163,21 @@ def test_apply_for_fov_empty_filename_reports_stage(correction_config, tmp_path)
 
     assert result["stage"] == "get_field_of_view_file"
     assert result["input_file"] is None
+
+
+def test_batch_returns_one_result_per_row(correction_config, write_fov):
+    directory, _ = write_fov()
+    columns = correction_config.metadata.dataframe_columns
+    metadata_df = pd.DataFrame(
+        {columns.fov_column_name: ["a.ome.tif", "missing.ome.tif"]}, index=[7, 8]
+    )
+
+    results = apply_background_correction_batch(
+        metadata_df,
+        background(),
+        correction_config,
+        types.SimpleNamespace(extracted_fov_dir=str(directory)),
+    )
+
+    assert [result["row_index"] for result in results] == [7, 8]
+    assert [result["success"] for result in results] == [True, False]

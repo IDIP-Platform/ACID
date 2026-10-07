@@ -12,7 +12,11 @@ from acid.image_processing.extract_metadata import extract_ometif_imagej_metadat
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
 from acid.io.image_loading import load_field_of_view
 from acid.utils.metadata.rows import get_required_filename
-from acid.utils.row_processing import make_failure_result, make_success_result
+from acid.utils.row_processing import (
+    make_failure_result,
+    make_success_result,
+    process_rows,
+)
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -251,4 +255,18 @@ def apply_background_correction_for_fov(
 
     return make_correction_success_result(
         row_index, field_of_view_file, output_filename, config
+    )
+
+
+def apply_background_correction_batch(
+    metadata_df, backgrounds, config, paths, max_rows=None
+):
+    """Apply background correction to each metadata row; return per-row results."""
+    return process_rows(
+        metadata_df,
+        lambda row_index, metadata_row: apply_background_correction_for_fov(
+            row_index, metadata_row, backgrounds, config, paths
+        ),
+        description="Applying background correction",
+        max_rows=max_rows,
     )

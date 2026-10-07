@@ -36,6 +36,17 @@ def load_field_of_view(filename, fov_directory, **kwargs):
     return _load_from_directory(filename, fov_directory, "field of view", **kwargs)
 
 
+def load_segmentation_mask(filename, segmentation_directory, **kwargs):
+    """Load one segmentation mask TIFF from a directory.
+
+    Raises:
+        OSError: If the file cannot be read.
+    """
+    return _load_from_directory(
+        filename, segmentation_directory, "segmentation mask", **kwargs
+    )
+
+
 # ----------------------------------------------------------
 # ---------------  HELPER FUNCTIONS  -----------------------
 # ----------------------------------------------------------

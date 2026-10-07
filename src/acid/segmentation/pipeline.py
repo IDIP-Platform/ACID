@@ -98,3 +98,29 @@ def cast_mask_to_output_dtype(
         return mask
 
     return mask.astype(output_dtype)
+
+
+def segment_objects(preprocessed_image: np.ndarray, model, config: DictConfig) -> tuple:
+    """Run the segmentation model on a preprocessed image.
+
+    Args:
+        preprocessed_image (np.ndarray): Output of
+            `preprocess_image_for_segmentation`, e.g. `(2, y / f, x / f)`.
+        model: Segmentation model with `eval(image, **kwargs)`, e.g.
+            `CellposeSegmentationModel`. Runs on GPU when the model was
+            created with one.
+        config (DictConfig): The whole `object_segmentation` section. Reads
+            `processing.flow_threshold`, `processing.cellprob_threshold`,
+            `processing.diameter` and `processing.channel_axis`.
+
+    Returns:
+        tuple: The model output `(masks, flows, styles)`; `masks` is a label
+        image on the downsampled grid, `0` being background.
+    """
+    return model.eval(
+        preprocessed_image,
+        flow_threshold=config.processing.flow_threshold,
+        cellprob_threshold=config.processing.cellprob_threshold,
+        diameter=config.processing.diameter,
+        channel_axis=config.processing.channel_axis,
+    )

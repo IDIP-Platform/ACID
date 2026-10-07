@@ -1,5 +1,8 @@
 import pandas as pd
 from collections.abc import Sequence
+from omegaconf import DictConfig
+
+from acid.data_preparation.format_str import format_series_str
 from acid.utils.str_utils import extract_number, split_text_and_number
 
 
@@ -134,3 +137,44 @@ def map_layout_condition(
         return unique_prefixes, unique_suffixes
     else:
         return prefixes, suffixes
+
+
+def map_treatments(
+    metadata_df: pd.DataFrame, plate_layout_df: pd.DataFrame, cfg: DictConfig
+) -> pd.DataFrame:
+    """Add the treatment of each field of view from the plate layout.
+
+    Treatment names in the layout are normalised with `format_series_str`
+    (e.g. `"uninfected + NITD-688"` becomes `"uninfected_NITD_688"`) and
+    matched to the metadata by experiment and well number; the metadata well
+    (e.g. `"well2"`) is matched to the numeric layout well (e.g. `2`).
+
+    Args:
+        metadata_df (pd.DataFrame): Field-of-view metadata from the extraction
+            stage.
+        plate_layout_df (pd.DataFrame): Plate layout with experiment, well
+            number and treatment columns.
+        cfg (DictConfig): The `dataset_splitting` section. Reads
+            `metadata.dataframe_columns.treatment_column_name`,
+            `well_column_name` and `experiment_column_name`, used for both
+            dataframes.
+
+    Returns:
+        pd.DataFrame: Copy of `metadata_df` with the treatment column added.
+
+    Raises:
+        IndexError: If a field of view has no matching layout row.
+    """
+    columns = cfg.metadata.dataframe_columns
+    layout = plate_layout_df.copy()
+    layout[columns.treatment_column_name] = format_series_str(
+        layout[columns.treatment_column_name]
+    )
+    return map_fov_categories_df(
+        metadata_df=metadata_df,
+        plate__layout_df=layout,
+        well__column=columns.well_column_name,
+        experiment__column=columns.experiment_column_name,
+        treatment__column=columns.treatment_column_name,
+    )
+

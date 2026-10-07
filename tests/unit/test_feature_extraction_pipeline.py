@@ -18,6 +18,7 @@ from acid.feature_extraction.pipeline import (
     preprocess_field_of_view,
     preprocess_segmentation_mask,
     save_features_dataframe,
+    update_metadata_with_feature_results,
 )
 
 
@@ -211,3 +212,21 @@ def test_extract_features_batch_turns_errors_into_failure_results(
     assert results[1]["error_type"] == "OSError"
     assert results[1]["segmentation_file"] == "y.ome.tif"
     assert pd.isna(results[1][columns.metadata_df_file_name_clm_name])
+
+
+def test_update_metadata_with_feature_results_fills_columns_per_row(
+    feature_config, segmented_fov
+):
+    columns = feature_config.metadata.dataframe_columns
+    metadata_df = pd.DataFrame(
+        {
+            columns.fov_column_name: ["a_bg.ome.tif", "x.ome.tif"],
+            columns.segmentation_column_name: ["a_bg_segmentation.ome.tif", "y.ome.tif"],
+        }
+    )
+    results = extract_features_batch(metadata_df, feature_config, segmented_fov)
+
+    updated = update_metadata_with_feature_results(metadata_df, results, columns)
+
+    assert updated.loc[0, columns.metadata_df_file_name_clm_name] == "a_bg.csv"
+    assert pd.isna(updated.loc[1, columns.metadata_df_file_name_clm_name])

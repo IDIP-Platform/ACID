@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from acid.segmentation.pipeline import (
+    cast_mask_to_output_dtype,
     get_channel_shape,
     get_segmentation_metadata_columns,
 )
@@ -26,3 +27,10 @@ def test_get_segmentation_metadata_columns_has_twelve_names(segmentation_config)
 def test_get_channel_shape_drops_channel_axis():
     assert get_channel_shape(np.zeros((5, 16, 12)), channel_axis=0) == (16, 12)
     assert get_channel_shape(np.zeros((16, 12, 5)), channel_axis=2) == (16, 12)
+
+
+def test_cast_mask_to_output_dtype_keeps_mask_when_none():
+    mask = np.zeros((2, 2), dtype=np.int32)
+
+    assert cast_mask_to_output_dtype(mask, None) is mask
+    assert cast_mask_to_output_dtype(mask, "uint16").dtype == np.uint16

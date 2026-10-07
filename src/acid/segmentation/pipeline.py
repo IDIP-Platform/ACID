@@ -76,3 +76,25 @@ def get_channel_shape(image: np.ndarray, channel_axis: int) -> tuple[int, ...]:
         tuple[int, ...]: Shape of one channel, e.g. `(y, x)`.
     """
     return tuple(size for axis, size in enumerate(image.shape) if axis != channel_axis)
+
+
+def cast_mask_to_output_dtype(
+    mask: np.ndarray, output_dtype: str | np.dtype | None
+) -> np.ndarray:
+    """Cast a label mask to the configured output dtype.
+
+    Args:
+        mask (np.ndarray): Label mask.
+        output_dtype (str | np.dtype | None): Target dtype, usually
+            `object_segmentation.processing.output_dtype` (e.g. `"uint16"`).
+            If `None`, the mask is returned unchanged.
+
+    Returns:
+        np.ndarray: The mask in `output_dtype`, or the same object when
+        `output_dtype` is `None`. Labels above the dtype's maximum overflow, so
+        the dtype must hold the largest label.
+    """
+    if output_dtype is None:
+        return mask
+
+    return mask.astype(output_dtype)

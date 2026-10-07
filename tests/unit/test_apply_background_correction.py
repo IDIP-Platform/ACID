@@ -1,6 +1,8 @@
+import pandas as pd
 import pytest
 
 from acid.image_processing.background.apply_background_correction import (
+    get_background_for_fov,
     get_correction_metadata_columns,
 )
 
@@ -21,3 +23,18 @@ def test_get_correction_metadata_columns_reads_names_from_config(correction_conf
         "illumination_correction_file_name",
     ]
     assert len(columns) == 9
+
+
+def test_get_background_for_fov_selects_by_strategy(correction_config):
+    selection = correction_config.background_function_selection
+    row = pd.Series({selection.well_column_name: "A1", selection.gridpos_column_name: 2})
+
+    selection.background_function_strategy = 1
+    assert get_background_for_fov(row, "dataset", selection) == "dataset"
+    selection.background_function_strategy = 2
+    assert get_background_for_fov(row, {"A1": "well"}, selection) == "well"
+    selection.background_function_strategy = 3
+    assert get_background_for_fov(row, {2: "grid"}, selection) == "grid"
+    selection.background_function_strategy = 4
+    with pytest.raises(ValueError, match="Invalid background_function_strategy"):
+        get_background_for_fov(row, None, selection)

@@ -33,7 +33,11 @@ from acid.image_processing.segmentation_preprocessing import (
 )
 from acid.io.image_loading import load_field_of_view
 from acid.utils.metadata.rows import get_required_filename
-from acid.utils.row_processing import make_failure_result, make_success_result
+from acid.utils.row_processing import (
+    make_failure_result,
+    make_success_result,
+    process_rows,
+)
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -523,4 +527,37 @@ def apply_segmentation_for_fov(
         mask_dtype=mask.dtype,
         model=model,
         config=config,
+    )
+
+
+def apply_segmentation_batch(
+    metadata_df: pd.DataFrame,
+    model,
+    config: DictConfig,
+    paths: DictConfig,
+    max_rows: int | None = None,
+) -> list[dict]:
+    """Segment the field of view of every row of the metadata dataframe.
+
+    Args:
+        metadata_df (pd.DataFrame): Rows to process, usually the training
+            split with background-corrected file names.
+        model: Segmentation model, see `segment_objects`. Created once and
+            reused for all rows.
+        config (DictConfig): The whole `object_segmentation` section.
+        paths (DictConfig): The `shared.paths` section.
+        max_rows (int | None): If given, only the first `max_rows` rows are
+            processed, e.g. for a quick test run.
+
+    Returns:
+        list[dict]: One result record per row (see
+        `apply_segmentation_for_fov`).
+    """
+    return process_rows(
+        metadata_df,
+        lambda row_index, metadata_row: apply_segmentation_for_fov(
+            row_index, metadata_row, model, config, paths
+        ),
+        description="Applying object segmentation",
+        max_rows=max_rows,
     )

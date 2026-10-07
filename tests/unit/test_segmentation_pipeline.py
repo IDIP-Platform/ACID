@@ -6,6 +6,7 @@ import pytest
 import tifffile
 
 from acid.segmentation.pipeline import (
+    apply_segmentation_batch,
     apply_segmentation_for_fov,
     build_segmentation_image_metadata,
     cast_mask_to_output_dtype,
@@ -230,3 +231,18 @@ def test_apply_segmentation_for_fov_model_error_reports_stage(
 
     assert result["stage"] == "segment_preprocessed_image"
     assert result["error_message"] == "CUDA out of memory"
+
+
+def test_apply_segmentation_batch_returns_one_result_per_row(
+    segmentation_config, write_fov, tmp_path
+):
+    directory, _ = write_fov()
+    file_column = segmentation_config.metadata.dataframe_columns.illum_correct_df_file_name_clm_name
+    metadata_df = pd.DataFrame({file_column: ["a.ome.tif", "missing.ome.tif"]}, index=[3, 4])
+
+    results = apply_segmentation_batch(
+        metadata_df, FakeModel(), segmentation_config, paths_for(directory, tmp_path)
+    )
+
+    assert [result["row_index"] for result in results] == [3, 4]
+    assert [result["success"] for result in results] == [True, False]

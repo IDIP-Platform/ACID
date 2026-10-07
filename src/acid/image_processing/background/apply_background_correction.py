@@ -10,6 +10,7 @@ from acid.image_processing.background.load_background_function import (
 from acid.image_processing.correct_background import correct_background
 from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
+from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
@@ -130,3 +131,21 @@ def build_image_metadata(field_of_view_file, fov_directory, config):
     )
 
     return image_metadata
+
+
+def save_corrected_image(output_filename, corrected_image, image_metadata, config):
+    """Save one background-corrected field-of-view image."""
+
+    output_path = Path(config.directory) / str(output_filename)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    tifffile_save_ometiff(
+        output_path,
+        data=corrected_image,
+        imagej=config.save_imagej_compatible,
+        photometric=config.photometric,
+        metadata=image_metadata,
+    )
+
+    return output_path

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import tifffile
 
 from acid.image_processing.background.apply_background_correction import (
     build_image_metadata,
@@ -8,6 +9,7 @@ from acid.image_processing.background.apply_background_correction import (
     get_background_for_fov,
     get_correction_metadata_columns,
     make_output_filename,
+    save_corrected_image,
 )
 
 
@@ -76,3 +78,14 @@ def test_build_image_metadata_keeps_source_and_adds_correction_entries(
         metadata[f"custom_{image_metadata_cfg.illum_corr_method_metadata_entry}"]
         == "division"
     )
+
+
+def test_save_corrected_image_writes_tiff_into_configured_directory(correction_config):
+    image = np.ones((5, 16, 16), dtype=np.float32)
+
+    path = save_corrected_image(
+        "a_bg.ome.tif", image, {"custom_x": "1"}, correction_config.image_saving
+    )
+
+    assert path.parent.name == "corrected"
+    np.testing.assert_array_equal(tifffile.imread(path), image)

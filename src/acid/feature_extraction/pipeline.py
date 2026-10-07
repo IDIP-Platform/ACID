@@ -215,3 +215,22 @@ def merge_feature_tables(
         on="label",
         how="right",
     )
+
+
+def make_features_output_filename(field_of_view_file: str, config: DictConfig) -> str:
+    """Create the file name of the feature table of one field of view.
+
+    The OME suffix is replaced by the output suffix, e.g. `a_bg.ome.tif`
+    becomes `a_bg.csv` with the default configuration.
+
+    Args:
+        field_of_view_file (str): File name of the corrected field of view.
+        config (DictConfig): The whole `feature_extraction` section. Reads
+            `features_saving.ome_suffix` and `features_saving.output_suffix`.
+
+    Returns:
+        str: Feature table file name without a directory.
+    """
+    stem = str(field_of_view_file).removesuffix(config.features_saving.ome_suffix)
+
+    return f"{stem}{config.features_saving.output_suffix}"

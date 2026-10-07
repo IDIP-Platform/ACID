@@ -7,6 +7,7 @@ from acid.feature_extraction.pipeline import (
     extract_regionprops_features,
     extract_structure_tensor_features,
     get_feature_metadata_columns,
+    make_features_output_filename,
     merge_feature_tables,
     preprocess_field_of_view,
     preprocess_segmentation_mask,
@@ -101,3 +102,7 @@ def test_merge_feature_tables_keeps_only_objects_with_eigenvalue_features():
     merged = merge_feature_tables(regionprops, hessian, tensor)
 
     assert merged.to_dict("records") == [{"label": 2, "area": 20, "h": 0.5, "t": 0.1}]
+
+
+def test_make_features_output_filename_replaces_ome_suffix(feature_config):
+    assert make_features_output_filename("a_bg.ome.tif", feature_config) == "a_bg.csv"

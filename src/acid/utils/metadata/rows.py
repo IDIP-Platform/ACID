@@ -1,3 +1,5 @@
+"""Read values from single rows of a metadata dataframe."""
+
 import logging
 
 import pandas as pd
@@ -12,17 +14,23 @@ logger = logging.getLogger(__name__)
 
 
 def get_required_filename(metadata_row: pd.Series, column_name: str) -> str:
-    """Return a required filename stored in one metadata row.
+    """Return a file name that must be present in one metadata row.
+
+    Each stage reads its input file name from a different column, e.g.
+    `fov_column_name` for extracted fields of view or
+    `illum_correct_df_file_name_clm_name` for background-corrected ones; the
+    caller passes the column name taken from its stage configuration.
 
     Args:
-        metadata_row: One row of a metadata dataframe.
-        column_name: Column holding the filename.
+        metadata_row (pd.Series): One row of a metadata dataframe.
+        column_name (str): Name of the column holding the file name.
 
     Returns:
-        The filename without surrounding whitespace.
+        str: The file name with surrounding whitespace removed.
 
     Raises:
-        ValueError: If the column is missing or the cell is empty.
+        ValueError: If the column does not exist, or the cell is `NaN`, `None`
+            or contains only whitespace.
     """
     filename = metadata_row.get(column_name)
 

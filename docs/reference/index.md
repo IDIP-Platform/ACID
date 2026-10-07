@@ -27,7 +27,6 @@ Some experimental, script-like, or import-problematic modules are intentionally
 excluded from this first reference pass:
 
 - `acid.image_quality_control.measure_laplacian_var`
-- `acid.image_processing.segmentation_preprocessing`
 - `acid.main_df`
 - `acid.main_fm`
 - `acid.main_fm_develop`

@@ -21,3 +21,5 @@ rescaling, and OME-TIFF output.
 ::: acid.image_processing.rescale_intensity
 
 ::: acid.image_processing.resize_image
+
+::: acid.image_processing.segmentation_preprocessing

@@ -8,6 +8,7 @@ from acid.segmentation.pipeline import (
     copy_selected_field_of_view_metadata,
     get_channel_shape,
     get_segmentation_metadata_columns,
+    make_segmentation_success_result,
     make_segmentation_output_filename,
     resize_segmentation_mask,
     save_segmentation_mask,
@@ -149,3 +150,19 @@ def test_build_segmentation_image_metadata_records_model_and_settings(
     assert metadata[f"custom_{entries.segmented_img_meta_diameter_name}"] == (
         segmentation_config.processing.diameter
     )
+
+
+def test_make_segmentation_success_result_fills_all_metadata_columns(
+    segmentation_config,
+):
+    columns = segmentation_config.metadata.dataframe_columns
+
+    result = make_segmentation_success_result(
+        2, "a_bg.ome.tif", "a_bg_segmentation.ome.tif", np.dtype("uint16"),
+        FakeModel(), segmentation_config,
+    )
+
+    assert result["success"] is True
+    assert result[columns.metadata_df_method_version_clm_name] == "0.0"
+    assert result[columns.metadata_df_output_dtype_name] == "uint16"
+    assert set(get_segmentation_metadata_columns(columns)) <= set(result)

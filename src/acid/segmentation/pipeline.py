@@ -17,6 +17,7 @@ its subsections; each docstring names the section and the keys it reads.
 """
 
 import logging
+from collections.abc import Hashable
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from skimage.transform import resize
 
 from acid.image_processing.extract_metadata import extract_ometif_imagej_metadata
 from acid.image_processing.make_imagej_metadata import imagej_compatible_metadata_dict
+from acid.utils.row_processing import make_success_result
 from acid.utils.save_image import tifffile_save_ometiff
 
 # ---- Setting built-in logging
@@ -338,4 +340,59 @@ def build_segmentation_image_metadata(
         segmentation_metadata=imagej_metadata,
         field_of_view_metadata=field_of_view_metadata,
         config=config,
+    )
+
+
+def make_segmentation_success_result(
+    row_index: Hashable,
+    input_file: str,
+    output_file: str,
+    mask_dtype: np.dtype,
+    model,
+    config: DictConfig,
+) -> dict:
+    """Build the result record of one successfully segmented field of view.
+
+    Args:
+        row_index (Hashable): Index of the row in the metadata dataframe.
+        input_file (str): File name of the corrected field of view.
+        output_file (str): File name of the saved mask.
+        mask_dtype (np.dtype): Dtype of the saved mask.
+        model: Segmentation model; its `version` attribute is recorded
+            (`None` if missing).
+        config (DictConfig): The whole `object_segmentation` section. Reads the
+            column names in `metadata.dataframe_columns` (including
+            `metadata_df_meta_date_format`), `metadata.segmentation_method_name`
+            and the recorded settings in `processing`.
+
+    Returns:
+        dict: Result record (see `acid.utils.row_processing`) with the
+        segmentation date, mask file name, method, version, settings and mask
+        dtype in the 12 segmentation metadata columns.
+    """
+    columns = config.metadata.dataframe_columns
+    processing = config.processing
+
+    return make_success_result(
+        row_index=row_index,
+        input_file=input_file,
+        output_file=output_file,
+        metadata_values={
+            columns.metadata_df_date_clm_name: datetime.now().strftime(
+                columns.metadata_df_meta_date_format
+            ),
+            columns.metadata_df_file_name_clm_name: output_file,
+            columns.metadata_df_method_clm_name: config.metadata.segmentation_method_name,
+            columns.metadata_df_method_version_clm_name: getattr(model, "version", None),
+            columns.metadata_df_diameter_clm_name: processing.diameter,
+            columns.metadata_df_flow_threshold_clm_name: processing.flow_threshold,
+            columns.metadata_df_cellprob_threshold_clm_name: processing.cellprob_threshold,
+            columns.metadata_df_downsampling_factor_clm_name: processing.downsampling_factor,
+            columns.metadata_df_nucleus_med_filter_size_name: processing.med_filter_nucleus,
+            columns.metadata_df_concactin_merge_med_filter_size_name: (
+                processing.med_filter_concactin_merge
+            ),
+            columns.metadata_df_resize_order_name: processing.order,
+            columns.metadata_df_output_dtype_name: str(mask_dtype),
+        },
     )

@@ -1,0 +1,66 @@
+# Chimera cluster (SLURM). Run the Snakemake main process on a login node
+# inside tmux/screen; it submits every job with sbatch:
+#
+#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#       --profile workflow/profiles/chimera --config acid_config=configs/<id>.yaml
+#
+# Scientific parameters stay in the ACID config; this file only sets compute
+# resources. Check accounts and partitions with `smypartition`. Runtimes and
+# memory are first estimates: tune them after the first run (sacct / seff).
+executor: slurm
+jobs: 100
+printshellcmds: true
+rerun-incomplete: true
+keep-going: true
+# A failed job (e.g. out of memory) is submitted once more.
+retries: 1
+latency-wait: 60
+
+# Per job; runtime in minutes.
+default-resources:
+  slurm_account: "rse"
+  slurm_partition: "ffa-short"   # max 2 h
+  runtime: 5
+  mem_mb: 4000
+  cpus_per_task: 1
+
+set-resources:
+  extract_acquisition:
+    runtime: 10
+    mem_mb: 8000
+  background_function:
+    slurm_partition: "ffa"
+    runtime: 240
+    mem_mb: 64000
+  segment:
+    slurm_partition: "gpu-ffa"
+    gpu: 1
+    cpus_per_task: 4
+    mem_mb: 16000
+  extract_features:
+    runtime: 15
+    mem_mb: 16000
+
+# Several FOV jobs share one SLURM job, which saves scheduler load and job
+# start-up time (e.g. loading Cellpose). Snakemake still tracks every FOV,
+# so a rerun only repeats the FOVs that are missing.
+group-components:
+  extraction: 5
+  quality_control: 20
+  background_correction: 20
+  object_segmentation: 20
+  feature_extraction: 10
+
+# Size of one group job. Inside a group, as many FOV jobs run side by side
+# as fit into these limits; the rest run afterwards, and their runtimes add
+# up. With the values above: QC and correction 8 at a time (3 x 5 min),
+# segmentation one at a time on one GPU (20 x 5 min), features 2 at a time
+# (5 x 15 min), extraction 4 at a time (2 x 10 min).
+resources:
+  gpu: 1
+  mem_mb: 32000
+# Count these per group job, not summed over all submitted jobs.
+set-resource-scopes:
+  gpu: local
+  mem_mb: local
+  cpus_per_task: local

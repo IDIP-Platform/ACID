@@ -95,7 +95,8 @@ uv run --frozen python -m acid.pipeline segment --config configs/exp_001.yaml \
 `workflow/profiles/chimera/config.yaml` submits with
 `snakemake-executor-plugin-slurm` under the `rse` account: light jobs to
 `ffa-short`, the background-function calculation to `ffa` and segmentation to
-`gpu-ffa` (requested with `--gres=gpu:1`, the only form Chimera accepts).
+`gpu-ffa` with `--gres=mps:20`: a fifth of a shared (MPS) GPU per FOV, so five
+FOVs run on one GPU at a time; Chimera accepts GPUs only through `--gres`.
 Every raw file and FOV is its own SLURM job; jobs that use several threads
 (background functions: 32 CPUs, extraction and segmentation: 4) get them
 through `set-threads` and `cpus_per_task`. Runtimes and memory are first estimates; adjust

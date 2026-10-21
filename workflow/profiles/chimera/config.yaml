@@ -42,7 +42,7 @@ set-threads:
   measure_quality: 1             # single-threaded per FOV
   flag_quality: 1                # local rule
   # part3 / part4
-  background_function: 8         # reading + median in 8 threads; fit: one thread per channel (5)
+  background_function: 32        # reading + median in 32 threads; fit: 5 channel threads x 6 OpenMP threads
   correct_background: 1          # single-threaded per FOV
   merge_background_correction: 1 # local rule
   # part5
@@ -71,11 +71,11 @@ set-resources:
     mem_mb: 4000
     runtime: 15
   # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels.
-  # Rolling ball (skimage 0.26) is single-threaded, so the fit (~66 s) runs one
-  # thread per channel and more than ~8 CPUs do not help.
+  # The rolling ball uses OpenMP (OMP_NUM_THREADS = CPUs / 5 channels): the fit
+  # took ~66 s with 32 CPUs and ~5 min with 8 CPUs.
   background_function:
     slurm_partition: "ffa"         # max 12 h
-    cpus_per_task: 8
+    cpus_per_task: 32
     mem_mb: 64000
     runtime: 120
   # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)

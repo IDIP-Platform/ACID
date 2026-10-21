@@ -57,6 +57,29 @@ def load_metadata(metadata_config: dict) -> tuple[pd.DataFrame, str]:
     return pd.read_csv(metadata_path), resolved_filename
 
 
+def load_metadata_file(path: str | Path) -> pd.DataFrame:
+    """Load the metadata CSV at an explicit path, without file selection.
+
+    Used by the Snakemake workflow, which passes every input path explicitly.
+
+    Args:
+        path (str | Path): Path of the metadata CSV.
+
+    Returns:
+        pd.DataFrame: The loaded metadata.
+
+    Raises:
+        FileNotFoundError: If `path` is not an existing file.
+    """
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Metadata file not found: {path}")
+
+    logger.info(f"Metadata file to load: {path}")
+
+    return pd.read_csv(path)
+
+
 # ----------------------------------------------------------
 # ---------------  HELPER FUNCTIONS  -----------------------
 # ----------------------------------------------------------

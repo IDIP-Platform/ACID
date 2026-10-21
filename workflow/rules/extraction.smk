@@ -1,8 +1,18 @@
-# Part 0 (one job per raw acquisition) and part 1 (dataset splitting).
+# Part 0: field-of-view extraction (one job per raw acquisition) and
+# part 1: dataset splitting (one job, a checkpoint).
+#
+# Config sections: field_of_view_extraction, dataset_splitting.
 
 
 def find_acquisitions():
-    """Map `<experiment dir>/<file stem>` to each raw acquisition file."""
+    """Map `<experiment dir>/<file stem>` to each raw acquisition file.
+
+    Uses the same discovery as the part0 notebook (`discover_acquisitions`):
+    experiment directories inside `field_of_view_extraction.acquisitions.directory`
+    and the matching files (e.g. .nd2) inside them, sorted. The key, e.g.
+    `experiment_A07.2/H7_DENV2_MOI1_30h_fixed_stained_well1`, is the
+    {acquisition} wildcard.
+    """
     cfg = CFG.field_of_view_extraction
     root = Path(cfg.acquisitions.directory)
     try:
@@ -17,6 +27,9 @@ def find_acquisitions():
 ACQUISITIONS = find_acquisitions()
 
 
+# Extract one raw file: save one OME-TIFF per scene into extracted_fov/ and
+# the scenes' metadata rows into work/extraction/<acquisition>.csv.
+# Calls acid.pipeline.fov_jobs.extract_acquisition_job.
 rule extract_acquisition:
     input:
         lambda wildcards: ACQUISITIONS[wildcards.acquisition],
@@ -31,9 +44,11 @@ rule extract_acquisition:
         "--acquisition {input:q} --output {output:q} > {log:q} 2>&1"
 
 
+# Concatenate the per-acquisition CSVs into part_1, in the order the part0
+# notebook extracts them, so the rows (and therefore the random train/test
+# split) are the same. Calls acid.pipeline.merge_jobs.merge_fov_extraction.
 rule merge_extraction:
     input:
-        # In discover_acquisitions order, as the part0 notebook extracts them.
         [WORK / "extraction" / f"{key}.csv" for key in ACQUISITIONS],
     output:
         PART_1,
@@ -44,6 +59,11 @@ rule merge_extraction:
         "--inputs {input:q} --output {output:q} > {log:q} 2>&1"
 
 
+# Map treatments from the plate layout (found in the raw folder by
+# dataset_splitting.plate_layout) and add the train/test split column.
+# A checkpoint: after it runs, `fov_names()` in the Snakefile reads part_2
+# and Snakemake adds one job per training FOV for the next stages.
+# Calls acid.pipeline.merge_jobs.split_dataset_job.
 checkpoint split:
     input:
         PART_1,

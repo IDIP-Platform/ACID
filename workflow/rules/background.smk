@@ -1,7 +1,14 @@
-# Part 3 (background functions from all unflagged FOVs) and part 4
-# (background correction per FOV).
+# Part 3: background-function calculation (one job) and
+# part 4: background correction (one job per training FOV).
+#
+# Config sections: background_function_calculation, background_correction.
 
 
+# Average the unflagged training FOVs (per dataset, well or grid position,
+# depending on processing.background_function_strategy), fit the background
+# function and save it to background_functions/ (file name with the date).
+# Needs all FOVs, so one job, parallelized inside with processing.n_workers.
+# Calls acid.pipeline.merge_jobs.background_function_job.
 rule background_function:
     input:
         PART_3,
@@ -15,6 +22,11 @@ rule background_function:
         "--input {input:q} --output {output:q} > {log:q} 2>&1"
 
 
+# Correct one extracted FOV with its background function and save it to
+# corrected_fov/; the result record goes to
+# work/background_correction/<fov>.json. A FOV that cannot be corrected gives
+# a failure record, not a failed job. Calls
+# acid.pipeline.fov_jobs.correct_background_job.
 rule correct_background:
     input:
         metadata=PART_4A,
@@ -29,6 +41,9 @@ rule correct_background:
         "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"
 
 
+# Write the correction results of all FOVs into part_4b and list failed FOVs
+# in reports/background_correction_failures.csv. Calls
+# acid.pipeline.merge_jobs.merge_results (stage background_correction).
 rule merge_background_correction:
     input:
         metadata=PART_4A,

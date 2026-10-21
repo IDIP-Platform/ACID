@@ -113,6 +113,6 @@ uv run --frozen python -m acid.pipeline segment --config configs/exp_001.yaml \
 `gpu-ffa` with one whole GPU per batch (`--gres=gpu:1`; Chimera accepts GPUs only
 through `--gres`, and only two gpu-ffa nodes offer shared MPS GPUs).
 Every raw file and every FOV batch is its own SLURM job; jobs that use several
-threads (background functions: 8 CPUs, extraction: 16, segmentation: 4) get
+threads (background functions: 32 CPUs, extraction: 16, segmentation: 4) get
 them through `set-threads` and `cpus_per_task`. Runtimes and memory are first estimates; adjust
 them in the profile after the first run.

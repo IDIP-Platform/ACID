@@ -10,7 +10,7 @@ from acid.image_processing.background.load_background_function import (
     load_background_function,
 )
 from acid.utils.fov_axis_utils import get_fov_ch_shape
-from acid.utils.metadata.loading import load_metadata
+from acid.utils.metadata.loading import load_metadata, load_metadata_file
 
 
 def test_metadata_selection_uses_stage_filter(tmp_path):
@@ -113,3 +113,15 @@ def test_fov_shape_returns_null_values_when_no_image_can_be_opened(tmp_path):
     )
 
     assert result == (None, None, None)
+
+
+def test_load_metadata_file_reads_explicit_path(tmp_path):
+    path = tmp_path / "ACID_metadata_part_5.csv"
+    pd.DataFrame({"stage": [5]}).to_csv(path, index=False)
+
+    assert load_metadata_file(path)["stage"].tolist() == [5]
+
+
+def test_load_metadata_file_rejects_missing_file(tmp_path):
+    with pytest.raises(FileNotFoundError, match="Metadata file not found"):
+        load_metadata_file(tmp_path / "missing.csv")

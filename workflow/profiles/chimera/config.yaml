@@ -78,7 +78,7 @@ set-resources:
   # help. Hence the constraint to EPYC 7543 nodes (11 in ffa).
   background_function:
     slurm_partition: "ffa"         # max 12 h
-    slurm_extra: "--constraint=epyc7543"
+    constraint: "epyc7543"         # sbatch --constraint (not allowed in slurm_extra)
     cpus_per_task: 16
     mem_mb: 64000
     runtime: 120

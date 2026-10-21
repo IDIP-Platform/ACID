@@ -10,9 +10,12 @@ acid_config: null
 # batches should run about a minute while leaving enough jobs to run side by
 # side. Results do not depend on these values. Runtime limits in the profile
 # must cover a whole batch. Times per FOV measured on Chimera (2026-10-21,
-# 205 FOVs of 5 x 1024 x 1024):
+# 205 FOVs of 5 x 1024 x 1024, warm nodes):
 batch_sizes:
   measure_quality: 10      # QC statistics, ~5.6 s per FOV
   correct_background: 25   # background division, ~2.2 s per FOV
-  segment: 10              # Cellpose on one L40, ~7 s per FOV
+  # Cellpose: ~0.3 s per FOV on a warm L40/L40S. The first job on a node also
+  # reads the Python environment (torch/CUDA, ~4.4 GB on /home) into the page
+  # cache: ~1-2 min. Few large batches pay that on fewer nodes.
+  segment: 50
   extract_features: 5      # region/Hessian/structure-tensor features, ~14 s (up to 24 s) per FOV

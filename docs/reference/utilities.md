@@ -22,3 +22,11 @@ image I/O, and string parsing.
 ::: acid.utils.save_image
 
 ::: acid.utils.str_utils
+
+::: acid.io.image_loading
+
+::: acid.utils.metadata.rows
+
+::: acid.utils.metadata.saving
+
+::: acid.utils.row_processing

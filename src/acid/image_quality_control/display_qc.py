@@ -1,4 +1,8 @@
 import os
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import tifffile
 import numpy as np
 import pandas as pd
@@ -165,3 +169,80 @@ def plot_qc_by_channel_condition(metadata_df,
                 fig.supylabel(common_ylabel)
             except Exception:
                 fig.text(0.02, 0.5, common_ylabel, va='center', rotation='vertical')
+
+def plot_quality(
+    metadata_df: pd.DataFrame,
+    mean_columns: list[str],
+    skew_columns: list[str],
+    num_channels: int,
+    cfg,
+    project_name: str,
+) -> None:
+    """Plot QC distributions and optionally save them as images.
+
+    Draws four figures: mean over standard deviation per channel, normalized
+    intensity skewness per channel, and mean over standard deviation per
+    channel grouped by experiment and by well. Each figure is saved as
+    `<date>_<project>_<savingword><graph_suffix>` when `save_graphs` is true,
+    then all figures are shown with `plt.show()`.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata with the QC columns from
+            `measure_quality`.
+        mean_columns (list[str]): Mean-over-std column names, one per channel.
+        skew_columns (list[str]): Skewness column names, one per channel.
+        num_channels (int): Number of channels (rows of the grouped figures).
+        cfg (DictConfig): The `quality_control` section. Reads
+            `graphs_saving.*` (`save_graphs`, `graph_saving_directory`,
+            `graph_date_format`, `graph_suffix` and the four `*_savingword`
+            entries) and, in `metadata.dataframe_columns`,
+            `experiment_column_name`, `well_column_name`,
+            `mean_over_std_column_name` and `channel_measurement_separator`.
+        project_name (str): Project name inserted into the file names.
+    """
+    graphs = cfg.graphs_saving
+    output = Path(graphs.graph_saving_directory)
+    if graphs.save_graphs:
+        output.mkdir(parents=True, exist_ok=True)
+    figures = []
+    for columns, title, word in (
+        (
+            mean_columns,
+            "Mean / standard deviation",
+            graphs.mean_over_std_per_channel_savingword,
+        ),
+        (
+            skew_columns,
+            "Normalized intensity skewness",
+            graphs.skewness_per_channel_savingword,
+        ),
+    ):
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.violinplot(data=metadata_df[columns], ax=ax, inner=None)
+        sns.stripplot(data=metadata_df[columns], ax=ax, color="black", size=3)
+        ax.set_title(title)
+        ax.tick_params(axis="x", labelrotation=90)
+        figures.append((fig, word))
+    columns = cfg.metadata.dataframe_columns
+    for condition, word in (
+        (columns.experiment_column_name, graphs.mean_over_std_per_ch_exp_savingword),
+        (columns.well_column_name, graphs.mean_over_std_per_ch_well_savingword),
+    ):
+        fig, axes = plt.subplots(
+            num_channels, 1, figsize=(10, 5 * num_channels), squeeze=False
+        )
+        plot_qc_by_channel_condition(
+            metadata_df=metadata_df,
+            qc_clm=columns.mean_over_std_column_name,
+            condition_clm=condition,
+            ax=axes[:, 0],
+            num_channels=num_channels,
+            ch_measurement_separator=columns.channel_measurement_separator,
+        )
+        figures.append((fig, word))
+    for fig, word in figures:
+        if graphs.save_graphs:
+            filename = f"{datetime.now().astimezone().strftime(graphs.graph_date_format)}_{project_name}_{word}{graphs.graph_suffix}"
+            fig.savefig(output / filename, bbox_inches="tight")
+    plt.show()
+

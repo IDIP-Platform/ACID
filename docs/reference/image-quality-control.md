@@ -16,3 +16,5 @@ of view and channels.
 ::: acid.image_quality_control.measure_percentile_fraction
 
 ::: acid.image_quality_control.measure_plls
+
+::: acid.image_quality_control.fov_quality

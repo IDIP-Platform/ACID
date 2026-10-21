@@ -10,4 +10,6 @@ all = [
     "resize_image",
     "segmentation_preprocessing",
     "rescale_intensity",
+    "fov_extraction",
+    "background",
 ]

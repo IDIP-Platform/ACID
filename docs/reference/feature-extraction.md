@@ -19,3 +19,5 @@ measurements.
 ::: acid.feature_extraction.measure_object_instensity
 
 ::: acid.feature_extraction.measure_structure_tensor
+
+::: acid.feature_extraction.pipeline

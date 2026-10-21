@@ -97,6 +97,7 @@ def test_notebooks_use_shared_loader_and_output_metadata():
         assert (
             "metadata_directory = metadata_config.directory" in code
             or "Path(metadata_config.directory)" in code
+            or "from acid.utils.metadata.saving import save_metadata_dataframe" in code
         )
         assert "OmegaConf.load(CONFIG_PATH_FILE)" not in code
         for cell in cells:

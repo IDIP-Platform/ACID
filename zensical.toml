@@ -80,6 +80,7 @@ nav = [
     { "Configuration" = "reference/configuration.md" },
     { "Data preparation" = "reference/data-preparation.md" },
     { "Image processing" = "reference/image-processing.md" },
+    { "Segmentation" = "reference/segmentation.md" },
     { "Image quality control" = "reference/image-quality-control.md" },
     { "Image measurement" = "reference/image-measurement.md" },
     { "Feature extraction" = "reference/feature-extraction.md" },

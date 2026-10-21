@@ -7,10 +7,12 @@ acid_config: null
 # Number of FOVs one job of a batch rule processes. A job pays a fixed
 # start-up cost (Python and library imports, reading the metadata, loading
 # the segmentation model or the background functions; ~15 s on Chimera), so
-# light per-FOV work is batched more. Results do not depend on these values.
-# Runtime limits in the profile must cover a whole batch.
+# batches should run about a minute while leaving enough jobs to run side by
+# side. Results do not depend on these values. Runtime limits in the profile
+# must cover a whole batch. Times per FOV measured on Chimera (2026-10-21,
+# 205 FOVs of 5 x 1024 x 1024):
 batch_sizes:
-  measure_quality: 50      # QC statistics, a few seconds per FOV
-  correct_background: 50   # background division, ~1 s per FOV
-  segment: 25              # Cellpose on the GPU, ~1 s per FOV
-  extract_features: 5      # region/Hessian/structure-tensor features, up to ~2 min per FOV
+  measure_quality: 10      # QC statistics, ~5.6 s per FOV
+  correct_background: 25   # background division, ~2.2 s per FOV
+  segment: 10              # Cellpose on one L40, ~7 s per FOV
+  extract_features: 5      # region/Hessian/structure-tensor features, ~14 s (up to 24 s) per FOV

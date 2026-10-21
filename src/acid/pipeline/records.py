@@ -1,18 +1,20 @@
-"""Select the rows of a stage and store per-field-of-view results.
+"""Select the rows of a stage, split them into batches and store results.
 
-The Snakemake workflow runs one job per field of view (FOV). Every job and
-the merge job that follows it must agree on which metadata rows a stage
-processes and on how a FOV is named, so that the result records can be
-matched back to their rows. This module holds those shared rules:
+The Snakemake workflow processes the fields of view (FOVs) of a stage in
+batches, one job per batch. Every batch job and the merge job that follows
+must agree on which metadata rows a stage processes, how a FOV is named and
+which FOVs form a batch, so that the result records can be matched back to
+their rows. This module holds those shared rules:
 
 - a FOV is named by its extracted file name without the OME suffix, e.g.
   `H7_DENV2_MOI1_40h_fixed_stained_well6_A07p4_G6` (`fov_name`); the file
   name is read from `quality_control.metadata.dataframe_columns.fov_column_name`,
   which every later metadata file keeps,
 - `select_stage_rows` applies the same split filter as the stage notebook,
-- one result record per FOV is written as JSON (`write_record`). Its
-  `row_index` is the row's index in the selected metadata, as in the batch
-  functions.
+- `make_batches` splits the FOV list, in row order, into batches,
+- the result records of a batch (one per FOV) are written as one JSON list
+  (`write_records`). A record's `row_index` is the row's index in the
+  selected metadata, as in the notebooks' batch functions.
 """
 
 import json
@@ -122,37 +124,59 @@ def list_fov_names(metadata_df: pd.DataFrame, config: DictConfig) -> list[str]:
     return names
 
 
-def select_fov_row(
-    metadata_df: pd.DataFrame, fov: str, config: DictConfig
+def select_fov_rows(
+    metadata_df: pd.DataFrame, fovs: list[str], config: DictConfig
 ) -> pd.DataFrame:
-    """Return the one-row dataframe of a FOV, keeping its index.
+    """Return the rows of some FOVs, in the order of `fovs`, keeping the index.
 
     Args:
         metadata_df (pd.DataFrame): Selected metadata of the stage.
-        fov (str): FOV name (see `fov_name`).
+        fovs (list[str]): FOV names (see `fov_name`).
         config (DictConfig): The whole configuration.
 
     Returns:
-        pd.DataFrame: The row of `fov` as a one-row dataframe.
+        pd.DataFrame: One row per FOV.
 
     Raises:
-        KeyError: If the FOV is not in the metadata exactly once.
+        KeyError: If a FOV is not in the metadata.
     """
-    names = pd.Series(list_fov_names(metadata_df, config), index=metadata_df.index)
-    matches = names.index[names == fov]
-    if len(matches) != 1:
-        raise KeyError(f"FOV {fov!r} not found in the metadata")
-    return metadata_df.loc[matches]
+    index_by_name = dict(
+        zip(list_fov_names(metadata_df, config), metadata_df.index, strict=True)
+    )
+    missing = [fov for fov in fovs if fov not in index_by_name]
+    if missing:
+        raise KeyError(f"FOVs not found in the metadata: {missing}")
+    return metadata_df.loc[[index_by_name[fov] for fov in fovs]]
 
 
-def write_record(record: dict, path: str | Path) -> Path:
-    """Write one result record as JSON.
-
-    NumPy scalars and arrays are converted to Python numbers and lists; `NaN`
-    is written as JSON `NaN`, which `read_record` reads back.
+def make_batches(fovs: list[str], batch_size: int) -> list[list[str]]:
+    """Split FOV names into consecutive batches.
 
     Args:
-        record (dict): Result record, e.g. from `make_success_result`.
+        fovs (list[str]): FOV names in row order.
+        batch_size (int): Maximum number of FOVs per batch (at least 1).
+
+    Returns:
+        list[list[str]]: Batches in order; only the last one may be shorter.
+
+    Raises:
+        ValueError: If `batch_size` is smaller than 1.
+    """
+    if batch_size < 1:
+        raise ValueError(f"batch_size must be at least 1, got {batch_size}")
+    return [
+        fovs[start : start + batch_size] for start in range(0, len(fovs), batch_size)
+    ]
+
+
+def write_records(records: list[dict], path: str | Path) -> Path:
+    """Write the result records of a batch as one JSON list.
+
+    NumPy scalars and arrays are converted to Python numbers and lists; `NaN`
+    is written as JSON `NaN`, which `read_records` reads back.
+
+    Args:
+        records (list[dict]): Result records, e.g. from `make_success_result`.
         path (str | Path): Output file; its directory is created.
 
     Returns:
@@ -160,32 +184,21 @@ def write_record(record: dict, path: str | Path) -> Path:
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(record, default=_to_json, indent=1))
+    path.write_text(json.dumps(list(records), default=_to_json, indent=1))
     return path
 
 
-def read_record(path: str | Path) -> dict:
-    """Read a result record written by `write_record`.
-
-    Args:
-        path (str | Path): Record file.
-
-    Returns:
-        dict: The record.
-    """
-    return json.loads(Path(path).read_text())
-
-
 def read_records(paths: list[str | Path]) -> list[dict]:
-    """Read several result records.
+    """Read the records of several batch files.
 
     Args:
-        paths (list[str | Path]): Record files.
+        paths (list[str | Path]): Files written by `write_records`.
 
     Returns:
-        list[dict]: The records, in the order of `paths`.
+        list[dict]: All records, in file order and, within a file, in batch
+        order.
     """
-    return [read_record(path) for path in paths]
+    return [record for path in paths for record in json.loads(Path(path).read_text())]
 
 
 # ----------------------------------------------------------

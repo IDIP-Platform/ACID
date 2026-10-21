@@ -1,4 +1,4 @@
-"""Merge jobs, and the per-FOV workflow compared with the notebook workflow."""
+"""Merge jobs, and the batched workflow compared with the notebook workflow."""
 
 import shutil
 from pathlib import Path
@@ -41,9 +41,10 @@ from acid.pipeline.merge_jobs import (
 )
 from acid.pipeline.records import (
     list_fov_names,
-    read_record,
+    make_batches,
+    read_records,
     select_stage_rows,
-    write_record,
+    write_records,
 )
 from acid.segmentation.pipeline import (
     apply_segmentation_batch,
@@ -97,7 +98,7 @@ def test_split_dataset_job_adds_treatment_and_split(pipeline_config, tmp_path):
 def test_merge_results_rejects_missing_records(
     pipeline_config, pipeline_dataset, tmp_path
 ):
-    record = write_record({"row_index": 0, "success": True}, tmp_path / "0.json")
+    record = write_records([{"row_index": 0, "success": True}], tmp_path / "0.json")
 
     with pytest.raises(ValueError, match="1 result records do not match the 2"):
         merge_results(
@@ -110,16 +111,18 @@ def test_merge_results_rejects_missing_records(
 
 
 def failure_record(row_index, directory):
-    return write_record(
-        {
-            "row_index": row_index,
-            "input_file": f"{row_index}.ome.tif",
-            "output_file": None,
-            "success": False,
-            "stage": "load_field_of_view",
-            "error_type": "OSError",
-            "error_message": "unreadable",
-        },
+    return write_records(
+        [
+            {
+                "row_index": row_index,
+                "input_file": f"{row_index}.ome.tif",
+                "output_file": None,
+                "success": False,
+                "stage": "load_field_of_view",
+                "error_type": "OSError",
+                "error_message": "unreadable",
+            }
+        ],
         directory / f"{row_index}.json",
     )
 
@@ -218,18 +221,23 @@ def run_notebook_workflow(config, part_2, model, directory):
     return {name: pd.read_csv(directory / f"{name}.csv") for name in outputs}
 
 
-def run_per_fov_workflow(config, part_2, model, directory):
-    """Run parts 2-6 as the Snakemake workflow does, one job per FOV."""
+def run_batched_workflow(config, part_2, model, directory, batch_size):
+    """Run parts 2-6 as the Snakemake workflow does, one job per FOV batch."""
     fovs = list_fov_names(
         select_stage_rows(pd.read_csv(part_2), "quality_control", config), config
     )
+    batches = make_batches(fovs, batch_size)
 
     def per_fov(job, stage, input_metadata, **kwargs):
         return [
             job(
-                config, input_metadata, fov, directory / stage / f"{fov}.json", **kwargs
+                config,
+                input_metadata,
+                batch,
+                directory / stage / f"batch_{i:04d}.json",
+                **kwargs,
             )
-            for fov in fovs
+            for i, batch in enumerate(batches)
         ]
 
     part_3 = flag_quality_job(
@@ -268,8 +276,9 @@ def without_date_columns(metadata_df):
     return metadata_df.drop(columns=[c for c in metadata_df if "date" in c])
 
 
-def test_per_fov_workflow_matches_notebook_workflow(
-    make_pipeline_config, square_model, tmp_path
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_batched_workflow_matches_notebook_workflow(
+    make_pipeline_config, square_model, tmp_path, batch_size
 ):
     config = make_pipeline_config("per_fov", PERMISSIVE_QC)
     reference_config = make_pipeline_config("notebooks", PERMISSIVE_QC)
@@ -284,7 +293,9 @@ def test_per_fov_workflow_matches_notebook_workflow(
     expected = run_notebook_workflow(
         reference_config, part_2, square_model, tmp_path / "reference"
     )
-    result = run_per_fov_workflow(config, part_2, square_model, tmp_path / "per_fov")
+    result = run_batched_workflow(
+        config, part_2, square_model, tmp_path / "per_fov", batch_size
+    )
 
     assert expected["part_3"]["flag"].tolist() == [0, 0]
     assert expected["part_6"]["features_data_frame"].notna().all()
@@ -305,7 +316,6 @@ def test_per_fov_workflow_matches_notebook_workflow(
             pd.read_csv(Path(config.shared.paths.feature_tables_dir) / file.name),
             pd.read_csv(file),
         )
-    assert (
-        read_record(tmp_path / "per_fov" / "qc" / "p_well1_A07p2_A1.json")["row_index"]
-        == 0
-    )
+    qc_files = sorted((tmp_path / "per_fov" / "qc").iterdir())
+    assert len(qc_files) == 2 // batch_size
+    assert [r["row_index"] for r in read_records(qc_files)] == [0, 2]

@@ -7,7 +7,10 @@ loads the configuration with `load_config` and runs one function of
     python -m acid.pipeline segment --config configs/exp_001.yaml \\
         --input data/processed/exp_001/metadata/ACID_metadata_part_4b.csv \\
         --fov H7_DENV2_MOI1_40h_fixed_stained_well6_A07p4_G6 \\
-        --output data/processed/exp_001/work/segmentation/<fov>.json
+        --output /tmp/G6.json
+
+The FOV commands take one or more `--fov` names and write one JSON list of
+result records for them.
 
 The commands can also be run by hand, e.g. to reprocess one field of view.
 """
@@ -21,7 +24,7 @@ from acid.pipeline import fov_jobs, merge_jobs
 # ---- Setting built-in logging
 logger = logging.getLogger(__name__)
 
-# Per-FOV commands: config, --input metadata, --fov name, --output record.
+# FOV-batch commands: config, --input metadata, --fov names, --output records.
 FOV_COMMANDS = {
     "measure-quality": fov_jobs.measure_quality_job,
     "correct-background": fov_jobs.correct_background_job,
@@ -65,9 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--input", required=True
     )
     for name in FOV_COMMANDS:
-        sub = command(name, f"{name} for one FOV")
+        sub = command(name, f"{name} for a batch of FOVs")
         sub.add_argument("--input", required=True)
-        sub.add_argument("--fov", required=True)
+        sub.add_argument("--fov", nargs="+", required=True, dest="fovs")
     sub = command("flag-quality", "Combine QC measurements and flag")
     sub.add_argument("--input", required=True)
     sub.add_argument("--records", nargs="+", required=True)
@@ -104,7 +107,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "split":
         merge_jobs.split_dataset_job(config, args.input, args.output)
     elif args.command in FOV_COMMANDS:
-        FOV_COMMANDS[args.command](config, args.input, args.fov, args.output)
+        FOV_COMMANDS[args.command](config, args.input, args.fovs, args.output)
     elif args.command == "flag-quality":
         merge_jobs.flag_quality_job(config, args.input, args.records, args.output)
     elif args.command == "background-function":

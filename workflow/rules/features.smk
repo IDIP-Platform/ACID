@@ -16,8 +16,6 @@ rule extract_features:
         WORK / "feature_extraction" / "{fov}.json",
     log:
         LOGS / "extract_features" / "{fov}.log",
-    group:
-        "feature_extraction"
     shell:
         "{ACID} extract-features --config {ACID_CONFIG} --input {input.metadata:q} "
         "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"

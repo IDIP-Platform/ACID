@@ -44,8 +44,6 @@ rule correct_background:
         WORK / "background_correction" / "{fov}.json",
     log:
         LOGS / "correct_background" / "{fov}.log",
-    group:
-        "background_correction"
     shell:
         "{ACID} correct-background --config {ACID_CONFIG} --input {input.metadata:q} "
         "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"

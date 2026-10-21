@@ -15,8 +15,6 @@ rule measure_quality:
         WORK / "quality_control" / "{fov}.json",
     log:
         LOGS / "measure_quality" / "{fov}.log",
-    group:
-        "quality_control"
     shell:
         "{ACID} measure-quality --config {ACID_CONFIG} --input {input.metadata:q} "
         "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"

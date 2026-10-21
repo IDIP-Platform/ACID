@@ -37,8 +37,6 @@ rule extract_acquisition:
         WORK / "extraction" / "{acquisition}.csv",
     log:
         LOGS / "extract_acquisition" / "{acquisition}.log",
-    group:
-        "extraction"
     shell:
         "{ACID} extract-acquisition --config {ACID_CONFIG} "
         "--acquisition {input:q} --output {output:q} > {log:q} 2>&1"

@@ -14,6 +14,9 @@
 rule segment:
     input:
         metadata=PART_4B,
+        # The batch's FOV list (params) is read from the split checkpoint's
+        # output, which Snakemake requires as an input inside the SLURM job.
+        split=PART_2,
     output:
         WORK / "object_segmentation" / "batch_{batch}.json",
     log:

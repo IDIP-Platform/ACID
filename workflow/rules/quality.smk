@@ -10,6 +10,8 @@
 # acid.pipeline.fov_jobs.measure_quality_job.
 rule measure_quality:
     input:
+        # Also the split checkpoint's output, from which the batch's FOV list
+        # (params) is read.
         metadata=PART_2,
     output:
         WORK / "quality_control" / "batch_{batch}.json",

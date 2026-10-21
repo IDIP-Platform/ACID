@@ -42,7 +42,7 @@ set-threads:
   measure_quality: 1             # single-threaded per FOV
   flag_quality: 1                # local rule
   # part3 / part4
-  background_function: 64        # reading + median in 64 threads; fit: 5 channel threads x 12 OpenMP threads
+  background_function: 16        # reading + median in 16 threads; fit: one thread per channel (5)
   correct_background: 1          # single-threaded per FOV
   merge_background_correction: 1 # local rule
   # part5
@@ -71,11 +71,15 @@ set-resources:
     mem_mb: 4000
     runtime: 15
   # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels.
-  # The rolling ball uses OpenMP (OMP_NUM_THREADS = CPUs / 5 channels): the fit
-  # took ~66 s with 32 CPUs and ~5 min with 8 CPUs.
+  # The fit is the rolling ball (radius 200), single-threaded per channel; the 5
+  # channels run side by side, so the job takes as long as one channel. Its
+  # speed depends only on the CPU: per channel ~67 s on EPYC 7543, ~92 s on
+  # EPYC 9655, ~197 s on the old Xeon E5-2650 v4 nodes; more threads do not
+  # help. Hence the constraint to EPYC 7543 nodes (11 in ffa).
   background_function:
     slurm_partition: "ffa"         # max 12 h
-    cpus_per_task: 64
+    slurm_extra: "--constraint=epyc7543"
+    cpus_per_task: 16
     mem_mb: 64000
     runtime: 120
   # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)

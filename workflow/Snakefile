@@ -8,13 +8,16 @@
 # Add -n for a dry run; run the same command again to continue after a failure.
 #
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration: three places, each with one job
 # ---------------------------------------------------------------------------
-# The only Snakemake setting is `acid_config`: the experiment file the
-# notebooks use (configs/<id>.yaml, merged over src/acid/config/default.yaml
-# by `load_config`). Every path and scientific parameter comes from it.
-# Compute resources (partition, memory, runtime, GPU) come from the profile
-# in workflow/profiles/, never from the ACID configuration.
+# - `acid_config` (passed with --config): the experiment file the notebooks
+#   use (configs/<id>.yaml, merged over src/acid/config/default.yaml by
+#   `load_config`). Every path and scientific parameter comes from it.
+# - workflow/config.yaml: how many FOVs one job processes (`batch_sizes`).
+# - the profile in workflow/profiles/<name>/config.yaml: compute resources of
+#   every rule (threads, memory, runtime, partition, GPU).
+# Batch sizes and resources do not change results, so they stay out of the
+# ACID config (a change there needs a new experiment id).
 #
 # ---------------------------------------------------------------------------
 # What runs (notebook -> rules)
@@ -22,35 +25,40 @@
 #   part0  extract_acquisition   one job per raw .nd2 file
 #          merge_extraction      -> ACID_metadata_part_1.csv
 #   part1  split (checkpoint)    -> ACID_metadata_part_2.csv
-#   part2  measure_quality       one job per training FOV
+#   part2  measure_quality       one job per batch of training FOVs
 #          flag_quality          -> ACID_metadata_part_3.csv + QC graphs
 #   part3  background_function   one job, uses all unflagged FOVs
 #                                -> ACID_metadata_part_4a.csv
-#   part4  correct_background    one job per training FOV
+#   part4  correct_background    one job per batch of training FOVs
 #          merge_background_correction -> ACID_metadata_part_4b.csv
-#   part5  segment               one job per training FOV (GPU)
+#   part5  segment               one job per batch of training FOVs (GPU)
 #          merge_segmentation    -> ACID_metadata_part_5.csv
-#   part6  extract_features      one job per training FOV
+#   part6  extract_features      one job per batch of FOVs
 #          merge_features        -> ACID_metadata_part_6.csv (target of `all`)
 #
 # Every rule runs `python -m acid.pipeline <command>` (src/acid/pipeline/cli.py),
-# which calls one function of acid.pipeline.fov_jobs (per-FOV jobs) or
-# acid.pipeline.merge_jobs (whole-stage and merge jobs).
+# which calls one function of acid.pipeline.fov_jobs (per-acquisition and
+# FOV-batch jobs) or acid.pipeline.merge_jobs (whole-stage and merge jobs).
 #
 # ---------------------------------------------------------------------------
-# How per-FOV jobs fit together
+# How FOV-batch jobs fit together
 # ---------------------------------------------------------------------------
-# - A FOV is named by its extracted file name without ".ome.tif"; this name
-#   is the {fov} wildcard (acid.pipeline.records.fov_name).
-# - Each per-FOV job reads the merged metadata CSV of the previous stage,
-#   processes its one row and writes a JSON result record to
-#   <output_root>/work/<stage>/<fov>.json. Image outputs go to the usual
-#   folders (corrected_fov/, segmentation_masks/, feature_tables/).
-# - The merge rule of the stage collects all records and writes them into
-#   the next metadata CSV, which the next stage's FOV jobs read. So every
-#   stage finishes for all FOVs before the next one starts.
+# - A FOV is named by its extracted file name without ".ome.tif"
+#   (acid.pipeline.records.fov_name).
 # - The FOV list is only known after extraction, so `split` is a checkpoint:
-#   once it has run, Snakemake reads part_2.csv and adds the FOV jobs.
+#   once it has run, Snakemake reads part_2.csv, lists the training FOVs in
+#   row order and cuts the list into batches of `batch_sizes[<rule>]`
+#   (make_batches). Batch i is the {batch} wildcard (four digits, 0000...).
+# - A batch job gets its FOV names as params, reads the merged metadata CSV
+#   of the previous stage, processes its rows (loading the model or the
+#   background functions once) and writes one JSON list of result records to
+#   <output_root>/work/<stage>/batch_<i>.json. Images go to the usual folders
+#   (corrected_fov/, segmentation_masks/, feature_tables/).
+# - The merge rule of the stage collects all batch files and writes the
+#   records into the next metadata CSV, which the next stage's batches read.
+#   So every stage finishes for all FOVs before the next one starts.
+# - A FOV that fails gives a failure record and its batch still succeeds;
+#   a crashed batch job (out of memory, time limit) is rerun as a whole.
 # - Metadata names have no date prefix (unlike the notebooks' files), so the
 #   output names do not change from day to day.
 
@@ -61,15 +69,19 @@ from snakemake.logging import logger
 
 from acid.config import load_config, prepare_output
 from acid.image_processing.fov_extraction import discover_acquisitions
-from acid.pipeline.records import list_fov_names, select_stage_rows
+from acid.pipeline.records import list_fov_names, make_batches, select_stage_rows
 from acid.utils.metadata.saving import build_undated_metadata_dataframe_filename
 
 
 # ---------------------------------------------------------------------------
-# Load the ACID configuration
+# Load the configurations
 # ---------------------------------------------------------------------------
 
-if "acid_config" not in config:
+# Batch sizes; --config / --configfile on the command line override them.
+configfile: Path(workflow.basedir) / "config.yaml"
+
+
+if not config.get("acid_config"):
     raise ValueError(
         "Pass the ACID configuration: --config acid_config=configs/<id>.yaml"
     )
@@ -81,7 +93,7 @@ ROOT = Path(config.get("project_root", Path(workflow.basedir).parent)).resolve()
 CFG = load_config(ACID_CONFIG, project_root=ROOT, preview=False)
 
 OUTPUT_ROOT = Path(CFG.shared.output_root)
-WORK = OUTPUT_ROOT / "work"  # per-acquisition CSVs and per-FOV JSON records
+WORK = OUTPUT_ROOT / "work"  # per-acquisition CSVs and per-batch JSON records
 LOGS = OUTPUT_ROOT / "logs"  # one log file per job
 # Command prefix of every rule; the job loads the same config with the same root.
 ACID = f"python -m acid.pipeline --project-root {ROOT}"
@@ -114,7 +126,7 @@ PART_6 = metadata_path("feature_extraction")  # + feature table names
 
 
 # ---------------------------------------------------------------------------
-# FOV list (known only after the `split` checkpoint)
+# FOV batches (known only after the `split` checkpoint)
 # ---------------------------------------------------------------------------
 
 
@@ -123,24 +135,43 @@ def fov_names():
 
     `checkpoints.split.get()` makes Snakemake wait for the checkpoint and
     re-evaluate the DAG afterwards. The selection is the same as in every
-    per-FOV job (`select_stage_rows`), so the records match the rows.
+    batch job (`select_stage_rows`), so the records match the rows.
     """
     part_2 = checkpoints.split.get().output[0]
     rows = select_stage_rows(pd.read_csv(part_2), "quality_control", CFG)
     return list_fov_names(rows, CFG)
 
 
-def fov_records(step):
-    """Input function of a merge rule: the JSON record of every FOV of `step`.
+def fov_batches(rule_name):
+    """Training FOVs cut into batches of config["batch_sizes"][rule_name]."""
+    return make_batches(fov_names(), int(config["batch_sizes"][rule_name]))
 
-    Requesting these files makes Snakemake run the per-FOV rule whose output
-    is work/<step>/{fov}.json once for each FOV.
+
+def batch_fovs(rule_name):
+    """Params function of a batch rule: the FOV names of batch {batch}."""
+
+    def fovs(wildcards):
+        return fov_batches(rule_name)[int(wildcards.batch)]
+
+    return fovs
+
+
+def batch_records(rule_name, stage):
+    """Input function of a merge rule: the record file of every batch.
+
+    Requesting these files makes Snakemake run the batch rule `rule_name`,
+    whose output is work/<stage>/batch_{batch}.json, once for each batch.
     """
 
     def records(wildcards):
-        return [str(WORK / step / f"{fov}.json") for fov in fov_names()]
+        count = len(fov_batches(rule_name))
+        return [str(WORK / stage / f"batch_{i:04d}.json") for i in range(count)]
 
     return records
+
+
+wildcard_constraints:
+    batch=r"\d{4}",
 
 
 # ---------------------------------------------------------------------------

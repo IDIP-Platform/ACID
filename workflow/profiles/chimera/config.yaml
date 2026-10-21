@@ -4,9 +4,11 @@
 #   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
 #       --profile workflow/profiles/chimera --config acid_config=configs/<id>.yaml
 #
-# Scientific parameters stay in the ACID config; this file only sets compute
-# resources. Check accounts and partitions with `smypartition`. Runtimes and
-# memory are first estimates: tune them after the first run (sacct / seff).
+# This file sets compute resources only. Scientific parameters are in the
+# ACID config, and the number of FOVs per job in workflow/config.yaml
+# (batch_sizes); a batch rule's runtime below must cover a whole batch.
+# Check accounts and partitions with `smypartition`; tune runtimes and memory
+# with `sacct`/`seff` after a run.
 executor: slurm
 jobs: 150
 printshellcmds: true
@@ -16,52 +18,85 @@ keep-going: true
 retries: 1
 latency-wait: 60
 
-# Per job; runtime in minutes. The SLURM plugin requests cpus_per_task CPUs,
-# or the rule's threads when cpus_per_task is not set; a default
-# cpus_per_task here would override every rule's threads, so it is only set
-# per rule below, matching set-threads.
+# Fallback for anything not listed below; every rule is listed explicitly.
+# No cpus_per_task here: it would override the rules' threads.
 default-resources:
   slurm_account: "rse"
   slurm_partition: "ffa-short"   # max 2 h
-  runtime: 5
+  runtime: 5                     # minutes
   mem_mb: 4000
 
-# Threads a job uses inside its SLURM allocation (OMP_NUM_THREADS etc.).
-# Rules not listed use 1 (QC, correction, features are
-# single-threaded per FOV; parallelism comes from running FOVs side by side).
+# Threads of every rule. Inside a job they set the number of threads the
+# rule uses (e.g. OMP_NUM_THREADS); the SLURM CPU request is cpus_per_task
+# below, kept equal to these values.
 set-threads:
-  # Background fit: 5 channel threads x 6 OpenMP threads (rolling ball).
-  background_function: 32
-  # Reading and decoding one ND2 file.
-  extract_acquisition: 4
-  # Cellpose pre/post-processing next to the GPU.
-  segment: 4
+  # part0 / part1
+  extract_acquisition: 16        # reading and decoding one ND2 file
+  merge_extraction: 1            # local rule (Snakemake main process)
+  split: 1                       # local rule
+  # part2
+  measure_quality: 1             # single-threaded per FOV
+  flag_quality: 1                # local rule
+  # part3 / part4
+  background_function: 32        # 5 channel threads x 6 OpenMP threads (rolling ball)
+  correct_background: 1          # single-threaded per FOV
+  merge_background_correction: 1 # local rule
+  # part5
+  segment: 4                     # Cellpose pre/post-processing next to the GPU
+  merge_segmentation: 1          # local rule
+  # part6
+  extract_features: 1            # single-threaded per FOV
+  merge_features: 1              # local rule
+  all: 1                         # local rule (target only)
 
+# SLURM resources of every rule submitted as a job. Runtime in minutes,
+# memory in MB. Local rules (merge_extraction, split, flag_quality,
+# merge_background_correction, merge_segmentation, merge_features, all) run
+# in the Snakemake main process and get no SLURM resources.
 set-resources:
+  # one job per raw .nd2 file
   extract_acquisition:
-    runtime: 60
-    mem_mb: 16000
-    cpus_per_task: 4
+    slurm_partition: "ffa-short"
+    cpus_per_task: 16
+    mem_mb: 32000
+    runtime: 30
+  # one job per batch of batch_sizes.measure_quality FOVs (~5 s per FOV)
+  measure_quality:
+    slurm_partition: "ffa-short"
+    cpus_per_task: 1
+    mem_mb: 4000
+    runtime: 15
+  # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels
   background_function:
-    slurm_partition: "ffa"
-    runtime: 120
-    mem_mb: 64000
+    slurm_partition: "ffa"         # max 12 h
     cpus_per_task: 32
+    mem_mb: 64000
+    runtime: 120
+  # one job per batch of batch_sizes.correct_background FOVs (~1 s per FOV)
+  correct_background:
+    slurm_partition: "ffa-short"
+    cpus_per_task: 1
+    mem_mb: 4000
+    runtime: 10
+  # one job per batch of batch_sizes.segment FOVs (~1 s per FOV + model load)
   segment:
     slurm_partition: "gpu-ffa"
     # Chimera's GPU partitions take --gres only (not --gpus=N, which the
-    # plugin's `gpu` resource would produce). A whole GPU per FOV: only two
-    # gpu-ffa nodes (one L40 each) offer MPS, so "mps:N" limits segmentation
-    # to those two GPUs, while ~20 whole L40s are usually free.
+    # plugin's `gpu` resource would produce). A whole GPU per job: only two
+    # gpu-ffa nodes (one L40 each) offer MPS, so "mps:N" would limit
+    # segmentation to those two GPUs while other L40s stay free.
     gres: "gpu:1"
-    runtime: 10
-    mem_mb: 16000
     cpus_per_task: 4
-  extract_features:
-    runtime: 15
     mem_mb: 16000
+    runtime: 10
+  # one job per batch of batch_sizes.extract_features FOVs (up to ~2 min per FOV)
+  extract_features:
+    slurm_partition: "ffa-short"
+    cpus_per_task: 1
+    mem_mb: 16000
+    runtime: 30
 
-# Every raw file and FOV is its own SLURM job. Bundling FOVs into group jobs
-# (group-components) is not used: Snakemake 9.27 additionally created one
-# group with every segmentation job, which exceeded the partition time limit
-# and would have run all FOVs a second time.
+# Every job is submitted on its own. Snakemake group jobs (group-components)
+# are not used: Snakemake 9.27 additionally created one group holding every
+# segmentation job, beyond the partition time limit. FOVs are batched by the
+# workflow instead (workflow/config.yaml).

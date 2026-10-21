@@ -16,27 +16,42 @@ keep-going: true
 retries: 1
 latency-wait: 60
 
-# Per job; runtime in minutes.
+# Per job; runtime in minutes. The SLURM plugin requests cpus_per_task CPUs,
+# or the rule's threads when cpus_per_task is not set; a default
+# cpus_per_task here would override every rule's threads, so it is only set
+# per rule below, matching set-threads.
 default-resources:
   slurm_account: "rse"
   slurm_partition: "ffa-short"   # max 2 h
   runtime: 5
   mem_mb: 4000
-  cpus_per_task: 1
+
+# Threads a job uses inside its SLURM allocation (OMP_NUM_THREADS etc.).
+# Rules not listed use 1 (QC, correction, features are
+# single-threaded per FOV; parallelism comes from running FOVs side by side).
+set-threads:
+  # Background fit: 5 channel threads x 6 OpenMP threads (rolling ball).
+  background_function: 32
+  # Reading and decoding one ND2 file.
+  extract_acquisition: 4
+  # Cellpose pre/post-processing next to the GPU.
+  segment: 4
 
 set-resources:
   extract_acquisition:
     runtime: 60
     mem_mb: 16000
+    cpus_per_task: 4
   background_function:
     slurm_partition: "ffa"
-    runtime: 240
+    runtime: 120
     mem_mb: 64000
+    cpus_per_task: 32
   segment:
     slurm_partition: "gpu-ffa"
     gpu: 1
-    cpus_per_task: 4
     mem_mb: 16000
+    cpus_per_task: 4
   extract_features:
     runtime: 15
     mem_mb: 16000

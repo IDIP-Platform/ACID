@@ -49,7 +49,11 @@ set-resources:
     cpus_per_task: 32
   segment:
     slurm_partition: "gpu-ffa"
-    gpu: 1
+    # Chimera's GPU partitions accept --gres=gpu:N only (not --gpus=N, which
+    # the plugin's `gpu` resource would produce).
+    gres: "gpu:1"
+    # Numeric stand-in for the GPU, used to run grouped FOVs one at a time.
+    gpu_slots: 1
     mem_mb: 16000
     cpus_per_task: 4
   extract_features:
@@ -63,9 +67,9 @@ set-resources:
 group-components:
   object_segmentation: 20
 resources:
-  gpu: 1
+  gpu_slots: 1
 # Count these per group job, not summed over all submitted jobs.
 set-resource-scopes:
-  gpu: local
+  gpu_slots: local
   mem_mb: local
   cpus_per_task: local

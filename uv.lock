@@ -44,7 +44,7 @@ dependencies = [
     { name = "tifffile", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "tifffile", version = "2026.9.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "torch" },
-    { name = "torch-vision" },
+    { name = "torchvision" },
 ]
 
 [package.optional-dependencies]
@@ -101,7 +101,7 @@ requires-dist = [
     { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "tifffile", specifier = ">=2026.3.3" },
     { name = "torch", specifier = ">=2.10.0" },
-    { name = "torch-vision", specifier = ">=0.1.6.dev0" },
+    { name = "torchvision", specifier = ">=0.29.0" },
     { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.52" },
 ]
 provides-extras = ["docs"]
@@ -4744,15 +4744,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fe/7b/ec44bacf2c8886b85ba4ca2285e8b09f2dff5d9c99e6a031326954082cb5/torch-2.14.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:ada340e62591d06a2bcc2d68170f20f45f0b0665d372dc510a8ed7eb3b1d609a", size = 454010251, upload-time = "2026-09-02T13:44:24.927Z" },
     { url = "https://files.pythonhosted.org/packages/15/71/49399acd41f750a906c686bd23c08a2001ccb8dd25f2971003c2ed89c1dd/torch-2.14.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:fecffb58f51fd643d213acd68da21cc3fc19bea05a3bc64b4ee55128f47a4963", size = 554620488, upload-time = "2026-09-02T13:44:49.442Z" },
     { url = "https://files.pythonhosted.org/packages/be/16/9489b137112040f9911d7527e452854f21cc4e499ce0da79864e6a7451a7/torch-2.14.0-cp312-cp312-win_amd64.whl", hash = "sha256:cad84f41bbdf3dcf333ce394aeeaf25237c4d94fd6b659ba5eb813c829978823", size = 124114011, upload-time = "2026-09-02T13:43:55.034Z" },
-]
-
-[[package]]
-name = "torch-vision"
-version = "0.1.6.dev0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e9/5f/c3f0dcafaffd9a481b009eaafd076e7d09cf7e044e204bbd79910672e918/torch-vision-0.1.6.dev0.tar.gz", hash = "sha256:c3f682bc21ef59da0543aeba8191c6a1bbe95ccf18747b636769078ab3fe86d1", size = 18495, upload-time = "2017-01-19T00:25:17.043Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/13/4942860c32f6877def97c0b432348adce870ae613ed4eb1de10cae0bb018/torch_vision-0.1.6.dev0-py2.py3-none-any.whl", hash = "sha256:e5292127b8d9e4b211fdf1a030e61fa56a2f537fe8306963618be6b61d65a80d", size = 23322, upload-time = "2017-01-19T00:25:18.694Z" },
 ]
 
 [[package]]

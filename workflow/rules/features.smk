@@ -24,7 +24,7 @@ rule extract_features:
     params:
         fovs=batch_fovs("extract_features"),
     shell:
-        "{ACID} extract-features --config {ACID_CONFIG} --input {input.metadata:q} "
+        "{ACID} extract-features --config {ACID_CONFIG_ARG} --input {input.metadata:q} "
         "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
@@ -40,6 +40,6 @@ rule merge_features:
     log:
         LOGS / "merge_features.log",
     shell:
-        "{ACID} merge --stage feature_extraction --config {ACID_CONFIG} "
+        "{ACID} merge --stage feature_extraction --config {ACID_CONFIG_ARG} "
         "--input {input.metadata:q} --records {input.records:q} "
         "--output {output:q} > {log:q} 2>&1"

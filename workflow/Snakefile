@@ -62,6 +62,7 @@
 # - Metadata names have no date prefix (unlike the notebooks' files), so the
 #   output names do not change from day to day.
 
+import shlex
 from pathlib import Path
 
 import pandas as pd
@@ -95,8 +96,10 @@ CFG = load_config(ACID_CONFIG, project_root=ROOT, preview=False)
 OUTPUT_ROOT = Path(CFG.shared.output_root)
 WORK = OUTPUT_ROOT / "work"  # per-acquisition CSVs and per-batch JSON records
 LOGS = OUTPUT_ROOT / "logs"  # one log file per job
-# Command prefix of every rule; the job loads the same config with the same root.
-ACID = f"python -m acid.pipeline --project-root {ROOT}"
+# Command prefix of every rule; the job loads the same config with the same
+# root. Both are quoted for the shell (paths may contain spaces).
+ACID = f"python -m acid.pipeline --project-root {shlex.quote(str(ROOT))}"
+ACID_CONFIG_ARG = shlex.quote(str(ACID_CONFIG))
 
 
 # ---------------------------------------------------------------------------

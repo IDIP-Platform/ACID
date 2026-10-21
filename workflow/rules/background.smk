@@ -30,7 +30,7 @@ rule background_function:
     shell:
         "OMP_NUM_THREADS=$(( {threads} / {BACKGROUND_WORKERS} > 0 ? "
         "{threads} / {BACKGROUND_WORKERS} : 1 )) "
-        "{ACID} background-function --config {ACID_CONFIG} --threads {threads} "
+        "{ACID} background-function --config {ACID_CONFIG_ARG} --threads {threads} "
         "--input {input:q} --output {output:q} > {log:q} 2>&1"
 
 
@@ -53,7 +53,7 @@ rule correct_background:
     params:
         fovs=batch_fovs("correct_background"),
     shell:
-        "{ACID} correct-background --config {ACID_CONFIG} --input {input.metadata:q} "
+        "{ACID} correct-background --config {ACID_CONFIG_ARG} --input {input.metadata:q} "
         "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
@@ -69,6 +69,6 @@ rule merge_background_correction:
     log:
         LOGS / "merge_background_correction.log",
     shell:
-        "{ACID} merge --stage background_correction --config {ACID_CONFIG} "
+        "{ACID} merge --stage background_correction --config {ACID_CONFIG_ARG} "
         "--input {input.metadata:q} --records {input.records:q} "
         "--output {output:q} > {log:q} 2>&1"

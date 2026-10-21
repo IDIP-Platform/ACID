@@ -40,7 +40,7 @@ if not Path(PART_1).exists():
         log:
             LOGS / "extract_acquisition" / "{acquisition}.log",
         shell:
-            "{ACID} extract-acquisition --config {ACID_CONFIG} "
+            "{ACID} extract-acquisition --config {ACID_CONFIG_ARG} "
             "--acquisition {input:q} --output {output:q} > {log:q} 2>&1"
 
     # Concatenate the per-acquisition CSVs into part_1, in the order the part0
@@ -54,7 +54,7 @@ if not Path(PART_1).exists():
         log:
             LOGS / "merge_extraction.log",
         shell:
-            "{ACID} merge-extraction --config {ACID_CONFIG} "
+            "{ACID} merge-extraction --config {ACID_CONFIG_ARG} "
             "--inputs {input:q} --output {output:q} > {log:q} 2>&1"
 
     # A light job in the Snakemake main process.
@@ -75,5 +75,5 @@ checkpoint split:
     log:
         LOGS / "split.log",
     shell:
-        "{ACID} split --config {ACID_CONFIG} "
+        "{ACID} split --config {ACID_CONFIG_ARG} "
         "--input {input:q} --output {output:q} > {log:q} 2>&1"

@@ -42,7 +42,7 @@ set-threads:
   measure_quality: 1             # single-threaded per FOV
   flag_quality: 1                # local rule
   # part3 / part4
-  background_function: 32        # reading + median in 32 threads; fit: 5 channel threads x 6 OpenMP threads
+  background_function: 64        # reading + median in 64 threads; fit: 5 channel threads x 12 OpenMP threads
   correct_background: 1          # single-threaded per FOV
   merge_background_correction: 1 # local rule
   # part5
@@ -75,7 +75,7 @@ set-resources:
   # took ~66 s with 32 CPUs and ~5 min with 8 CPUs.
   background_function:
     slurm_partition: "ffa"         # max 12 h
-    cpus_per_task: 32
+    cpus_per_task: 64
     mem_mb: 64000
     runtime: 120
   # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)

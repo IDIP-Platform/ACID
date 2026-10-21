@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -134,6 +135,13 @@ def _resolve_default_metadata_filename(
     if not metadata_files:
         raise ValueError(f"No metadata files found in {directory}")
 
+    if _use_filename_date(file_selection):
+        metadata_files = _files_with_filename_date(metadata_files, file_selection)
+        if not metadata_files:
+            raise ValueError(
+                f"No metadata files with a date in their name found in {directory}"
+            )
+
     return default_file_name(
         file_list=metadata_files,
         from_file_name=_use_filename_date(file_selection),
@@ -143,6 +151,39 @@ def _resolve_default_metadata_filename(
         date_format=file_selection.get("filename_date_format", "%Y%m%d"),
         reverse=_select_newest(file_selection),
     )
+
+
+def _files_with_filename_date(file_names: list[str], file_selection: dict) -> list[str]:
+    """Keep the file names whose date component parses.
+
+    The Snakemake workflow writes undated names (`ACID_metadata_part_3.csv`)
+    next to the notebooks' dated ones; with `date_source: "filename"` they
+    are skipped with a warning instead of failing the date parsing.
+
+    Args:
+        file_names: Candidate metadata file names.
+        file_selection: Configuration dictionary for default file selection.
+            Reads `filename_date_separator`, `filename_date_position` and
+            `filename_date_format`.
+
+    Returns:
+        The file names with a parsable date, in their original order.
+    """
+    separator = file_selection.get("filename_date_separator", "_")
+    position = file_selection.get("filename_date_position", 0)
+    date_format = file_selection.get("filename_date_format", "%Y%m%d")
+
+    dated = []
+    for file_name in file_names:
+        try:
+            datetime.strptime(file_name.split(separator)[position], date_format)
+        except (IndexError, ValueError):
+            logger.warning(
+                f"Skipping {file_name}: no date in its name for date_source 'filename'"
+            )
+            continue
+        dated.append(file_name)
+    return dated
 
 
 def _use_filename_date(file_selection: dict) -> bool:

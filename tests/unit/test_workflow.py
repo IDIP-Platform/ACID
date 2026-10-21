@@ -14,9 +14,9 @@ pytest.importorskip("snakemake")
 SNAKEFILE = Path(__file__).resolve().parents[2] / "workflow" / "Snakefile"
 
 
-def planned_jobs(project_root, experiment_id="pipeline_test", extra_args=()):
-    """Dry-run the workflow and return {rule: number of planned jobs}."""
-    completed = subprocess.run(
+def dry_run(project_root, experiment_id="pipeline_test", extra_args=()):
+    """Dry-run the workflow and return the finished process."""
+    return subprocess.run(
         [
             sys.executable,
             "-m",
@@ -34,6 +34,11 @@ def planned_jobs(project_root, experiment_id="pipeline_test", extra_args=()):
         capture_output=True,
         text=True,
     )
+
+
+def planned_jobs(project_root, experiment_id="pipeline_test", extra_args=()):
+    """Dry-run the workflow and return {rule: number of planned jobs}."""
+    completed = dry_run(project_root, experiment_id, extra_args)
     assert completed.returncode == 0, completed.stderr + completed.stdout
     stats = completed.stdout.split("Job stats:")[1].split("total")[0]
     return {
@@ -96,3 +101,24 @@ def test_dry_run_uses_batch_sizes_from_configfile(pipeline_config, tmp_path):
 
     assert jobs["segment"] == 2
     assert jobs["measure_quality"] == jobs["extract_features"] == 1
+
+
+def test_dry_run_ignores_raw_folder_once_part_1_exists(pipeline_config, tmp_path):
+    write_split_metadata(pipeline_config, tmp_path)
+    experiment = tmp_path / "raw" / "experiment_A07.9"
+    experiment.mkdir()
+    (experiment / "H7_DENV2_MOI1_30h_fixed_stained_well9.nd2").write_text("")
+
+    jobs = planned_jobs(tmp_path)
+
+    assert "extract_acquisition" not in jobs and "merge_extraction" not in jobs
+    assert "split" not in jobs
+
+
+def test_dry_run_without_part_1_and_raw_files_fails_clearly(pipeline_config, tmp_path):
+    (tmp_path / "raw").mkdir()
+
+    completed = dry_run(tmp_path)
+
+    assert completed.returncode != 0
+    assert "No matching acquisition files" in completed.stdout + completed.stderr

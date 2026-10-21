@@ -128,16 +128,44 @@ def measure_quality(
         )
         for i in metadata_df.index
     ]
-    column_names = get_quality_column_names(num_channels, cfg)
-    for statistic, names in column_names.items():
-        values = np.stack([measurement[statistic] for measurement in measurements])
-        metadata_df[names] = pd.DataFrame(values, index=metadata_df.index)
+    column_names = add_quality_columns(metadata_df, measurements, num_channels, cfg)
     return (
         metadata_df,
         num_channels,
         column_names["mean_over_std"],
         column_names["skewness"],
     )
+
+
+def add_quality_columns(
+    metadata_df: pd.DataFrame,
+    measurements: list[dict],
+    num_channels: int,
+    cfg: DictConfig,
+) -> dict[str, list[str]]:
+    """Write per-FOV QC measurements into the metadata as columns.
+
+    Used by `measure_quality` and by the Snakemake workflow's QC merge, so
+    both write the same columns, in the same order and dtype.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata of the measured FOVs; modified
+            in place.
+        measurements (list[dict]): One result of `measure_quality_for_fov`
+            per row of `metadata_df`, in row order.
+        num_channels (int): Number of channels.
+        cfg (DictConfig): The `quality_control` section (see
+            `get_quality_column_names`).
+
+    Returns:
+        dict[str, list[str]]: The written column names (see
+        `get_quality_column_names`).
+    """
+    column_names = get_quality_column_names(num_channels, cfg)
+    for statistic, names in column_names.items():
+        values = np.stack([measurement[statistic] for measurement in measurements])
+        metadata_df[names] = pd.DataFrame(values, index=metadata_df.index)
+    return column_names
 
 
 def get_quality_column_names(

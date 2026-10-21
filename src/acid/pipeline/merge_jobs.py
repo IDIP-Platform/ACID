@@ -14,7 +14,6 @@ a missing or extra record is an error rather than a silent gap.
 import logging
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from omegaconf import DictConfig
 
@@ -31,8 +30,8 @@ from acid.image_processing.background.compute_background_function import (
     update_background_metadata,
 )
 from acid.image_quality_control.fov_quality import (
+    add_quality_columns,
     flag_quality,
-    get_quality_column_names,
 )
 from acid.pipeline.records import read_records, select_stage_rows
 from acid.segmentation.pipeline import update_metadata_with_segmentation_results
@@ -144,8 +143,8 @@ def flag_quality_job(
 ) -> Path:
     """Combine the per-FOV QC measurements, flag and plot them (part2).
 
-    Writes the QC columns in the same order and dtype as `measure_quality`,
-    flags the rows with `flag_quality` and, if
+    Writes the QC columns with `add_quality_columns`, as `measure_quality`
+    does, flags the rows with `flag_quality` and, if
     `quality_control.graphs_saving.save_graphs` is true, saves the QC graphs
     with `plot_quality`.
 
@@ -178,10 +177,7 @@ def flag_quality_job(
         raise ValueError(f"QC records disagree on the channel count: {channel_counts}")
     (num_channels,) = channel_counts
 
-    column_names = get_quality_column_names(num_channels, cfg)
-    for statistic, names in column_names.items():
-        values = np.array([result[statistic] for result in results], dtype=float)
-        metadata_df[names] = pd.DataFrame(values, index=metadata_df.index)
+    column_names = add_quality_columns(metadata_df, results, num_channels, cfg)
     flagged_df = flag_quality(metadata_df, column_names["mean_over_std"], cfg)
 
     if cfg.graphs_saving.save_graphs:

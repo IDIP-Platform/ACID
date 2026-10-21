@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from acid.image_quality_control.fov_quality import (
+    add_quality_columns,
     flag_quality,
     get_quality_column_names,
     measure_quality,
@@ -94,6 +95,21 @@ def test_measure_quality_for_fov_returns_null_values_for_unreadable_file(
     assert set(single) == {"plls", "skewness", "mean_over_std"}
     assert all(pd.isna(value) for values in single.values() for value in values)
     assert all(len(values) == 3 for values in single.values())
+
+
+def test_add_quality_columns_writes_one_column_per_statistic_and_channel(qc_config):
+    metadata_df = pd.DataFrame({"x": [1, 2]}, index=[5, 9])
+    measurements = [
+        {"plls": [1.0, 2.0], "skewness": [3.0, 4.0], "mean_over_std": [5.0, 6.0]},
+        {"plls": [7.0, 8.0], "skewness": [9.0, 10.0], "mean_over_std": [11.0, 12.0]},
+    ]
+
+    names = add_quality_columns(metadata_df, measurements, 2, qc_config)
+
+    assert names == get_quality_column_names(2, qc_config)
+    assert metadata_df.loc[9, names["mean_over_std"]].tolist() == [11.0, 12.0]
+    assert metadata_df.loc[5, names["plls"]].tolist() == [1.0, 2.0]
+    assert (metadata_df[names["skewness"]].dtypes == "float64").all()
 
 
 def test_plot_quality_saves_four_graphs(qc_config, tmp_path):

@@ -1,0 +1,102 @@
+# ACID pipeline: raw .nd2 acquisitions -> per-object feature tables.
+#
+# The only Snakemake setting is the ACID experiment configuration, the same
+# file the notebooks use (configs/<id>.yaml, merged over the package
+# defaults). All paths and parameters come from it; compute resources come
+# from the profile.
+#
+#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#       --config acid_config=configs/exp_001.yaml --profile workflow/profiles/local
+#
+# One job runs per raw acquisition (extraction) and per field of view (QC
+# measurement, background correction, segmentation, feature extraction);
+# dataset splitting, QC flagging, background-function calculation and the
+# merges run once per stage. The FOV list is only known after extraction, so
+# `split` is a checkpoint.
+
+from pathlib import Path
+
+import pandas as pd
+from snakemake.logging import logger
+
+from acid.config import load_config, prepare_output
+from acid.image_processing.fov_extraction import discover_acquisitions
+from acid.pipeline.records import list_fov_names, select_stage_rows
+from acid.utils.metadata.saving import build_undated_metadata_dataframe_filename
+
+
+if "acid_config" not in config:
+    raise ValueError(
+        "Pass the ACID configuration: --config acid_config=configs/<id>.yaml"
+    )
+
+ACID_CONFIG = config["acid_config"]
+ROOT = Path(config.get("project_root", Path(workflow.basedir).parent)).resolve()
+CFG = load_config(ACID_CONFIG, project_root=ROOT, preview=False)
+
+OUTPUT_ROOT = Path(CFG.shared.output_root)
+WORK = OUTPUT_ROOT / "work"
+LOGS = OUTPUT_ROOT / "logs"
+ACID = f"python -m acid.pipeline --project-root {ROOT}"
+
+
+def metadata_path(stage):
+    """Undated metadata CSV written by a stage, e.g. ACID_metadata_part_3.csv."""
+    metadata = CFG[stage].metadata
+    name = build_undated_metadata_dataframe_filename(
+        metadata.saving, CFG.project_identity.project_name
+    )
+    return str(Path(metadata.directory) / name)
+
+
+PART_1 = metadata_path("field_of_view_extraction")
+PART_2 = metadata_path("dataset_splitting")
+PART_3 = metadata_path("quality_control")
+PART_4A = metadata_path("background_function_calculation")
+PART_4B = metadata_path("background_correction")
+PART_5 = metadata_path("object_segmentation")
+PART_6 = metadata_path("feature_extraction")
+
+
+def fov_names():
+    """FOVs of the training split; available once the `split` checkpoint ran."""
+    part_2 = checkpoints.split.get().output[0]
+    rows = select_stage_rows(pd.read_csv(part_2), "quality_control", CFG)
+    return list_fov_names(rows, CFG)
+
+
+def fov_records(step):
+    """Input function: the result record of every FOV for one per-FOV step."""
+
+    def records(wildcards):
+        return [str(WORK / step / f"{fov}.json") for fov in fov_names()]
+
+    return records
+
+
+onstart:
+    # Writes config.resolved.yaml, or stops if the output folder was made
+    # with different settings (same check as in every notebook).
+    prepare_output(CFG)
+
+
+rule all:
+    input:
+        PART_6,
+
+
+localrules:
+    all,
+    merge_extraction,
+    split,
+    flag_quality,
+    merge_background_correction,
+    merge_segmentation,
+    merge_features,
+
+
+include: "rules/extraction.smk"
+include: "rules/quality.smk"
+include: "rules/background.smk"
+include: "rules/segmentation.smk"
+include: "rules/features.smk"

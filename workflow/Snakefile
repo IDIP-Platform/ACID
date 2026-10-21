@@ -197,10 +197,10 @@ rule all:
 
 
 # Light jobs (CSV merges, train/test split, QC graphs) run in the Snakemake
-# main process instead of being submitted to SLURM.
+# main process instead of being submitted to SLURM (merge_extraction is
+# declared in rules/extraction.smk).
 localrules:
     all,
-    merge_extraction,
     split,
     flag_quality,
     merge_background_correction,

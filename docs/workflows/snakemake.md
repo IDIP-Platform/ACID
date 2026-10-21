@@ -69,6 +69,11 @@ of the ACID configuration:
 | part5 segmentation | one per batch (GPU), then one merge | `ACID_metadata_part_5.csv`, `segmentation_masks/` |
 | part6 feature extraction | one per batch, then one merge | `ACID_metadata_part_6.csv`, `feature_tables/` |
 
+Once `ACID_metadata_part_1.csv` exists, the raw folder is no longer read:
+the extraction rules are not defined, so an unmounted, archived or changed
+raw folder does not rerun the extraction or change the train/test split. New
+raw data belong to a new experiment id (or delete `part_1` to extract again).
+
 The batch jobs cover the training split, as the notebooks do. The list of FOVs
 is only known after extraction, so the split is a Snakemake checkpoint: once it
 has run, the training FOVs are cut, in row order, into batches and the batch

@@ -11,50 +11,55 @@ def find_acquisitions():
     experiment directories inside `field_of_view_extraction.acquisitions.directory`
     and the matching files (e.g. .nd2) inside them, sorted. The key, e.g.
     `experiment_A07.2/H7_DENV2_MOI1_30h_fixed_stained_well1`, is the
-    {acquisition} wildcard.
+    {acquisition} wildcard. Raises if no raw file is found.
     """
     cfg = CFG.field_of_view_extraction
     root = Path(cfg.acquisitions.directory)
-    try:
-        acquisitions = discover_acquisitions(cfg)
-    except (FileNotFoundError, ValueError) as error:
-        # Fine once part 1 exists; merge_extraction fails otherwise.
-        logger.warning(f"No raw acquisitions found in {root}: {error}")
-        return {}
-    return {str(path.relative_to(root).with_suffix("")): path for path in acquisitions}
+    return {
+        str(path.relative_to(root).with_suffix("")): path
+        for path in discover_acquisitions(cfg)
+    }
 
 
-ACQUISITIONS = find_acquisitions()
+# Once part_1 exists it is the source of all later stages and the extraction
+# rules are not defined: otherwise a raw folder that is unmounted, archived or
+# changed later would change merge_extraction's inputs, make Snakemake rerun
+# the extraction and rewrite part_1 (and with it the train/test split). New
+# raw data go into a new experiment id, as with the notebooks.
+if not Path(PART_1).exists():
+    ACQUISITIONS = find_acquisitions()
 
+    # Extract one raw file: save one OME-TIFF per scene into extracted_fov/
+    # and the scenes' metadata rows into work/extraction/<acquisition>.csv.
+    # Calls acid.pipeline.fov_jobs.extract_acquisition_job.
+    rule extract_acquisition:
+        input:
+            lambda wildcards: ACQUISITIONS[wildcards.acquisition],
+        output:
+            WORK / "extraction" / "{acquisition}.csv",
+        log:
+            LOGS / "extract_acquisition" / "{acquisition}.log",
+        shell:
+            "{ACID} extract-acquisition --config {ACID_CONFIG} "
+            "--acquisition {input:q} --output {output:q} > {log:q} 2>&1"
 
-# Extract one raw file: save one OME-TIFF per scene into extracted_fov/ and
-# the scenes' metadata rows into work/extraction/<acquisition>.csv.
-# Calls acid.pipeline.fov_jobs.extract_acquisition_job.
-rule extract_acquisition:
-    input:
-        lambda wildcards: ACQUISITIONS[wildcards.acquisition],
-    output:
-        WORK / "extraction" / "{acquisition}.csv",
-    log:
-        LOGS / "extract_acquisition" / "{acquisition}.log",
-    shell:
-        "{ACID} extract-acquisition --config {ACID_CONFIG} "
-        "--acquisition {input:q} --output {output:q} > {log:q} 2>&1"
+    # Concatenate the per-acquisition CSVs into part_1, in the order the part0
+    # notebook extracts them, so the rows (and therefore the random train/test
+    # split) are the same. Calls acid.pipeline.merge_jobs.merge_fov_extraction.
+    rule merge_extraction:
+        input:
+            [WORK / "extraction" / f"{key}.csv" for key in ACQUISITIONS],
+        output:
+            PART_1,
+        log:
+            LOGS / "merge_extraction.log",
+        shell:
+            "{ACID} merge-extraction --config {ACID_CONFIG} "
+            "--inputs {input:q} --output {output:q} > {log:q} 2>&1"
 
-
-# Concatenate the per-acquisition CSVs into part_1, in the order the part0
-# notebook extracts them, so the rows (and therefore the random train/test
-# split) are the same. Calls acid.pipeline.merge_jobs.merge_fov_extraction.
-rule merge_extraction:
-    input:
-        [WORK / "extraction" / f"{key}.csv" for key in ACQUISITIONS],
-    output:
-        PART_1,
-    log:
-        LOGS / "merge_extraction.log",
-    shell:
-        "{ACID} merge-extraction --config {ACID_CONFIG} "
-        "--inputs {input:q} --output {output:q} > {log:q} 2>&1"
+    # A light job in the Snakemake main process.
+    localrules:
+        merge_extraction,
 
 
 # Map treatments from the plate layout (found in the raw folder by

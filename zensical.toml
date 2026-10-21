@@ -73,6 +73,7 @@ nav = [
     { "Segmentation" = "workflows/segmentation.md" },
     { "Feature extraction" = "workflows/feature-extraction.md" },
     { "Notebooks" = "workflows/notebooks.md" },
+    { "Snakemake pipeline" = "workflows/snakemake.md" },
   ] },
   { "Dependencies" = "dependencies.md" },
   { "Reference" = [
@@ -86,6 +87,7 @@ nav = [
     { "Feature extraction" = "reference/feature-extraction.md" },
     { "Image visualization" = "reference/image-visualization.md" },
     { "Utilities" = "reference/utilities.md" },
+    { "Pipeline" = "reference/pipeline.md" },
   ] },
   { "Community" = [
     { "Contributing" = "community/contribute.md" },

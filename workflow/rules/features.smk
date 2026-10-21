@@ -14,6 +14,9 @@
 rule extract_features:
     input:
         metadata=PART_5,
+        # The batch's FOV list (params) is read from the split checkpoint's
+        # output, which Snakemake requires as an input inside the SLURM job.
+        split=PART_2,
     output:
         WORK / "feature_extraction" / "batch_{batch}.json",
     log:

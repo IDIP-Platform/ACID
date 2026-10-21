@@ -20,7 +20,7 @@ rule measure_quality:
     params:
         fovs=batch_fovs("measure_quality"),
     shell:
-        "{ACID} measure-quality --config {ACID_CONFIG} --input {input.metadata:q} "
+        "{ACID} measure-quality --config {ACID_CONFIG_ARG} --input {input.metadata:q} "
         "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
@@ -37,5 +37,5 @@ rule flag_quality:
     log:
         LOGS / "flag_quality.log",
     shell:
-        "{ACID} flag-quality --config {ACID_CONFIG} --input {input.metadata:q} "
+        "{ACID} flag-quality --config {ACID_CONFIG_ARG} --input {input.metadata:q} "
         "--records {input.records:q} --output {output:q} > {log:q} 2>&1"

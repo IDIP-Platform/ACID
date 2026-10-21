@@ -24,7 +24,7 @@ rule segment:
     params:
         fovs=batch_fovs("segment"),
     shell:
-        "{ACID} segment --config {ACID_CONFIG} --input {input.metadata:q} "
+        "{ACID} segment --config {ACID_CONFIG_ARG} --input {input.metadata:q} "
         "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
@@ -40,6 +40,6 @@ rule merge_segmentation:
     log:
         LOGS / "merge_segmentation.log",
     shell:
-        "{ACID} merge --stage object_segmentation --config {ACID_CONFIG} "
+        "{ACID} merge --stage object_segmentation --config {ACID_CONFIG_ARG} "
         "--input {input.metadata:q} --records {input.records:q} "
         "--output {output:q} > {log:q} 2>&1"

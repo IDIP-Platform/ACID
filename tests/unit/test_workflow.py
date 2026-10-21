@@ -122,3 +122,19 @@ def test_dry_run_without_part_1_and_raw_files_fails_clearly(pipeline_config, tmp
 
     assert completed.returncode != 0
     assert "No matching acquisition files" in completed.stdout + completed.stderr
+
+
+def test_dry_run_quotes_paths_with_spaces(tmp_path):
+    root = tmp_path / "my project"
+    (root / "configs").mkdir(parents=True)
+    (root / "configs" / "spaced.yaml").write_text(
+        'experiment:\n  id: "spaced"\nshared:\n  paths:\n    raw_acquisitions_dir: "raw"\n'
+    )
+    experiment = root / "raw" / "experiment_A07.2"
+    experiment.mkdir(parents=True)
+    (experiment / "H7_DENV2_MOI1_30h_fixed_stained_well1.nd2").write_text("")
+
+    completed = dry_run(root, "spaced", extra_args=("--printshellcmds",))
+
+    assert completed.returncode == 0, completed.stderr + completed.stdout
+    assert f"--project-root '{root}'" in completed.stdout

@@ -138,3 +138,11 @@ def test_dry_run_quotes_paths_with_spaces(tmp_path):
 
     assert completed.returncode == 0, completed.stderr + completed.stdout
     assert f"--project-root '{root}'" in completed.stdout
+
+
+def test_batch_wildcard_accepts_four_or_more_digits():
+    constraint = re.search(r'batch=r"([^"]+)"', SNAKEFILE.read_text()).group(1)
+
+    assert re.fullmatch(constraint, "0000")
+    assert re.fullmatch(constraint, "10000")
+    assert not re.fullmatch(constraint, "123")

@@ -48,7 +48,7 @@
 # - The FOV list is only known after extraction, so `split` is a checkpoint:
 #   once it has run, Snakemake reads part_2.csv, lists the training FOVs in
 #   row order and cuts the list into batches of `batch_sizes[<rule>]`
-#   (make_batches). Batch i is the {batch} wildcard (four digits, 0000...).
+#   (make_batches). Batch i is the {batch} wildcard (at least four digits).
 # - A batch job gets its FOV names as params, reads the merged metadata CSV
 #   of the previous stage, processes its rows (loading the model or the
 #   background functions once) and writes one JSON list of result records to
@@ -174,7 +174,7 @@ def batch_records(rule_name, stage):
 
 
 wildcard_constraints:
-    batch=r"\d{4}",
+    batch=r"\d{4}\d*",  # batch_0000 ... batch_9999, batch_10000 ... (Snakemake rejects {4,})
 
 
 # ---------------------------------------------------------------------------

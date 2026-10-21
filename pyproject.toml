@@ -45,7 +45,7 @@ dependencies = [
   "statsmodels>=0.14.6",
   "tifffile>=2026.3.3",
   "torch>=2.10.0",
-  "torch-vision>=0.1.6.dev0",
+  "torchvision>=0.29.0",
 ]
 
 [project.optional-dependencies]

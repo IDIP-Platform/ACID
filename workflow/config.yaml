@@ -5,17 +5,17 @@
 acid_config: null
 
 # Number of FOVs one job of a batch rule processes. A job pays a fixed
-# start-up cost (Python and library imports, reading the metadata, loading
-# the segmentation model or the background functions; ~15 s on Chimera), so
-# batches should run about a minute while leaving enough jobs to run side by
-# side. Results do not depend on these values. Runtime limits in the profile
-# must cover a whole batch. Times per FOV measured on Chimera (2026-10-21,
+# start-up cost (SLURM queue ~20 s, Python and library imports, reading the
+# metadata; ~15 s on Chimera), so a batch should be a few times longer than
+# that, while the number of jobs stays below the profile's `jobs` limit (150)
+# so that all batches of a stage run in one wave. Results do not depend on
+# these values. Runtime limits in the profile must cover a whole batch. Times per FOV measured on Chimera (2026-10-21,
 # 205 FOVs of 5 x 1024 x 1024, warm nodes):
 batch_sizes:
-  measure_quality: 10      # QC statistics, ~5.6 s per FOV
-  correct_background: 25   # background division, ~2.2 s per FOV
+  measure_quality: 5       # QC statistics, ~5.6 s per FOV (205 FOVs: 41 jobs)
+  correct_background: 5    # background division, ~2.2 s per FOV (41 jobs)
   # Cellpose: ~0.3 s per FOV on a warm L40/L40S. The first job on a node also
   # reads the Python environment (torch/CUDA, ~4.4 GB on /home) into the page
   # cache: ~1-2 min. Few large batches pay that on fewer nodes.
-  segment: 50
-  extract_features: 5      # region/Hessian/structure-tensor features, ~14 s (up to 24 s) per FOV
+  segment: 50              # (5 jobs)
+  extract_features: 2      # region/Hessian/structure-tensor features, ~14 s (up to 24 s) per FOV (103 jobs)

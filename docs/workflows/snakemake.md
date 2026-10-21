@@ -45,7 +45,7 @@ Two more files hold settings that do not change results, so they are not part
 of the ACID configuration:
 
 - `workflow/config.yaml`: `batch_sizes`, the number of FOVs one job processes
-  per rule (default QC 10, correction 25, segmentation 50, features 5, chosen
+  per rule (default QC 5, correction 5, segmentation 50, features 2, chosen
   from times measured on Chimera). Segmentation takes ~0.3 s per FOV on a warm
   GPU node, but the first job on a node spends 1-2 min reading the Python
   environment (torch/CUDA) from `/home`, so it uses few large batches. A job

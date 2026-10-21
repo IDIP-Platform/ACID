@@ -78,7 +78,8 @@ set-resources:
     cpus_per_task: 1
     mem_mb: 4000
     runtime: 10
-  # one job per batch of batch_sizes.segment FOVs (~7 s per FOV + model load)
+  # one job per batch of batch_sizes.segment FOVs (~0.3 s per FOV; first job on
+  # a node ~1-2 min extra to read torch/CUDA from /home into the page cache)
   segment:
     slurm_partition: "gpu-ffa"
     # Chimera's GPU partitions take --gres only (not --gpus=N, which the

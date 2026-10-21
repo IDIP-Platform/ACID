@@ -1,24 +1,28 @@
-# Part 6: feature extraction (one job per FOV of part_5).
+# Part 6: feature extraction (one job per batch of the FOVs of part_5).
 #
 # Config section: feature_extraction. Like the part6 notebook, it processes
-# every row of part_5 (the training FOVs) without re-splitting.
+# every row of part_5 (the training FOVs) without re-splitting; batch size:
+# batch_sizes.extract_features.
 
 
-# Smooth one corrected FOV, drop objects touching the image edge in its mask,
-# measure region properties, Hessian and structure-tensor features per object
-# and save the table to feature_tables/<fov>.csv; the result record goes to
-# work/feature_extraction/<fov>.json. Calls
+# For each FOV of the batch: smooth the corrected image, drop objects touching
+# the image edge in its mask, measure region properties, Hessian and
+# structure-tensor features per object and save the table to
+# feature_tables/<fov>_bg.csv; the result records go to
+# work/feature_extraction/batch_<i>.json. Calls
 # acid.pipeline.fov_jobs.extract_features_job.
 rule extract_features:
     input:
         metadata=PART_5,
     output:
-        WORK / "feature_extraction" / "{fov}.json",
+        WORK / "feature_extraction" / "batch_{batch}.json",
     log:
-        LOGS / "extract_features" / "{fov}.log",
+        LOGS / "extract_features" / "batch_{batch}.log",
+    params:
+        fovs=batch_fovs("extract_features"),
     shell:
         "{ACID} extract-features --config {ACID_CONFIG} --input {input.metadata:q} "
-        "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"
+        "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
 # Write the feature-extraction results of all FOVs into part_6 (the final
@@ -27,7 +31,7 @@ rule extract_features:
 rule merge_features:
     input:
         metadata=PART_5,
-        records=fov_records("feature_extraction"),
+        records=batch_records("extract_features", "feature_extraction"),
     output:
         PART_6,
     log:

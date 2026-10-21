@@ -1,5 +1,5 @@
 # Part 3: background-function calculation (one job) and
-# part 4: background correction (one job per training FOV).
+# part 4: background correction (one job per batch of training FOVs).
 #
 # Config sections: background_function_calculation, background_correction.
 
@@ -32,21 +32,24 @@ rule background_function:
         "--input {input:q} --output {output:q} > {log:q} 2>&1"
 
 
-# Correct one extracted FOV with its background function and save it to
-# corrected_fov/; the result record goes to
-# work/background_correction/<fov>.json. A FOV that cannot be corrected gives
-# a failure record, not a failed job. Calls
+# Correct a batch of extracted FOVs with their background function (loaded
+# once per batch) and save them to corrected_fov/; the result records go to
+# work/background_correction/batch_<i>.json. A FOV that cannot be corrected
+# gives a failure record, not a failed job. Batch size:
+# batch_sizes.correct_background. Calls
 # acid.pipeline.fov_jobs.correct_background_job.
 rule correct_background:
     input:
         metadata=PART_4A,
     output:
-        WORK / "background_correction" / "{fov}.json",
+        WORK / "background_correction" / "batch_{batch}.json",
     log:
-        LOGS / "correct_background" / "{fov}.log",
+        LOGS / "correct_background" / "batch_{batch}.log",
+    params:
+        fovs=batch_fovs("correct_background"),
     shell:
         "{ACID} correct-background --config {ACID_CONFIG} --input {input.metadata:q} "
-        "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"
+        "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
 # Write the correction results of all FOVs into part_4b and list failed FOVs
@@ -55,7 +58,7 @@ rule correct_background:
 rule merge_background_correction:
     input:
         metadata=PART_4A,
-        records=fov_records("background_correction"),
+        records=batch_records("correct_background", "background_correction"),
     output:
         PART_4B,
     log:

@@ -1,23 +1,25 @@
 # Part 2: image quality control.
 #
 # Config section: quality_control. Only training FOVs are measured, as in the
-# part2 notebook.
+# part2 notebook; batch size: batch_sizes.measure_quality in workflow/config.yaml.
 
 
 # Measure the per-channel QC statistics (PLLS, normalized intensity skewness,
-# mean over std) of one extracted FOV and write them to
-# work/quality_control/<fov>.json. Calls
+# mean over std) of a batch of extracted FOVs and write them to
+# work/quality_control/batch_<i>.json. Calls
 # acid.pipeline.fov_jobs.measure_quality_job.
 rule measure_quality:
     input:
         metadata=PART_2,
     output:
-        WORK / "quality_control" / "{fov}.json",
+        WORK / "quality_control" / "batch_{batch}.json",
     log:
-        LOGS / "measure_quality" / "{fov}.log",
+        LOGS / "measure_quality" / "batch_{batch}.log",
+    params:
+        fovs=batch_fovs("measure_quality"),
     shell:
         "{ACID} measure-quality --config {ACID_CONFIG} --input {input.metadata:q} "
-        "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"
+        "--fov {params.fovs:q} --output {output:q} > {log:q} 2>&1"
 
 
 # Collect the QC values of all training FOVs, flag the FOVs outside the
@@ -27,7 +29,7 @@ rule measure_quality:
 rule flag_quality:
     input:
         metadata=PART_2,
-        records=fov_records("quality_control"),
+        records=batch_records("measure_quality", "quality_control"),
     output:
         PART_3,
     log:

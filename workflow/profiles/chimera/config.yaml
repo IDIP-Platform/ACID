@@ -50,10 +50,10 @@ set-resources:
   segment:
     slurm_partition: "gpu-ffa"
     # Chimera's GPU partitions take --gres only (not --gpus=N, which the
-    # plugin's `gpu` resource would produce). mps:20 is a fifth of an MPS
-    # GPU (L40, 48 GB: ~9.6 GB VRAM), enough for Cellpose on one FOV, so five
-    # FOV jobs share one GPU. Use "gpu:1" for a whole GPU.
-    gres: "mps:20"
+    # plugin's `gpu` resource would produce). A whole GPU per FOV: only two
+    # gpu-ffa nodes (one L40 each) offer MPS, so "mps:N" limits segmentation
+    # to those two GPUs, while ~20 whole L40s are usually free.
+    gres: "gpu:1"
     runtime: 10
     mem_mb: 16000
     cpus_per_task: 4

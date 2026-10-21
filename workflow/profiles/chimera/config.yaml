@@ -54,31 +54,31 @@ set-threads:
 # merge_background_correction, merge_segmentation, merge_features, all) run
 # in the Snakemake main process and get no SLURM resources.
 set-resources:
-  # one job per raw .nd2 file
+  # one job per raw .nd2 file (~1.5 min with 16 CPUs)
   extract_acquisition:
     slurm_partition: "ffa-short"
     cpus_per_task: 16
     mem_mb: 32000
     runtime: 30
-  # one job per batch of batch_sizes.measure_quality FOVs (~5 s per FOV)
+  # one job per batch of batch_sizes.measure_quality FOVs (~5.6 s per FOV)
   measure_quality:
     slurm_partition: "ffa-short"
     cpus_per_task: 1
     mem_mb: 4000
     runtime: 15
-  # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels
+  # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels (~3 min)
   background_function:
     slurm_partition: "ffa"         # max 12 h
     cpus_per_task: 32
     mem_mb: 64000
     runtime: 120
-  # one job per batch of batch_sizes.correct_background FOVs (~1 s per FOV)
+  # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)
   correct_background:
     slurm_partition: "ffa-short"
     cpus_per_task: 1
     mem_mb: 4000
     runtime: 10
-  # one job per batch of batch_sizes.segment FOVs (~1 s per FOV + model load)
+  # one job per batch of batch_sizes.segment FOVs (~7 s per FOV + model load)
   segment:
     slurm_partition: "gpu-ffa"
     # Chimera's GPU partitions take --gres only (not --gpus=N, which the
@@ -89,7 +89,7 @@ set-resources:
     cpus_per_task: 4
     mem_mb: 16000
     runtime: 10
-  # one job per batch of batch_sizes.extract_features FOVs (up to ~2 min per FOV)
+  # one job per batch of batch_sizes.extract_features FOVs (~14 s, up to 24 s per FOV)
   extract_features:
     slurm_partition: "ffa-short"
     cpus_per_task: 1

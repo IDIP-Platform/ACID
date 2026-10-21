@@ -55,21 +55,42 @@ def write_fov(tmp_path):
     return _write
 
 
-@pytest.fixture
-def pipeline_config(tmp_path):
-    """Return a read-only configuration whose outputs go under ``tmp_path``.
+# QC thresholds that flag no FOV of `write_pipeline_dataset`.
+PERMISSIVE_QC = (
+    "quality_control:\n  processing:\n"
+    "    mean_over_std_lowpass_thresholds: [100.0, 100.0, 100.0, 100.0, 100.0]\n"
+    "    mean_over_std_highpass_thresholds: [0.0, 0.0, 0.0, 0.0, 0.0]\n"
+)
 
-    Outputs go to ``tmp_path/data/processed/pipeline_test``; raw acquisitions
-    are expected in ``tmp_path/raw``.
+
+@pytest.fixture
+def make_pipeline_config(tmp_path):
+    """Return a factory of read-only configurations rooted at ``tmp_path``.
+
+    ``make_pipeline_config(experiment_id, extra_yaml="")`` writes
+    ``tmp_path/configs/<experiment_id>.yaml`` and loads it; outputs go to
+    ``tmp_path/data/processed/<experiment_id>``, raw acquisitions are read
+    from ``tmp_path/raw``.
     """
-    (tmp_path / "configs").mkdir()
-    (tmp_path / "configs" / "pipeline_test.yaml").write_text(
-        'experiment:\n  id: "pipeline_test"\n'
-        'shared:\n  paths:\n    raw_acquisitions_dir: "raw"\n'
-    )
-    return load_config(
-        "configs/pipeline_test.yaml", project_root=tmp_path, preview=False
-    )
+
+    def _make(experiment_id="pipeline_test", extra_yaml=""):
+        directory = tmp_path / "configs"
+        directory.mkdir(exist_ok=True)
+        (directory / f"{experiment_id}.yaml").write_text(
+            f'experiment:\n  id: "{experiment_id}"\n'
+            'shared:\n  paths:\n    raw_acquisitions_dir: "raw"\n' + extra_yaml
+        )
+        return load_config(
+            f"configs/{experiment_id}.yaml", project_root=tmp_path, preview=False
+        )
+
+    return _make
+
+
+@pytest.fixture
+def pipeline_config(make_pipeline_config):
+    """Return the default ``make_pipeline_config`` configuration."""
+    return make_pipeline_config()
 
 
 class SquareModel:
@@ -94,14 +115,13 @@ def square_model():
     return SquareModel()
 
 
-@pytest.fixture
-def pipeline_dataset(pipeline_config):
+def write_pipeline_dataset(config):
     """Write three extracted FOVs and a dataset-splitting metadata CSV.
 
     Rows 0 and 2 are in the training split. Returns the path of the CSV,
     which stands in for ``part_2.csv``.
     """
-    paths = pipeline_config.shared.paths
+    paths = config.shared.paths
     directory = Path(paths.extracted_fov_dir)
     directory.mkdir(parents=True)
     names = ["p_well1_A07p2_A1", "p_well1_A07p2_A2", "p_well2_A07p2_A1"]
@@ -129,3 +149,9 @@ def pipeline_dataset(pipeline_config):
     path.parent.mkdir(parents=True)
     metadata.to_csv(path, index=False)
     return path
+
+
+@pytest.fixture
+def pipeline_dataset(pipeline_config):
+    """Return ``write_pipeline_dataset(pipeline_config)``."""
+    return write_pipeline_dataset(pipeline_config)

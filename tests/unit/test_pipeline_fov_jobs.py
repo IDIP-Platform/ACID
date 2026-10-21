@@ -21,7 +21,7 @@ from acid.pipeline.fov_jobs import (
     measure_quality_job,
     segment_job,
 )
-from acid.pipeline.records import read_record, select_stage_rows
+from acid.pipeline.records import read_records, select_stage_rows
 from acid.segmentation.pipeline import (
     apply_segmentation_batch,
     update_metadata_with_segmentation_results,
@@ -110,10 +110,15 @@ def test_measure_quality_job_matches_measure_quality(
         metadata_df, pipeline_config.quality_control
     )
 
-    record = read_record(
-        measure_quality_job(
-            pipeline_config, pipeline_dataset, "p_well2_A07p2_A1", tmp_path / "r.json"
-        )
+    (record,) = read_records(
+        [
+            measure_quality_job(
+                pipeline_config,
+                pipeline_dataset,
+                ["p_well2_A07p2_A1"],
+                tmp_path / "r.json",
+            )
+        ]
     )
 
     assert record["row_index"] == 2
@@ -128,7 +133,7 @@ def test_measure_quality_job_rejects_fov_outside_training_split(
 ):
     with pytest.raises(KeyError, match="p_well1_A07p2_A2"):
         measure_quality_job(
-            pipeline_config, pipeline_dataset, "p_well1_A07p2_A2", tmp_path / "r.json"
+            pipeline_config, pipeline_dataset, ["p_well1_A07p2_A2"], tmp_path / "r.json"
         )
 
 
@@ -138,10 +143,15 @@ def test_correct_background_job_matches_batch(
     corrected_metadata(pipeline_config, pipeline_dataset, tmp_path / "batch")
     batch = pd.read_csv(tmp_path / "batch" / "part_4b.csv")
 
-    record = read_record(
-        correct_background_job(
-            pipeline_config, pipeline_dataset, "p_well2_A07p2_A1", tmp_path / "r.json"
-        )
+    (record,) = read_records(
+        [
+            correct_background_job(
+                pipeline_config,
+                pipeline_dataset,
+                ["p_well2_A07p2_A1"],
+                tmp_path / "r.json",
+            )
+        ]
     )
 
     assert record["success"] is True
@@ -170,14 +180,16 @@ def test_segment_job_matches_batch(
         pipeline_config.shared.paths,
     )
 
-    record = read_record(
-        segment_job(
-            pipeline_config,
-            part_4b,
-            "p_well1_A07p2_A1",
-            tmp_path / "r.json",
-            model=square_model,
-        )
+    (record,) = read_records(
+        [
+            segment_job(
+                pipeline_config,
+                part_4b,
+                ["p_well1_A07p2_A1"],
+                tmp_path / "r.json",
+                model=square_model,
+            )
+        ]
     )
 
     assert record["success"] is True
@@ -209,12 +221,45 @@ def test_extract_features_job_matches_batch(
         pipeline_config.shared.paths,
     )
 
-    record = read_record(
-        extract_features_job(
-            pipeline_config, part_5, "p_well2_A07p2_A1", tmp_path / "r.json"
-        )
+    (record,) = read_records(
+        [
+            extract_features_job(
+                pipeline_config, part_5, ["p_well2_A07p2_A1"], tmp_path / "r.json"
+            )
+        ]
     )
 
     assert record["success"] is True
     assert record["row_index"] == 1
     assert without_dates(record) == without_dates(expected)
+
+
+def test_segment_job_processes_a_batch_in_the_given_order(
+    pipeline_config, pipeline_dataset, square_model, tmp_path
+):
+    part_4b = corrected_metadata(pipeline_config, pipeline_dataset, tmp_path)
+    metadata_df = select_stage_rows(
+        pd.read_csv(part_4b), "object_segmentation", pipeline_config
+    )
+    expected = apply_segmentation_batch(
+        metadata_df,
+        square_model,
+        pipeline_config.object_segmentation,
+        pipeline_config.shared.paths,
+    )
+
+    records = read_records(
+        [
+            segment_job(
+                pipeline_config,
+                part_4b,
+                ["p_well2_A07p2_A1", "p_well1_A07p2_A1"],
+                tmp_path / "r.json",
+                model=square_model,
+            )
+        ]
+    )
+
+    assert [without_dates(r) for r in records] == [
+        without_dates(r) for r in reversed(expected)
+    ]

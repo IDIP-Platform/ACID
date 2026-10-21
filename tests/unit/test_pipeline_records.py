@@ -7,10 +7,11 @@ import pytest
 from acid.pipeline.records import (
     fov_name,
     list_fov_names,
-    read_record,
-    select_fov_row,
+    make_batches,
+    read_records,
+    select_fov_rows,
     select_stage_rows,
-    write_record,
+    write_records,
 )
 
 
@@ -54,22 +55,33 @@ def test_list_fov_names_rejects_duplicates(default_config, metadata_df):
         list_fov_names(metadata_df, default_config)
 
 
-def test_select_fov_row_returns_one_row_with_original_index(
+def test_select_fov_rows_keeps_requested_order_and_original_index(
     default_config, metadata_df
 ):
     selected = select_stage_rows(metadata_df, "object_segmentation", default_config)
 
-    row = select_fov_row(selected, "b_A1", default_config)
+    rows = select_fov_rows(selected, ["b_A1", "a_A1"], default_config)
 
-    assert row.index.tolist() == [2]
+    assert rows.index.tolist() == [2, 0]
 
 
-def test_select_fov_row_rejects_unknown_fov(default_config, metadata_df):
+def test_select_fov_rows_rejects_unknown_fov(default_config, metadata_df):
     with pytest.raises(KeyError, match="a_A9"):
-        select_fov_row(metadata_df, "a_A9", default_config)
+        select_fov_rows(metadata_df, ["a_A1", "a_A9"], default_config)
 
 
-def test_write_record_round_trips_numpy_and_nan(tmp_path):
+def test_make_batches_splits_in_order_with_short_last_batch():
+    assert make_batches(["a", "b", "c", "d", "e"], 2) == [["a", "b"], ["c", "d"], ["e"]]
+    assert make_batches(["a"], 50) == [["a"]]
+    assert make_batches([], 3) == []
+
+
+def test_make_batches_rejects_size_below_one():
+    with pytest.raises(ValueError, match="at least 1"):
+        make_batches(["a"], 0)
+
+
+def test_write_records_round_trips_numpy_and_nan(tmp_path):
     record = {
         "row_index": np.int64(3),
         "value": np.float32(0.5),
@@ -79,7 +91,7 @@ def test_write_record_round_trips_numpy_and_nan(tmp_path):
         "text": "x",
     }
 
-    result = read_record(write_record(record, tmp_path / "nested" / "r.json"))
+    (result,) = read_records([write_records([record], tmp_path / "nested" / "r.json")])
 
     assert result["row_index"] == 3
     assert result["value"] == 0.5
@@ -87,3 +99,12 @@ def test_write_record_round_trips_numpy_and_nan(tmp_path):
     assert math.isnan(result["missing"])
     assert result["na"] is None
     assert result["text"] == "x"
+
+
+def test_read_records_concatenates_files_in_order(tmp_path):
+    first = write_records([{"row_index": 0}, {"row_index": 1}], tmp_path / "a.json")
+    second = write_records([{"row_index": 2}], tmp_path / "b.json")
+
+    records = read_records([first, second])
+
+    assert [record["row_index"] for record in records] == [0, 1, 2]

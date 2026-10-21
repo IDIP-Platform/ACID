@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from acid.pipeline.cli import build_parser, main
-from acid.pipeline.records import read_record
+from acid.pipeline.records import read_records
 
 
 def run(tmp_path, *args):
@@ -18,7 +18,7 @@ def run(tmp_path, *args):
     )
 
 
-def test_measure_quality_command_writes_record(
+def test_measure_quality_command_writes_records_of_all_fovs(
     pipeline_config, pipeline_dataset, tmp_path
 ):
     output = tmp_path / "r.json"
@@ -30,11 +30,12 @@ def test_measure_quality_command_writes_record(
         str(pipeline_dataset),
         "--fov",
         "p_well1_A07p2_A1",
+        "p_well2_A07p2_A1",
         "--output",
         str(output),
     )
 
-    assert read_record(output)["row_index"] == 0
+    assert [r["row_index"] for r in read_records([output])] == [0, 2]
 
 
 def test_merge_extraction_command_concatenates_inputs(pipeline_config, tmp_path):

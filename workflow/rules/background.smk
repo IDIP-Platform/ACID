@@ -13,9 +13,11 @@ BACKGROUND_WORKERS = max(1, CFG.background_function_calculation.processing.n_wor
 # function and save it to background_functions/ (file name with the date).
 # Needs all FOVs, so one job. CPU only (no GPU). Reading the FOVs and the
 # median use one thread per CPU of the job; the fit runs one Python thread
-# per channel (processing.n_workers), with OMP_NUM_THREADS splitting the
-# job's CPUs between them. The CPU count comes from the profile
-# (set-threads); the default here is n_workers. Calls
+# per channel (processing.n_workers). The rolling ball inside is
+# single-threaded, so the fit takes as long as one channel and depends on the
+# CPU's single-core speed (see the Chimera profile). OMP_NUM_THREADS splits
+# the job's CPUs between the channel threads. The CPU count comes from the
+# profile (set-threads); the default here is n_workers. Calls
 # acid.pipeline.merge_jobs.background_function_job.
 rule background_function:
     input:

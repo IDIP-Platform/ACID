@@ -11,11 +11,11 @@ BACKGROUND_WORKERS = max(1, CFG.background_function_calculation.processing.n_wor
 # Average the unflagged training FOVs (per dataset, well or grid position,
 # depending on processing.background_function_strategy), fit the background
 # function and save it to background_functions/ (file name with the date).
-# Needs all FOVs, so one job. CPU only (no GPU). The fit runs one Python
-# thread per channel (processing.n_workers); the rolling ball inside each
-# uses OpenMP threads, so the job's CPUs are split between the channels via
-# OMP_NUM_THREADS. The CPU count comes from the profile (set-threads); the
-# default here is n_workers. Calls
+# Needs all FOVs, so one job. CPU only (no GPU). Reading the FOVs and the
+# median use one thread per CPU of the job; the fit runs one Python thread
+# per channel (processing.n_workers), with OMP_NUM_THREADS splitting the
+# job's CPUs between them. The CPU count comes from the profile
+# (set-threads); the default here is n_workers. Calls
 # acid.pipeline.merge_jobs.background_function_job.
 rule background_function:
     input:

@@ -17,6 +17,10 @@ keep-going: true
 # A failed job (e.g. out of memory) is submitted once more.
 retries: 1
 latency-wait: 60
+# First check of a submitted job's state after 15 s (plugin default 40 s; the
+# interval then grows by 10 s per check without a finished job). Finished
+# stages are noticed sooner, so the next stage starts sooner.
+slurm-init-seconds-before-status-checks: 15
 
 # Fallback for anything not listed below; every rule is listed explicitly.
 # No cpus_per_task here: it would override the rules' threads.
@@ -38,7 +42,7 @@ set-threads:
   measure_quality: 1             # single-threaded per FOV
   flag_quality: 1                # local rule
   # part3 / part4
-  background_function: 32        # 5 channel threads x 6 OpenMP threads (rolling ball)
+  background_function: 8         # reading + median in 8 threads; fit: one thread per channel (5)
   correct_background: 1          # single-threaded per FOV
   merge_background_correction: 1 # local rule
   # part5
@@ -66,10 +70,12 @@ set-resources:
     cpus_per_task: 1
     mem_mb: 4000
     runtime: 15
-  # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels (~3 min)
+  # one job; reads all unflagged training FOVs (~2 GB) and fits 5 channels.
+  # Rolling ball (skimage 0.26) is single-threaded, so the fit (~66 s) runs one
+  # thread per channel and more than ~8 CPUs do not help.
   background_function:
     slurm_partition: "ffa"         # max 12 h
-    cpus_per_task: 32
+    cpus_per_task: 8
     mem_mb: 64000
     runtime: 120
   # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)

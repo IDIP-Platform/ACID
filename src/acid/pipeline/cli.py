@@ -74,8 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = command("flag-quality", "Combine QC measurements and flag")
     sub.add_argument("--input", required=True)
     sub.add_argument("--records", nargs="+", required=True)
-    command("background-function", "Calculate background functions").add_argument(
-        "--input", required=True
+    sub = command("background-function", "Calculate background functions")
+    sub.add_argument("--input", required=True)
+    sub.add_argument(
+        "--threads", type=int, help="Threads for reading and averaging the FOVs"
     )
     sub = command("merge", "Write per-FOV results into the metadata")
     sub.add_argument(
@@ -111,7 +113,9 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "flag-quality":
         merge_jobs.flag_quality_job(config, args.input, args.records, args.output)
     elif args.command == "background-function":
-        merge_jobs.background_function_job(config, args.input, args.output)
+        merge_jobs.background_function_job(
+            config, args.input, args.output, threads=args.threads
+        )
     elif args.command == "merge":
         merge_jobs.merge_results(
             config, args.stage, args.input, args.records, args.output

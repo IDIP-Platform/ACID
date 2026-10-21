@@ -191,7 +191,10 @@ def flag_quality_job(
 
 
 def background_function_job(
-    config: DictConfig, input_metadata: str | Path, output: str | Path
+    config: DictConfig,
+    input_metadata: str | Path,
+    output: str | Path,
+    threads: int | None = None,
 ) -> Path:
     """Calculate and save the background functions (part3).
 
@@ -204,6 +207,8 @@ def background_function_job(
             `quality_control.processing.flag_value`.
         input_metadata (str | Path): QC metadata (`part_3.csv`).
         output (str | Path): Metadata CSV to write (`part_4a.csv`).
+        threads (int | None): Threads for reading and averaging the FOVs (see
+            `calculate_backgrounds`); `None` uses the available CPUs.
 
     Returns:
         Path: The written file. The background images are saved into
@@ -235,7 +240,7 @@ def background_function_job(
     )
     Path(cfg.image_saving.directory).mkdir(parents=True, exist_ok=True)
 
-    backgrounds = calculate_backgrounds(metadata_df_ok, fov_shape, cfg)
+    backgrounds = calculate_backgrounds(metadata_df_ok, fov_shape, cfg, threads)
     for result in save_backgrounds(
         backgrounds, cfg, config.project_identity.project_name
     ):

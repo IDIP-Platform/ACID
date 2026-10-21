@@ -4,11 +4,19 @@
 # Config sections: background_function_calculation, background_correction.
 
 
+# Python threads of the background fit: one per channel, up to n_workers.
+BACKGROUND_WORKERS = max(1, CFG.background_function_calculation.processing.n_workers)
+
+
 # Average the unflagged training FOVs (per dataset, well or grid position,
 # depending on processing.background_function_strategy), fit the background
 # function and save it to background_functions/ (file name with the date).
-# Needs all FOVs, so one job, parallelized inside with processing.n_workers.
-# Calls acid.pipeline.merge_jobs.background_function_job.
+# Needs all FOVs, so one job. CPU only (no GPU). The fit runs one Python
+# thread per channel (processing.n_workers); the rolling ball inside each
+# uses OpenMP threads, so the job's CPUs are split between the channels via
+# OMP_NUM_THREADS. The CPU count comes from the profile (set-threads); the
+# default here is n_workers. Calls
+# acid.pipeline.merge_jobs.background_function_job.
 rule background_function:
     input:
         PART_3,
@@ -16,8 +24,10 @@ rule background_function:
         PART_4A,
     log:
         LOGS / "background_function.log",
-    threads: CFG.background_function_calculation.processing.n_workers
+    threads: BACKGROUND_WORKERS
     shell:
+        "OMP_NUM_THREADS=$(( {threads} / {BACKGROUND_WORKERS} > 0 ? "
+        "{threads} / {BACKGROUND_WORKERS} : 1 )) "
         "{ACID} background-function --config {ACID_CONFIG} "
         "--input {input:q} --output {output:q} > {log:q} 2>&1"
 

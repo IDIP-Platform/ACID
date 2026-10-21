@@ -59,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--acquisition", required=True
     )
     command("merge-extraction", "Combine per-acquisition metadata").add_argument(
-        "--inputs", nargs="+", required=True
+        "--inputs", nargs="*", default=[]
     )
     command("split", "Map treatments and split train/test").add_argument(
         "--input", required=True

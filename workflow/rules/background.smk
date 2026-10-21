@@ -12,7 +12,7 @@ BACKGROUND_WORKERS = max(1, CFG.background_function_calculation.processing.n_wor
 # depending on processing.background_function_strategy), fit the background
 # function and save it to background_functions/ (file name with the date).
 # Needs all FOVs, so one job. CPU only (no GPU). Reading the FOVs and the
-# median use one thread per CPU of the job; the fit runs one Python thread
+# median use the rule's threads (--threads); the fit runs one Python thread
 # per channel (processing.n_workers). The rolling ball inside is
 # single-threaded, so the fit takes as long as one channel and depends on the
 # CPU's single-core speed (see the Chimera profile). OMP_NUM_THREADS splits
@@ -30,7 +30,7 @@ rule background_function:
     shell:
         "OMP_NUM_THREADS=$(( {threads} / {BACKGROUND_WORKERS} > 0 ? "
         "{threads} / {BACKGROUND_WORKERS} : 1 )) "
-        "{ACID} background-function --config {ACID_CONFIG} "
+        "{ACID} background-function --config {ACID_CONFIG} --threads {threads} "
         "--input {input:q} --output {output:q} > {log:q} 2>&1"
 
 

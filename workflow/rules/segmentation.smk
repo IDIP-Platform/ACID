@@ -1,9 +1,7 @@
 # Part 5: object segmentation (one job per training FOV).
 #
 # Config section: object_segmentation. Cellpose uses the GPU when one is
-# available; the Chimera profile sends these jobs to gpu-ffa and bundles 20
-# FOVs into one SLURM job (group "object_segmentation"), so the model is
-# loaded once per SLURM job.
+# available; the Chimera profile sends each FOV job to gpu-ffa with one GPU.
 
 
 # Preprocess one corrected FOV (nucleus channel, merged concanavalin/actin),
@@ -18,8 +16,6 @@ rule segment:
         WORK / "object_segmentation" / "{fov}.json",
     log:
         LOGS / "segment" / "{fov}.log",
-    group:
-        "object_segmentation"
     shell:
         "{ACID} segment --config {ACID_CONFIG} --input {input.metadata:q} "
         "--fov {wildcards.fov:q} --output {output:q} > {log:q} 2>&1"

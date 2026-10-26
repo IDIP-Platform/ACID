@@ -23,6 +23,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
   "bioio>=3.2.0",
   "bioio-nd2>=1.6.2",
+  "bokeh>=3.9.2",
   "cellpose>=4.0.9",
   "dask>=2026.1.2",
   "jupyterlab>=4.5.6",
@@ -31,6 +32,7 @@ dependencies = [
   "napari==0.6.6",
   "numba>=0.64.0",
   "numpy>=2.4.3",
+  "omegaconf>=2.3.1",
   "opencv-python>=4.13.0.92",
   "pandas>=3.0.1",
   "pycytominer>=1.4.0",
@@ -62,3 +64,26 @@ acid = "acid:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/acid"]
 
+
+[tool.pytest.ini_options]
+addopts = ["-p", "no:napari"]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.3",
+    "pre-commit>=4.0.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ipywidgets>=8.1.8",
+]
+
+docs=[
+  "mkdocstrings-python>=2.0.5",
+  "zensical>=0.0.52",
+]
+
+notebooks = [
+    "ipykernel>=6.31.0",
+    "nbstripout>=0.9.1",
+]

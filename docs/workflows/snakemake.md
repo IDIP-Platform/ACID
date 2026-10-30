@@ -122,3 +122,13 @@ threads (background functions: 16 CPUs on EPYC 7543 nodes, whose single-core
 speed decides the rolling-ball fit; extraction: 16; segmentation: 4) get
 them through `set-threads` and `cpus_per_task`. Runtimes and memory are first estimates; adjust
 them in the profile after the first run.
+
+## Other SLURM clusters
+
+`workflow/profiles/slurm/config.yaml` is a template with the resources
+measured on Chimera but without its account, partitions and node constraint.
+Copy the folder, replace the `YOUR_...` values (account and the partitions for
+short CPU jobs, the background function and GPU jobs) and check the
+partitions' limits; until the placeholders are replaced, `sbatch` rejects the
+first job. `workflow/profiles/README.md` lists the steps and what each
+profile is for.

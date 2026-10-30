@@ -129,3 +129,94 @@ single-threaded, so its runtime depends on the CPU's single-core speed; pick
 fast nodes with `constraint` if the cluster has node features. Runtimes and
 memory are first estimates from one run of 205 FOVs; adjust them in the
 profile after the first run.
+
+## Running on your cluster
+
+A first run on a new SLURM cluster, step by step.
+
+1. **Install ACID on a shared file system.** The repository, its `.venv`, the
+   raw data and the output folder must be visible from the login node and from
+   every compute node (usually a project or work file system, not a node-local
+   disk). On the login node:
+
+    ```bash
+    git clone https://github.com/IDIP-Platform/ACID.git
+    cd ACID
+    uv sync --frozen --group pipeline
+    ```
+
+    Always start Snakemake with `uv run`: the jobs inherit its environment,
+    so `python` in every job is the one from `.venv`. If your cluster starts
+    jobs with a clean environment (`sbatch --export=NONE`), activate `.venv`
+    in the job instead, for example through the profile's `slurm_extra`.
+
+2. **Check the GPU.** Segmentation runs Cellpose on a GPU node and falls back
+   to the CPU, much more slowly, when torch finds no GPU. Check it once in an
+   interactive GPU job:
+
+    ```bash
+    srun --partition=YOUR_GPU_PARTITION --gres=gpu:1 --pty \
+        uv run --frozen python -c "import torch; print(torch.cuda.is_available())"
+    ```
+
+3. **Prepare the raw data.** One folder per experiment with the `.nd2` files,
+   and `plate_layout.csv` next to the experiment folders; the train/test split
+   fails without it. See [Input data](../data/input-data.md) and
+   [File naming](../data/file-naming.md).
+
+4. **Write the experiment config.** Create `configs/<experiment id>.yaml`
+   (the file name must equal `experiment.id`) and point it to your data and to
+   an output folder on the shared file system:
+
+    ```yaml
+    experiment:
+      id: "my_run"
+    shared:
+      output_root: "/path/to/shared/acid_output/my_run"
+      paths:
+        raw_acquisitions_dir: "/path/to/shared/raw"
+    ```
+
+    Everything else comes from the defaults; see
+    [Configuration](../reference/configuration.md).
+
+5. **Make a profile.** Copy `workflow/profiles/slurm` to
+   `workflow/profiles/<cluster>` and fill in the account and partitions, as
+   described in [SLURM clusters](#slurm-clusters).
+
+6. **Dry run, then a first part.** Check the plan, then run only the
+   extraction and the train/test split and look at
+   `metadata/ACID_metadata_part_2.csv` before starting the rest:
+
+    ```bash
+    uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+        --profile workflow/profiles/<cluster> --config acid_config=configs/my_run.yaml -n
+    uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+        --profile workflow/profiles/<cluster> --config acid_config=configs/my_run.yaml \
+        --until split
+    ```
+
+7. **Run the whole pipeline** with the same command without `-n` and
+   `--until`, from a login node inside `tmux` or `screen`. Running it again
+   continues where it stopped.
+
+8. **Optional: download the Cellpose model in advance.** Cellpose downloads
+   its model weights on first use, to `~/.cellpose/models` or to
+   `CELLPOSE_LOCAL_MODELS_PATH`. If your compute nodes have no internet
+   access, download them once on the login node:
+
+    ```bash
+    uv run --frozen python -c "from cellpose import models; models.CellposeModel(gpu=False)"
+    ```
+
+### When a job fails
+
+- Each rule's output goes to `logs/<rule>/` under the output folder.
+- SLURM's own job logs are in `.snakemake/slurm_logs/` in the repository.
+- `sbatch` errors such as an invalid account or partition appear when the
+  first job is submitted: fix the profile and run the command again.
+- A job stopped for time or memory (`sacct -j <job id>`) is retried once;
+  raise `runtime` or `mem_mb` of that rule in the profile and run again.
+- FOVs that a stage could not process are listed in
+  `reports/<stage>_failures.csv`; they do not stop the pipeline (see
+  [Failed fields of view](#failed-fields-of-view)).

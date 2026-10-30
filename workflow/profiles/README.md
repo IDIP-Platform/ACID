@@ -10,8 +10,7 @@ number of FOVs per job in `workflow/config.yaml` (`batch_sizes`).
 | Profile | Runs jobs | Use it for |
 | --- | --- | --- |
 | `local` | as processes on this machine, at most `cores: 4` side by side | small data sets, trying the workflow, dry runs |
-| `chimera` | as SLURM jobs on the Chimera cluster (account `rse`, partitions `ffa-short`, `ffa`, `gpu-ffa`) | full runs on Chimera |
-| `slurm` | as SLURM jobs; a template with `YOUR_...` placeholders | starting a profile for another SLURM cluster |
+| `slurm` | as SLURM jobs; a template with `YOUR_...` placeholders | full runs on a SLURM cluster, after copying and filling it in |
 
 ```bash
 uv sync --frozen --group pipeline
@@ -22,7 +21,7 @@ uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
 Add `-n` for a dry run. Options given on the command line override the
 profile, e.g. `--cores 8` with `local` or `--jobs 50` with a SLURM profile.
 
-## A profile for another SLURM cluster
+## A profile for a SLURM cluster
 
 1. Copy the template: `cp -r workflow/profiles/slurm workflow/profiles/<cluster>`.
 2. Replace every `YOUR_...` value: the account (`sacctmgr show associations user=$USER`)

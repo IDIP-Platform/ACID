@@ -1,7 +1,7 @@
 # Part 5: object segmentation (one job per batch of training FOVs).
 #
 # Config section: object_segmentation. Cellpose uses the GPU when one is
-# available; the Chimera profile sends each batch job to gpu-ffa with one GPU.
+# available; the SLURM profile gives each batch job one GPU.
 # The model is loaded once per batch (batch_sizes.segment).
 
 

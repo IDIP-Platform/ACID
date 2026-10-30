@@ -355,7 +355,7 @@ uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/local --config acid_config=configs/exp_001.yaml
 ```
 
-Use `--profile workflow/profiles/chimera` on the Chimera cluster, or copy the template `workflow/profiles/slurm` for another SLURM cluster (see `workflow/profiles/README.md`). See `docs/workflows/snakemake.md`.
+On a SLURM cluster, copy the template `workflow/profiles/slurm` and use it as the profile (see `workflow/profiles/README.md`). See `docs/workflows/snakemake.md`.
 
 **NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
 

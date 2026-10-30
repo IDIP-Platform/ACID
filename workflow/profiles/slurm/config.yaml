@@ -1,4 +1,4 @@
-# Template for a SLURM cluster other than Chimera. Copy this folder, replace
+# Template for a SLURM cluster. Copy this folder, replace
 # every YOUR_... value with your cluster's account and partitions, and run the
 # Snakemake main process on a login node inside tmux/screen:
 #
@@ -9,8 +9,8 @@
 # rejects the first job and nothing runs under a wrong account. This file sets
 # compute resources only; scientific parameters are in the ACID config, and
 # the number of FOVs per job in workflow/config.yaml (batch_sizes). The
-# resources below are the ones measured on Chimera (workflow/profiles/chimera,
-# 205 FOVs of 5 x 1024 x 1024); a batch rule's runtime must cover a whole
+# resources below were measured on one SLURM cluster (205 FOVs of
+# 5 x 1024 x 1024); a batch rule's runtime must cover a whole
 # batch. Check partition limits with `sinfo`, and adjust memory and runtimes
 # with `sacct`/`seff` after the first run.
 executor: slurm
@@ -57,7 +57,7 @@ set-threads:
 # SLURM resources of every rule submitted as a job. Runtime in minutes,
 # memory in MB. Local rules run in the Snakemake main process and get none.
 set-resources:
-  # one job per raw .nd2 file (~1.5 min with 16 CPUs on Chimera)
+  # one job per raw .nd2 file (~1.5 min with 16 CPUs)
   extract_acquisition:
     cpus_per_task: 16
     mem_mb: 32000
@@ -70,7 +70,7 @@ set-resources:
   # one job; reads all unflagged training FOVs (~2 GB for 205 FOVs) and fits
   # 5 channels side by side. The rolling-ball fit is single-threaded, so the
   # job takes as long as one channel and depends on the CPU's single-core
-  # speed (~67 s per channel on EPYC 7543, ~197 s on Xeon E5-2650 v4). If your
+  # speed (per channel ~70 s on a recent CPU, ~200 s on an old one). If your
   # cluster has node features, pick fast nodes with `constraint: "<node feature>"`.
   background_function:
     slurm_partition: "YOUR_LONG_CPU_PARTITION"
@@ -86,7 +86,7 @@ set-resources:
   # the first job on a node also loads torch/CUDA, ~1-2 min)
   segment:
     slurm_partition: "YOUR_GPU_PARTITION"
-    # One whole GPU per job. `gres` works on most clusters; some (e.g. Chimera)
+    # One whole GPU per job. `gres` works on most clusters; some
     # reject --gpus=N, which the plugin's `gpu` resource would produce.
     gres: "gpu:1"
     cpus_per_task: 4

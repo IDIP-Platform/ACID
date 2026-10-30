@@ -32,6 +32,33 @@ output_data_directory/
 The README also describes a `secondary_output` directory created inside the
 working directory. It stores run hyperparameters and other secondary outputs.
 
+## Snakemake Pipeline Outputs
+
+The [Snakemake pipeline](../workflows/snakemake.md) writes everything under
+`shared.output_root` (`data/processed/<experiment id>` by default), in the
+folders named by `shared.paths` in the configuration:
+
+```text
+data/processed/<experiment id>/
+├── config.resolved.yaml          # resolved configuration of the run
+├── extracted_fov/                # part0: one OME-TIFF per field of view
+├── background_functions/         # part3
+├── corrected_fov/                # part4
+├── segmentation_masks/           # part5
+├── feature_tables/               # part6
+├── metadata/
+│   └── ACID_metadata_part_<N>.csv   # no date prefix (part_1 ... part_6)
+├── reports/
+│   ├── quality_control/          # QC graphs
+│   └── <stage>_failures.csv      # FOVs that a stage could not process
+├── work/<stage>/batch_<i>.json   # result records of each batch job
+└── logs/<rule>/                  # one log file per job
+```
+
+The metadata files have no date prefix so that Snakemake output names stay
+the same from day to day; they still match the notebooks' `file_selection`
+patterns. `work/` and `logs/` are intermediate files of the workflow.
+
 ## `fov`
 
 The `fov` directory contains individual fields of view extracted from ND2 raw

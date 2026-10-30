@@ -35,6 +35,15 @@ group. This group includes tools such as Zensical and mkdocstrings support.
 Documentation-only dependencies should stay out of the core package dependency
 list unless package code imports them at runtime.
 
+Tools that are needed only to run or develop ACID, not to import it, are
+dependency groups (`[dependency-groups]` in `pyproject.toml`), installed with
+`uv sync --frozen --group <name>`:
+
+- `dev`: tests, linting and pre-commit (installed by `uv sync` by default)
+- `notebooks`: the Jupyter kernel and `nbstripout`
+- `pipeline`: Snakemake and `snakemake-executor-plugin-slurm`, used by the
+  [Snakemake pipeline](workflows/snakemake.md)
+
 ## Legacy Environment Files
 
 The README mentions historical environment files such as `acid_develop.yml`,

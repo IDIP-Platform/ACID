@@ -1,8 +1,8 @@
 # Run on this machine: snakemake -s workflow/Snakefile --profile workflow/profiles/local \
 #   --config acid_config=configs/<id>.yaml
 #
-# This file sets compute resources only (see workflow/profiles/chimera for
-# the cluster). Snakemake runs jobs side by side as long as their threads fit
+# This file sets compute resources only (see workflow/profiles/slurm for a
+# cluster). Snakemake runs jobs side by side as long as their threads fit
 # into `cores`; a rule asking for more threads than `cores` gets `cores`.
 cores: 4
 printshellcmds: true

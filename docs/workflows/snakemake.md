@@ -21,12 +21,14 @@ uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/local --config acid_config=configs/exp_001.yaml
 ```
 
-Run on the Chimera cluster from a login node, inside `tmux` or `screen` so the
-main process keeps running while it submits SLURM jobs:
+Run on a SLURM cluster from a login node, inside `tmux` or `screen` so the
+main process keeps running while it submits SLURM jobs, with a profile made
+from the template `workflow/profiles/slurm` (see
+[SLURM clusters](#slurm-clusters)):
 
 ```bash
 uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
-    --profile workflow/profiles/chimera --config acid_config=configs/exp_001.yaml
+    --profile workflow/profiles/<cluster> --config acid_config=configs/exp_001.yaml
 ```
 
 Add `-n` (dry run) to see the planned jobs without running them. Run the same
@@ -46,11 +48,11 @@ of the ACID configuration:
 
 - `workflow/config.yaml`: `batch_sizes`, the number of FOVs one job processes
   per rule (default QC 5, correction 5, segmentation 50, features 2, chosen
-  from times measured on Chimera). Segmentation takes ~0.3 s per FOV on a warm
-  GPU node, but the first job on a node spends 1-2 min reading the Python
-  environment (torch/CUDA) from `/home`, so it uses few large batches. A job
-  has a fixed start-up cost (imports, reading the metadata, loading the
-  segmentation model, about 15 s on Chimera) that is large compared with the
+  from times measured on a SLURM cluster). Segmentation takes ~0.3 s per FOV on
+  a warm GPU node, but the first job on a node can spend 1-2 min reading the
+  Python environment (torch/CUDA) from a network file system, so it uses few
+  large batches. A job has a fixed start-up cost (imports, reading the
+  metadata, loading the segmentation model, about 15 s) that is large compared with the
   work per FOV, so light steps are batched more. Override them with
   `--configfile <file>`.
 - `workflow/profiles/<name>/config.yaml`: compute resources of every rule
@@ -94,8 +96,8 @@ A FOV that cannot be processed (for example an unreadable file) does not stop
 the pipeline or its batch. The batch job writes a failure record for it, the
 merge leaves the stage's columns empty for that row, as the notebooks do, and
 lists it in `reports/<stage>_failures.csv`. A merge fails only if every FOV
-failed. A batch job that crashes (out of memory, time limit) is retried once on
-Chimera, as a whole; after fixing the cause, run the command again.
+failed. A batch job that crashes (out of memory, time limit) is retried once by
+the SLURM profiles, as a whole; after fixing the cause, run the command again.
 
 ## Running one job by hand
 
@@ -110,25 +112,20 @@ uv run --frozen python -m acid.pipeline segment --config configs/exp_001.yaml \
 
 `python -m acid.pipeline --help` lists the commands.
 
-## Chimera profile
+## SLURM clusters
 
-`workflow/profiles/chimera/config.yaml` submits with
-`snakemake-executor-plugin-slurm` under the `rse` account: light jobs to
-`ffa-short`, the background-function calculation to `ffa` and segmentation to
-`gpu-ffa` with one whole GPU per batch (`--gres=gpu:1`; Chimera accepts GPUs only
-through `--gres`, and only two gpu-ffa nodes offer shared MPS GPUs).
-Every raw file and every FOV batch is its own SLURM job; jobs that use several
-threads (background functions: 16 CPUs on EPYC 7543 nodes, whose single-core
-speed decides the rolling-ball fit; extraction: 16; segmentation: 4) get
-them through `set-threads` and `cpus_per_task`. Runtimes and memory are first estimates; adjust
-them in the profile after the first run.
+`workflow/profiles/slurm/config.yaml` is a template that submits with
+`snakemake-executor-plugin-slurm`. Copy the folder, replace the `YOUR_...`
+values (account and the partitions for short CPU jobs, the background function
+and GPU jobs) and check the partitions' limits; until the placeholders are
+replaced, `sbatch` rejects the first job. `workflow/profiles/README.md` lists
+the steps.
 
-## Other SLURM clusters
-
-`workflow/profiles/slurm/config.yaml` is a template with the resources
-measured on Chimera but without its account, partitions and node constraint.
-Copy the folder, replace the `YOUR_...` values (account and the partitions for
-short CPU jobs, the background function and GPU jobs) and check the
-partitions' limits; until the placeholders are replaced, `sbatch` rejects the
-first job. `workflow/profiles/README.md` lists the steps and what each
-profile is for.
+Every raw file and every FOV batch is its own SLURM job. Jobs that use several
+threads (background function and extraction: 16, segmentation: 4) get them
+through `set-threads` and `cpus_per_task`; segmentation asks for one whole GPU
+per batch with `gres: "gpu:1"`. The background function's rolling-ball fit is
+single-threaded, so its runtime depends on the CPU's single-core speed; pick
+fast nodes with `constraint` if the cluster has node features. Runtimes and
+memory are first estimates from one run of 205 FOVs; adjust them in the
+profile after the first run.

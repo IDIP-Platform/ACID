@@ -15,7 +15,7 @@ BACKGROUND_WORKERS = max(1, CFG.background_function_calculation.processing.n_wor
 # median use the rule's threads (--threads); the fit runs one Python thread
 # per channel (processing.n_workers). The rolling ball inside is
 # single-threaded, so the fit takes as long as one channel and depends on the
-# CPU's single-core speed (see the Chimera profile). OMP_NUM_THREADS splits
+# CPU's single-core speed (see workflow/profiles/slurm). OMP_NUM_THREADS splits
 # the job's CPUs between the channel threads. The CPU count comes from the
 # profile (set-threads); the default here is n_workers. Calls
 # acid.pipeline.merge_jobs.background_function_job.

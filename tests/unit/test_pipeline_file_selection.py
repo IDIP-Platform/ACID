@@ -10,7 +10,7 @@ from acid.image_processing.background.load_background_function import (
     load_background_function,
 )
 from acid.utils.fov_axis_utils import get_fov_ch_shape
-from acid.utils.metadata.loading import load_metadata
+from acid.utils.metadata.loading import load_metadata, load_metadata_file
 
 
 def test_metadata_selection_uses_stage_filter(tmp_path):
@@ -113,3 +113,53 @@ def test_fov_shape_returns_null_values_when_no_image_can_be_opened(tmp_path):
     )
 
     assert result == (None, None, None)
+
+
+def test_load_metadata_file_reads_explicit_path(tmp_path):
+    path = tmp_path / "ACID_metadata_part_5.csv"
+    pd.DataFrame({"stage": [5]}).to_csv(path, index=False)
+
+    assert load_metadata_file(path)["stage"].tolist() == [5]
+
+
+def test_load_metadata_file_rejects_missing_file(tmp_path):
+    with pytest.raises(FileNotFoundError, match="Metadata file not found"):
+        load_metadata_file(tmp_path / "missing.csv")
+
+
+def filename_date_config(directory):
+    return OmegaConf.create(
+        {
+            "directory": str(directory),
+            "file_selection": {
+                "filename": "default",
+                "include": "part_3.csv",
+                "exclude": None,
+                "date_source": "filename",
+                "select": "newest",
+            },
+        }
+    )
+
+
+def test_metadata_selection_by_filename_date_skips_undated_files(tmp_path):
+    pd.DataFrame({"stage": [1]}).to_csv(
+        tmp_path / "20261007_ACID_metadata_part_3.csv", index=False
+    )
+    pd.DataFrame({"stage": [2]}).to_csv(
+        tmp_path / "ACID_metadata_part_3.csv", index=False
+    )
+
+    metadata, filename = load_metadata(filename_date_config(tmp_path))
+
+    assert filename == "20261007_ACID_metadata_part_3.csv"
+    assert metadata["stage"].tolist() == [1]
+
+
+def test_metadata_selection_by_filename_date_without_dated_files_raises(tmp_path):
+    pd.DataFrame({"stage": [2]}).to_csv(
+        tmp_path / "ACID_metadata_part_3.csv", index=False
+    )
+
+    with pytest.raises(ValueError, match="with a date in their name"):
+        load_metadata(filename_date_config(tmp_path))

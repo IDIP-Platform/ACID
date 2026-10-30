@@ -19,7 +19,13 @@ def import_fov(df: pd.DataFrame,
                 np_zero_kwargs: dict | None = None,
                 sample_df: bool = False,
                 sample_fraction: float = 0.5,
-                sample_kwargs: dict | None = None)-> np.ndarray:
+                sample_kwargs: dict | None = None,
+                n_workers: int | None = None)-> np.ndarray:
+    """Stack the fields of view of `df` along a new last axis.
+
+    `n_workers` > 1 reads the files in that many threads (tifffile releases
+    the GIL); the stacked result is the same as with sequential reading.
+    """
 
     # copy the dataframe to avoid modifying the original one
     df_copy = df.copy()
@@ -44,24 +50,18 @@ def import_fov(df: pd.DataFrame,
     container_arr_shape = tuple([a for a in fov_shape] + [df_copy.shape[0]]) # the shape of the container array is the shape of the fields of view + the number of fields of view (aka number of rows in the metadata dataframe)
     container_arr = np.zeros(container_arr_shape, **np_zero_kwargs)
 
-    # initialize a positional counter
-    pos_counter = 0
+    # read each field of view into its position along the last axis
+    fov_paths = [os.path.join(fov_dir, df_copy.loc[scene_idx, fov_clm]) for scene_idx in df_copy.index]
 
-    # iterate over the scenes and store the fields of view in the container array
-    for scene_idx in df_copy.index:
-        
-        # get the field of view name from the metadata dataframe
-        fov_name = df_copy.loc[scene_idx, fov_clm]
+    def _read_into(position):
+        container_arr[..., position] = tifffile.imread(fov_paths[position])
 
-        # open the field of view using tifffile
-        fov_path = os.path.join(fov_dir, fov_name)
-        fov_arr = tifffile.imread(fov_path)
-        
-        # store the field of view in the container array
-        container_arr[..., pos_counter] = fov_arr
-        
-        # update the positional counter
-        pos_counter += 1
+    if n_workers is None or n_workers <= 1:
+        for position in range(len(fov_paths)):
+            _read_into(position)
+    else:
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            list(executor.map(_read_into, range(len(fov_paths))))
 
     if verbose:
         print(f"container_arr shape: {container_arr.shape}")
@@ -72,20 +72,32 @@ def import_fov(df: pd.DataFrame,
 def calculate_background_function(container_arr: np.ndarray,
                                   method: str = "median",
                                   axis: int = -1,
-                                  verbose: bool = True)-> np.ndarray:
-    
-    # copy the container array to avoid modifying the original one
-    container_arr_copy = container_arr.copy()
+                                  verbose: bool = True,
+                                  n_workers: int | None = None)-> np.ndarray:
+    """Average the stacked fields of view pixel-wise along `axis`.
 
-    # average the pixel values along the last axis (the one corresponding to the
-    # different fields of view) to calculate the background function
-    # use the method indicated in background_function_method
+    `n_workers` > 1 splits the pixels into that many chunks computed in
+    threads (numpy releases the GIL); every pixel is reduced exactly as in a
+    single call, so the result is identical. The input is not modified.
+    """
     if method == "median":
-        background_function = np.median(container_arr_copy, axis=axis) # NOTE: the axis along which the fields of view are stored was hard coded to be the last one (i.e. -1). See container_arr initialization and population above.
+        reduce = np.median
     elif method == "mean":
-        background_function = np.mean(container_arr_copy, axis=axis) # NOTE: the axis along which the fields of view are stored was hard coded to be the last one (i.e. -1). See container_arr initialization and population above.
+        reduce = np.mean
     else:
         raise ValueError(f"method {method} not recognized. Please use 'median' or 'mean'.")
+
+    # NOTE: the axis along which the fields of view are stored was hard coded to be the last one (i.e. -1). See container_arr initialization and population above.
+    if n_workers is None or n_workers <= 1:
+        background_function = reduce(container_arr, axis=axis)
+    else:
+        # one row per pixel, the averaged fields of view along the last axis
+        stack = np.moveaxis(container_arr, axis, -1)
+        pixels = stack.reshape(-1, stack.shape[-1])
+        bounds = np.linspace(0, pixels.shape[0], n_workers + 1, dtype=int)
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            chunks = list(executor.map(lambda a, b: reduce(pixels[a:b], axis=-1), bounds[:-1], bounds[1:]))
+        background_function = np.concatenate(chunks).reshape(stack.shape[:-1])
 
     if verbose:
         print(f"background_function shape: {background_function.shape}")

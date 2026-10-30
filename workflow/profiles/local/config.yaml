@@ -1,0 +1,32 @@
+# Run on this machine: snakemake -s workflow/Snakefile --profile workflow/profiles/local \
+#   --config acid_config=configs/<id>.yaml
+#
+# This file sets compute resources only (see workflow/profiles/slurm for a
+# cluster). Snakemake runs jobs side by side as long as their threads fit
+# into `cores`; a rule asking for more threads than `cores` gets `cores`.
+cores: 4
+printshellcmds: true
+rerun-incomplete: true
+# One failing job (e.g. an unreadable FOV that crashes) does not stop the others.
+keep-going: true
+
+# Threads of every rule.
+set-threads:
+  # part0 / part1
+  extract_acquisition: 4         # reading and decoding one ND2 file
+  merge_extraction: 1
+  split: 1
+  # part2
+  measure_quality: 1
+  flag_quality: 1
+  # part3 / part4
+  background_function: 4         # 5 channel threads, OpenMP threads split between them
+  correct_background: 1
+  merge_background_correction: 1
+  # part5
+  segment: 2                     # Cellpose; uses a GPU if torch finds one
+  merge_segmentation: 1
+  # part6
+  extract_features: 1
+  merge_features: 1
+  all: 1

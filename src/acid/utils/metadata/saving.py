@@ -4,6 +4,10 @@ Every stage writes its updated metadata as
 `<date><sep><project><sep><savingword><sep><suffix>`, e.g.
 `20261007_ACID_metadata_part_4b.csv`, into the stage's `metadata.directory`.
 The next stage finds it through its `metadata.file_selection`.
+
+The Snakemake workflow needs file names known in advance, so it writes the
+same name without the date (`ACID_metadata_part_4b.csv`, see
+`build_undated_metadata_dataframe_filename`) and passes paths explicitly.
 """
 
 import logging
@@ -60,6 +64,36 @@ def build_metadata_dataframe_filename(
     )
 
 
+def build_undated_metadata_dataframe_filename(
+    metadata_saving_config: DictConfig,
+    project_name: str,
+) -> str:
+    """Build the standard metadata file name without the date prefix.
+
+    Used by the Snakemake workflow, whose output names must not depend on the
+    day of the run. The name still matches the `file_selection.include`
+    pattern of the next stage, so notebooks find it too.
+
+    Args:
+        metadata_saving_config (DictConfig): The `<stage>.metadata.saving`
+            section. Reads `save_file_name_separator`, `metadata_savingword`
+            and `metadata_file_suffix`.
+        project_name (str): Project name, usually
+            `project_identity.project_name`.
+
+    Returns:
+        str: File name such as `ACID_metadata_part_4b.csv`.
+    """
+    separator = metadata_saving_config.save_file_name_separator
+    metadata_file_suffix = metadata_saving_config.metadata_file_suffix.format(
+        save_file_name_separator=separator
+    )
+
+    return separator.join(
+        [project_name, metadata_saving_config.metadata_savingword, metadata_file_suffix]
+    )
+
+
 def build_metadata_dataframe_path(
     metadata_config: DictConfig,
     project_name: str,
@@ -92,10 +126,11 @@ def save_metadata_dataframe(
     metadata_config: DictConfig,
     project_name: str,
     timestamp: datetime | None = None,
+    path: str | Path | None = None,
 ) -> Path:
     """Save a metadata dataframe as CSV under the standard file name.
 
-    Creates `metadata_config.directory` when it does not exist. A file with the
+    Creates the target directory when it does not exist. A file with the
     same name (same stage, same day) is overwritten.
 
     Args:
@@ -106,15 +141,21 @@ def save_metadata_dataframe(
         project_name (str): Project name inserted into the file name.
         timestamp (datetime | None): Time used for the date prefix; `None`
             means now.
+        path (str | Path | None): Explicit file path. If given, it replaces
+            the standard name and `metadata_config.directory`; `timestamp` is
+            then ignored.
 
     Returns:
         Path: Full path of the written CSV file.
     """
-    metadata_path = build_metadata_dataframe_path(
-        metadata_config=metadata_config,
-        project_name=project_name,
-        timestamp=timestamp,
-    )
+    if path is not None:
+        metadata_path = Path(path)
+    else:
+        metadata_path = build_metadata_dataframe_path(
+            metadata_config=metadata_config,
+            project_name=project_name,
+            timestamp=timestamp,
+        )
 
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_df.to_csv(metadata_path, index=metadata_config.saving.save_csv_index)

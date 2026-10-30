@@ -59,6 +59,15 @@ Install ACID with `uv` from a local checkout.
     uv pip install -e .
     ```
 
+To run the whole pipeline with Snakemake, also install the `pipeline`
+dependency group (Snakemake and its SLURM executor plugin):
+
+```bash
+uv sync --frozen --group pipeline
+```
+
+See [Snakemake pipeline](workflows/snakemake.md).
+
 ## VS Code
 
 Open the repository folder, then select the project interpreter:

@@ -78,7 +78,6 @@ def flag_quality(
     )
 
 
-
 def measure_quality(
     metadata_df: pd.DataFrame, cfg: DictConfig
 ) -> tuple[pd.DataFrame, int, list[str], list[str]]:
@@ -121,116 +120,165 @@ def measure_quality(
         channel_axis=cfg.processing.channel_axis,
         null_value=cfg.metadata.dataframe_columns.null_value,
     )
-    glob_plls_collection_list = []
-    glob_skewness_collection_list = []
-    glob_mean_over_std_collection_list = []
-    for i in metadata_df.index:
-        field_of_view_file = metadata_df.loc[
-            i, cfg.metadata.dataframe_columns.fov_column_name
-        ]
-        logger.info("Working on %s", field_of_view_file)
-        try:
-            field_of_view = tifffile.imread(
-                os.path.join(cfg.processing.fov_directory, str(field_of_view_file))
-            )
-        except Exception as error:
-            logger.warning(
-                "QC calculation failed: %s", error, exc_info=True
-            )
-            glob_plls_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-            glob_skewness_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-            glob_mean_over_std_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-            continue
-        try:
-            fov_plls = compute_plls(
-                image=field_of_view, axis=cfg.processing.channel_axis
-            )
-            glob_plls_collection_list.append(fov_plls)
-        except Exception as error:
-            logger.warning(
-                "QC calculation failed: %s", error, exc_info=True
-            )
-            glob_plls_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-        try:
-            if cfg.processing.median_smooth:
-                median_kwargs = {
-                    cfg.processing.median_kwargs_axes_name: tuple(
-                        [
-                            c
-                            for c in range(len(field_of_view.shape))
-                            if c != cfg.processing.channel_axis
-                        ]
-                    )
-                }
-                smoothed_field_of_view = median_filter(
-                    field_of_view, size=cfg.processing.median_size, **median_kwargs
+    measurements = [
+        measure_quality_for_fov(
+            metadata_df.loc[i, cfg.metadata.dataframe_columns.fov_column_name],
+            num_channels,
+            cfg,
+        )
+        for i in metadata_df.index
+    ]
+    column_names = add_quality_columns(metadata_df, measurements, num_channels, cfg)
+    return (
+        metadata_df,
+        num_channels,
+        column_names["mean_over_std"],
+        column_names["skewness"],
+    )
+
+
+def add_quality_columns(
+    metadata_df: pd.DataFrame,
+    measurements: list[dict],
+    num_channels: int,
+    cfg: DictConfig,
+) -> dict[str, list[str]]:
+    """Write per-FOV QC measurements into the metadata as columns.
+
+    Used by `measure_quality` and by the Snakemake workflow's QC merge, so
+    both write the same columns, in the same order and dtype.
+
+    Args:
+        metadata_df (pd.DataFrame): Metadata of the measured FOVs; modified
+            in place.
+        measurements (list[dict]): One result of `measure_quality_for_fov`
+            per row of `metadata_df`, in row order.
+        num_channels (int): Number of channels.
+        cfg (DictConfig): The `quality_control` section (see
+            `get_quality_column_names`).
+
+    Returns:
+        dict[str, list[str]]: The written column names (see
+        `get_quality_column_names`).
+    """
+    column_names = get_quality_column_names(num_channels, cfg)
+    for statistic, names in column_names.items():
+        values = np.stack([measurement[statistic] for measurement in measurements])
+        metadata_df[names] = pd.DataFrame(values, index=metadata_df.index)
+    return column_names
+
+
+def get_quality_column_names(
+    num_channels: int, cfg: DictConfig
+) -> dict[str, list[str]]:
+    """Return the per-channel QC column names.
+
+    Args:
+        num_channels (int): Number of channels of the fields of view.
+        cfg (DictConfig): The `quality_control` section. Reads, in
+            `metadata.dataframe_columns`, `plls_column_name`,
+            `skewness_column_name`, `mean_over_std_column_name` and
+            `channel_measurement_separator`.
+
+    Returns:
+        dict[str, list[str]]: Keys `"plls"`, `"skewness"` and
+        `"mean_over_std"`, each mapped to `<statistic><separator><channel>`
+        names in channel order, e.g. `["plls-0", ..., "plls-4"]`.
+    """
+    columns = cfg.metadata.dataframe_columns
+    separator = columns.channel_measurement_separator
+    return {
+        statistic: [f"{name}{separator}{ch}" for ch in range(num_channels)]
+        for statistic, name in (
+            ("plls", columns.plls_column_name),
+            ("skewness", columns.skewness_column_name),
+            ("mean_over_std", columns.mean_over_std_column_name),
+        )
+    }
+
+
+def measure_quality_for_fov(
+    field_of_view_file: str, num_channels: int, cfg: DictConfig
+) -> dict[str, list]:
+    """Measure the per-channel QC statistics of one field of view.
+
+    The file is read from `processing.fov_directory`. If it cannot be read,
+    all three statistics are `null_value`; if one statistic fails, only that
+    one is. Failures are logged as warnings, never raised.
+
+    Args:
+        field_of_view_file (str): File name of the field of view.
+        num_channels (int): Number of channels, used for the length of the
+            `null_value` lists of failed statistics.
+        cfg (DictConfig): The `quality_control` section. Reads the same keys
+            as `measure_quality` except `fov_column_name`.
+
+    Returns:
+        dict[str, list]: Keys `"plls"`, `"skewness"` and `"mean_over_std"`,
+        each mapped to one value per channel.
+    """
+    null_value = cfg.metadata.dataframe_columns.null_value
+    null_measurements = _null_measurements(num_channels, null_value)
+    logger.info("Working on %s", field_of_view_file)
+    try:
+        field_of_view = tifffile.imread(
+            os.path.join(cfg.processing.fov_directory, str(field_of_view_file))
+        )
+    except Exception as error:
+        logger.warning("QC calculation failed: %s", error, exc_info=True)
+        return {
+            "plls": null_measurements,
+            "skewness": null_measurements,
+            "mean_over_std": null_measurements,
+        }
+    measurement = {}
+    try:
+        measurement["plls"] = compute_plls(
+            image=field_of_view, axis=cfg.processing.channel_axis
+        )
+    except Exception as error:
+        logger.warning("QC calculation failed: %s", error, exc_info=True)
+        measurement["plls"] = null_measurements
+    try:
+        if cfg.processing.median_smooth:
+            median_kwargs = {
+                cfg.processing.median_kwargs_axes_name: tuple(
+                    [
+                        c
+                        for c in range(len(field_of_view.shape))
+                        if c != cfg.processing.channel_axis
+                    ]
                 )
-            else:
-                smoothed_field_of_view = field_of_view
-            fov_skewness = axis_image_stat(
-                image=smoothed_field_of_view,
-                stat=normalized_intensity_skewness,
-                axis=cfg.processing.channel_axis,
-                mask=cfg.processing.mask,
-                normalize=tuple(cfg.processing.normalize),
-                ravel_kwargs=OmegaConf.to_container(
-                    cfg.processing.ravel_kwargs, resolve=True
-                ),
+            }
+            smoothed_field_of_view = median_filter(
+                field_of_view, size=cfg.processing.median_size, **median_kwargs
             )
-            glob_skewness_collection_list.append(fov_skewness)
-        except Exception as error:
-            logger.warning(
-                "QC calculation failed: %s", error, exc_info=True
-            )
-            glob_skewness_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-        try:
-            fov_mean_over_std = mean_over_std(
-                image=field_of_view,
-                axis=cfg.processing.channel_axis,
-                null_val=cfg.metadata.dataframe_columns.null_value,
-                inf_val=cfg.metadata.dataframe_columns.null_value,
-            )
-            glob_mean_over_std_collection_list.append(fov_mean_over_std)
-        except Exception as error:
-            logger.warning(
-                "QC calculation failed: %s", error, exc_info=True
-            )
-            glob_mean_over_std_collection_list.append(
-                _null_measurements(num_channels, cfg.metadata.dataframe_columns.null_value)
-            )
-    glob_plls = np.stack(glob_plls_collection_list, axis=0)
-    glob_skewness = np.stack(glob_skewness_collection_list, axis=0)
-    glob_mean_over_std = np.stack(glob_mean_over_std_collection_list, axis=0)
-    plls_column_names = [
-        f"{cfg.metadata.dataframe_columns.plls_column_name}{cfg.metadata.dataframe_columns.channel_measurement_separator}{ch}"
-        for ch in range(num_channels)
-    ]
-    skewness_column_names = [
-        f"{cfg.metadata.dataframe_columns.skewness_column_name}{cfg.metadata.dataframe_columns.channel_measurement_separator}{ch}"
-        for ch in range(num_channels)
-    ]
-    mean_over_std_column_names = [
-        f"{cfg.metadata.dataframe_columns.mean_over_std_column_name}{cfg.metadata.dataframe_columns.channel_measurement_separator}{ch}"
-        for ch in range(num_channels)
-    ]
-    metadata_df[plls_column_names] = pd.DataFrame(glob_plls, index=metadata_df.index)
-    metadata_df[skewness_column_names] = pd.DataFrame(
-        glob_skewness, index=metadata_df.index
-    )
-    metadata_df[mean_over_std_column_names] = pd.DataFrame(
-        glob_mean_over_std, index=metadata_df.index
-    )
-    return metadata_df, num_channels, mean_over_std_column_names, skewness_column_names
+        else:
+            smoothed_field_of_view = field_of_view
+        measurement["skewness"] = axis_image_stat(
+            image=smoothed_field_of_view,
+            stat=normalized_intensity_skewness,
+            axis=cfg.processing.channel_axis,
+            mask=cfg.processing.mask,
+            normalize=tuple(cfg.processing.normalize),
+            ravel_kwargs=OmegaConf.to_container(
+                cfg.processing.ravel_kwargs, resolve=True
+            ),
+        )
+    except Exception as error:
+        logger.warning("QC calculation failed: %s", error, exc_info=True)
+        measurement["skewness"] = null_measurements
+    try:
+        measurement["mean_over_std"] = mean_over_std(
+            image=field_of_view,
+            axis=cfg.processing.channel_axis,
+            null_val=null_value,
+            inf_val=null_value,
+        )
+    except Exception as error:
+        logger.warning("QC calculation failed: %s", error, exc_info=True)
+        measurement["mean_over_std"] = null_measurements
+    return measurement
 
 
 # ----------------------------------------------------------

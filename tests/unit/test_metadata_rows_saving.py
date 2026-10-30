@@ -9,6 +9,7 @@ from acid.utils.metadata.rows import get_required_filename
 from acid.utils.metadata.saving import (
     build_metadata_dataframe_filename,
     build_metadata_dataframe_path,
+    build_undated_metadata_dataframe_filename,
     save_metadata_dataframe,
 )
 
@@ -96,3 +97,23 @@ def test_save_metadata_dataframe_works_with_every_stage_config(
             pd.DataFrame({"a": [1]}), OmegaConf.create(stage_metadata), "proj"
         )
         assert path.is_file(), stage
+
+
+def test_build_undated_metadata_dataframe_filename_has_no_date(tmp_path):
+    result = build_undated_metadata_dataframe_filename(
+        metadata_config(tmp_path).saving, "proj"
+    )
+
+    assert result == "proj_metadata_part_4.csv"
+
+
+def test_save_metadata_dataframe_writes_to_explicit_path(tmp_path):
+    config = metadata_config(tmp_path / "unused")
+    target = tmp_path / "out" / "x.csv"
+    frame = pd.DataFrame({"a": [1, 2]})
+
+    path = save_metadata_dataframe(frame, config, "proj", path=target)
+
+    assert path == target
+    assert not (tmp_path / "unused").exists()
+    pd.testing.assert_frame_equal(pd.read_csv(target), frame)

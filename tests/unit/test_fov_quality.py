@@ -1,7 +1,13 @@
 import pandas as pd
 import pytest
 
-from acid.image_quality_control.fov_quality import flag_quality, measure_quality
+from acid.image_quality_control.fov_quality import (
+    add_quality_columns,
+    flag_quality,
+    get_quality_column_names,
+    measure_quality,
+    measure_quality_for_fov,
+)
 
 MEAN_COLUMNS = [f"mean_over_std-{channel}" for channel in range(5)]
 
@@ -52,6 +58,60 @@ def test_measure_quality_adds_per_channel_columns_and_nan_for_unreadable(
     assert "plls-0" not in metadata_df.columns
 
 
+def test_get_quality_column_names_uses_separator_and_channel(qc_config):
+    names = get_quality_column_names(2, qc_config)
+
+    assert names == {
+        "plls": ["plls-0", "plls-1"],
+        "skewness": [
+            "normalized_intensity_skewness-0",
+            "normalized_intensity_skewness-1",
+        ],
+        "mean_over_std": ["mean_over_std-0", "mean_over_std-1"],
+    }
+
+
+def test_measure_quality_for_fov_matches_measure_quality(qc_config, write_fov):
+    directory, _ = write_fov()
+    qc_config.processing.fov_directory = str(directory)
+    fov_column = qc_config.metadata.dataframe_columns.fov_column_name
+    measured, _, _, _ = measure_quality(
+        pd.DataFrame({fov_column: ["a.ome.tif"]}), qc_config
+    )
+
+    single = measure_quality_for_fov("a.ome.tif", 5, qc_config)
+
+    for statistic, names in get_quality_column_names(5, qc_config).items():
+        assert list(single[statistic]) == measured.loc[0, names].tolist()
+
+
+def test_measure_quality_for_fov_returns_null_values_for_unreadable_file(
+    qc_config, tmp_path
+):
+    qc_config.processing.fov_directory = str(tmp_path)
+
+    single = measure_quality_for_fov("missing.ome.tif", 3, qc_config)
+
+    assert set(single) == {"plls", "skewness", "mean_over_std"}
+    assert all(pd.isna(value) for values in single.values() for value in values)
+    assert all(len(values) == 3 for values in single.values())
+
+
+def test_add_quality_columns_writes_one_column_per_statistic_and_channel(qc_config):
+    metadata_df = pd.DataFrame({"x": [1, 2]}, index=[5, 9])
+    measurements = [
+        {"plls": [1.0, 2.0], "skewness": [3.0, 4.0], "mean_over_std": [5.0, 6.0]},
+        {"plls": [7.0, 8.0], "skewness": [9.0, 10.0], "mean_over_std": [11.0, 12.0]},
+    ]
+
+    names = add_quality_columns(metadata_df, measurements, 2, qc_config)
+
+    assert names == get_quality_column_names(2, qc_config)
+    assert metadata_df.loc[9, names["mean_over_std"]].tolist() == [11.0, 12.0]
+    assert metadata_df.loc[5, names["plls"]].tolist() == [1.0, 2.0]
+    assert (metadata_df[names["skewness"]].dtypes == "float64").all()
+
+
 def test_plot_quality_saves_four_graphs(qc_config, tmp_path):
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")
@@ -69,7 +129,12 @@ def test_plot_quality_saves_four_graphs(qc_config, tmp_path):
             pd.DataFrame(values, columns=skew_columns),
             pd.DataFrame(
                 {
-                    columns.experiment_column_name: ["A07.2", "A07.2", "A07.3", "A07.3"],
+                    columns.experiment_column_name: [
+                        "A07.2",
+                        "A07.2",
+                        "A07.3",
+                        "A07.3",
+                    ],
                     columns.well_column_name: ["well1", "well2", "well1", "well2"],
                 }
             ),
@@ -89,4 +154,6 @@ def test_plot_quality_saves_four_graphs(qc_config, tmp_path):
         graphs.mean_over_std_per_ch_exp_savingword,
         graphs.mean_over_std_per_ch_well_savingword,
     ):
-        assert any(name.endswith(f"_proj_{word}{graphs.graph_suffix}") for name in saved)
+        assert any(
+            name.endswith(f"_proj_{word}{graphs.graph_suffix}") for name in saved
+        )

@@ -11,6 +11,7 @@ Functions take the `background_function_calculation` configuration section
 """
 
 import logging
+import os
 from collections.abc import Hashable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -146,14 +147,18 @@ def fit_background(background: np.ndarray, cfg: DictConfig) -> np.ndarray:
 
 
 def calculate_backgrounds(
-    metadata_df: pd.DataFrame, fov_shape: tuple[int, ...], cfg: DictConfig
+    metadata_df: pd.DataFrame,
+    fov_shape: tuple[int, ...],
+    cfg: DictConfig,
+    n_threads: int | None = None,
 ) -> dict[Hashable | None, np.ndarray]:
     """Average fields of view into one background function per group.
 
     The grouping follows `processing.background_function_strategy`:
     `1` uses all rows as one group (key `None`), `2` groups by well and `3`
     by grid position. For every group the fields of view are stacked
-    (optionally sampled) and averaged pixel-wise.
+    (optionally sampled) and averaged pixel-wise, both in `n_threads`
+    threads; the result does not depend on the number of threads.
 
     Args:
         metadata_df (pd.DataFrame): Rows to use, usually unflagged training
@@ -169,6 +174,9 @@ def calculate_backgrounds(
             `processing.sample_df`, `processing.sample_fraction`,
             `processing.sample_kwargs` and, in `metadata.dataframe_columns`,
             `fov_column_name`, `well_column_name` and `gridpos_column_name`.
+        n_threads (int | None): Threads for reading and averaging, e.g. the
+            CPUs of a Snakemake job. `None` uses the CPUs available to the
+            process (`_available_cpus`).
 
     Returns:
         dict[Hashable | None, np.ndarray]: Averaged background with the shape
@@ -195,6 +203,8 @@ def calculate_backgrounds(
         raise ValueError("background_function_strategy must be 1, 2 or 3")
     if proc.axis_calc_bg not in (-1, len(fov_shape)):
         raise ValueError("axis_calc_bg must select the appended image-stack axis")
+    if n_threads is None:
+        n_threads = _available_cpus()
     backgrounds = {}
     for key, rows in groups:
         stack = import_fov(
@@ -209,6 +219,7 @@ def calculate_backgrounds(
             sample_df=proc.sample_df,
             sample_fraction=proc.sample_fraction,
             sample_kwargs=OmegaConf.to_container(proc.sample_kwargs),
+            n_workers=n_threads,
         )
         if stack.shape[-1] == 0:
             raise ValueError(f"Sampling selected no images for background group {key}")
@@ -217,6 +228,7 @@ def calculate_backgrounds(
             method=proc.background_function_avg_method,
             axis=-1,
             verbose=proc.verbose_calc_bg,
+            n_workers=n_threads,
         )
     return backgrounds
 
@@ -327,3 +339,9 @@ def save_backgrounds(
         saved.append({"group": key, "output_file": str(path), "shape": fitted.shape})
     return saved
 
+
+def _available_cpus() -> int:
+    """CPUs this process may run on (the SLURM allocation on a cluster node)."""
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    return os.cpu_count() or 1

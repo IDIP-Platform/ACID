@@ -347,6 +347,16 @@ NOTE: from here one the 'metadata_df' table is used to link field of views (also
 
 
 # Run the analysis:
+**Whole pipeline with Snakemake.** `workflow/Snakefile` runs all stages (raw ND2 files to feature tables), one job per raw file or field of view, with the same configuration as the notebooks in `notebooks_refactored/`:
+
+```bash
+uv sync --frozen --group pipeline
+uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+    --profile workflow/profiles/local --config acid_config=configs/exp_001.yaml
+```
+
+On a SLURM cluster, copy the template `workflow/profiles/slurm` and use it as the profile (see `workflow/profiles/README.md`). See `docs/workflows/snakemake.md`.
+
 **NOTE: THE PRESENT STRUCTURE IS STILL UNDER DEVELOPMENT: AS THE PRESENT FILE WAS REFRACTORED FROM A DIFFERENT PROJECT, WHAT CURRENTLY DESCRIBED STEMS FROM SUCH PROJECT**
 
 The part1_raw_to_segmentation.ipynb notebook can be used to run the analysis steps 1 and 2.

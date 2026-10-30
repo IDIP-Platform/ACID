@@ -18,6 +18,12 @@ The current repository splits the workflow across more focused notebooks:
 5. Segment objects.
 6. Extract features.
 
+The stages can be run one at a time with the notebooks in
+`notebooks_refactored/` (see [Notebooks](notebooks.md)), or all at once with
+the Snakemake workflow in `workflow/`, which reads the same configuration and
+runs one job per raw file and per batch of fields of view, locally or as
+SLURM jobs on Chimera (see [Snakemake pipeline](snakemake.md)).
+
 ## Pipeline Flow
 
 ```text

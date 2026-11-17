@@ -1,0 +1,218 @@
+# ACID pipeline: raw .nd2 acquisitions -> per-object feature tables.
+#
+# Usage (from the repository root):
+#
+#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#       --config acid_config=configs/exp_001.yaml --profile workflow/profiles/local
+#
+# Add -n for a dry run; run the same command again to continue after a failure.
+#
+# ---------------------------------------------------------------------------
+# Configuration: three places, each with one job
+# ---------------------------------------------------------------------------
+# - `acid_config` (passed with --config): the experiment file the notebooks
+#   use (configs/<id>.yaml, merged over src/acid/config/default.yaml by
+#   `load_config`). Every path and scientific parameter comes from it.
+# - workflow/config.yaml: how many FOVs one job processes (`batch_sizes`).
+# - the profile in workflow/profiles/<name>/config.yaml: compute resources of
+#   every rule (threads, memory, runtime, partition, GPU).
+# Batch sizes and resources do not change results, so they stay out of the
+# ACID config (a change there needs a new experiment id).
+#
+# ---------------------------------------------------------------------------
+# What runs (notebook -> rules)
+# ---------------------------------------------------------------------------
+#   part0  extract_acquisition   one job per raw .nd2 file
+#          merge_extraction      -> ACID_metadata_part_1.csv
+#   part1  split (checkpoint)    -> ACID_metadata_part_2.csv
+#   part2  measure_quality       one job per batch of training FOVs
+#          flag_quality          -> ACID_metadata_part_3.csv + QC graphs
+#   part3  background_function   one job, uses all unflagged FOVs
+#                                -> ACID_metadata_part_4a.csv
+#   part4  correct_background    one job per batch of training FOVs
+#          merge_background_correction -> ACID_metadata_part_4b.csv
+#   part5  segment               one job per batch of training FOVs (GPU)
+#          merge_segmentation    -> ACID_metadata_part_5.csv
+#   part6  extract_features      one job per batch of FOVs
+#          merge_features        -> ACID_metadata_part_6.csv (target of `all`)
+#
+# Every rule runs `python -m acid.pipeline <command>` (src/acid/pipeline/cli.py),
+# which calls one function of acid.pipeline.fov_jobs (per-acquisition and
+# FOV-batch jobs) or acid.pipeline.merge_jobs (whole-stage and merge jobs).
+#
+# ---------------------------------------------------------------------------
+# How FOV-batch jobs fit together
+# ---------------------------------------------------------------------------
+# - A FOV is named by its extracted file name without ".ome.tif"
+#   (acid.pipeline.records.fov_name).
+# - The FOV list is only known after extraction, so `split` is a checkpoint:
+#   once it has run, Snakemake reads part_2.csv, lists the training FOVs in
+#   row order and cuts the list into batches of `batch_sizes[<rule>]`
+#   (make_batches). Batch i is the {batch} wildcard (at least four digits).
+# - A batch job gets its FOV names as params, reads the merged metadata CSV
+#   of the previous stage, processes its rows (loading the model or the
+#   background functions once) and writes one JSON list of result records to
+#   <output_root>/work/<stage>/batch_<i>.json. Images go to the usual folders
+#   (corrected_fov/, segmentation_masks/, feature_tables/).
+# - The merge rule of the stage collects all batch files and writes the
+#   records into the next metadata CSV, which the next stage's batches read.
+#   So every stage finishes for all FOVs before the next one starts.
+# - A FOV that fails gives a failure record and its batch still succeeds;
+#   a crashed batch job (out of memory, time limit) is rerun as a whole.
+# - Metadata names have no date prefix (unlike the notebooks' files), so the
+#   output names do not change from day to day.
+
+import shlex
+from pathlib import Path
+
+import pandas as pd
+from snakemake.logging import logger
+
+from acid.config import load_config, prepare_output
+from acid.image_processing.fov_extraction import discover_acquisitions
+from acid.pipeline.records import list_fov_names, make_batches, select_stage_rows
+from acid.utils.metadata.saving import build_undated_metadata_dataframe_filename
+
+
+# ---------------------------------------------------------------------------
+# Load the configurations
+# ---------------------------------------------------------------------------
+
+# Batch sizes; --config / --configfile on the command line override them.
+configfile: Path(workflow.basedir) / "config.yaml"
+
+
+if not config.get("acid_config"):
+    raise ValueError(
+        "Pass the ACID configuration: --config acid_config=configs/<id>.yaml"
+    )
+
+ACID_CONFIG = config["acid_config"]
+# Relative paths in the ACID config are resolved from the repository root
+# (the parent of workflow/); tests pass another root with project_root=...
+ROOT = Path(config.get("project_root", Path(workflow.basedir).parent)).resolve()
+CFG = load_config(ACID_CONFIG, project_root=ROOT, preview=False)
+
+OUTPUT_ROOT = Path(CFG.shared.output_root)
+WORK = OUTPUT_ROOT / "work"  # per-acquisition CSVs and per-batch JSON records
+LOGS = OUTPUT_ROOT / "logs"  # one log file per job
+# Command prefix of every rule; the job loads the same config with the same
+# root. Both are quoted for the shell (paths may contain spaces).
+ACID = f"python -m acid.pipeline --project-root {shlex.quote(str(ROOT))}"
+ACID_CONFIG_ARG = shlex.quote(str(ACID_CONFIG))
+
+
+# ---------------------------------------------------------------------------
+# Metadata files of the stages
+# ---------------------------------------------------------------------------
+
+
+def metadata_path(stage):
+    """Undated metadata CSV written by a stage, e.g. ACID_metadata_part_3.csv.
+
+    Directory and name parts come from `<stage>.metadata` in the ACID config.
+    """
+    metadata = CFG[stage].metadata
+    name = build_undated_metadata_dataframe_filename(
+        metadata.saving, CFG.project_identity.project_name
+    )
+    return str(Path(metadata.directory) / name)
+
+
+PART_1 = metadata_path("field_of_view_extraction")  # all extracted FOVs
+PART_2 = metadata_path("dataset_splitting")  # + treatment, train/test split
+PART_3 = metadata_path("quality_control")  # training FOVs + QC values and flag
+PART_4A = metadata_path("background_function_calculation")  # + background settings
+PART_4B = metadata_path("background_correction")  # + corrected file names
+PART_5 = metadata_path("object_segmentation")  # + segmentation mask names
+PART_6 = metadata_path("feature_extraction")  # + feature table names
+
+
+# ---------------------------------------------------------------------------
+# FOV batches (known only after the `split` checkpoint)
+# ---------------------------------------------------------------------------
+
+
+def fov_names():
+    """FOVs of the training split; available once the `split` checkpoint ran.
+
+    `checkpoints.split.get()` makes Snakemake wait for the checkpoint and
+    re-evaluate the DAG afterwards. The selection is the same as in every
+    batch job (`select_stage_rows`), so the records match the rows.
+    """
+    part_2 = checkpoints.split.get().output[0]
+    rows = select_stage_rows(pd.read_csv(part_2), "quality_control", CFG)
+    return list_fov_names(rows, CFG)
+
+
+def fov_batches(rule_name):
+    """Training FOVs cut into batches of config["batch_sizes"][rule_name]."""
+    return make_batches(fov_names(), int(config["batch_sizes"][rule_name]))
+
+
+def batch_fovs(rule_name):
+    """Params function of a batch rule: the FOV names of batch {batch}."""
+
+    def fovs(wildcards):
+        return fov_batches(rule_name)[int(wildcards.batch)]
+
+    return fovs
+
+
+def batch_records(rule_name, stage):
+    """Input function of a merge rule: the record file of every batch.
+
+    Requesting these files makes Snakemake run the batch rule `rule_name`,
+    whose output is work/<stage>/batch_{batch}.json, once for each batch.
+    """
+
+    def records(wildcards):
+        count = len(fov_batches(rule_name))
+        return [str(WORK / stage / f"batch_{i:04d}.json") for i in range(count)]
+
+    return records
+
+
+wildcard_constraints:
+    batch=r"\d{4}\d*",  # batch_0000 ... batch_9999, batch_10000 ... (Snakemake rejects {4,})
+
+
+# ---------------------------------------------------------------------------
+# Start of a run
+# ---------------------------------------------------------------------------
+
+onstart:
+    # Writes config.resolved.yaml, or stops if the output folder was made
+    # with different settings (same check as in every notebook). Not run in
+    # dry runs.
+    prepare_output(CFG)
+
+
+# ---------------------------------------------------------------------------
+# Target and rules
+# ---------------------------------------------------------------------------
+
+
+# Default target: the final metadata, which needs every stage before it.
+rule all:
+    input:
+        PART_6,
+
+
+# Light jobs (CSV merges, train/test split, QC graphs) run in the Snakemake
+# main process instead of being submitted to SLURM (merge_extraction is
+# declared in rules/extraction.smk).
+localrules:
+    all,
+    split,
+    flag_quality,
+    merge_background_correction,
+    merge_segmentation,
+    merge_features,
+
+
+include: "rules/extraction.smk"  # part0, part1
+include: "rules/quality.smk"  # part2
+include: "rules/background.smk"  # part3, part4
+include: "rules/segmentation.smk"  # part5
+include: "rules/features.smk"  # part6

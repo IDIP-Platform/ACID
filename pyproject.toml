@@ -45,7 +45,7 @@ dependencies = [
   "statsmodels>=0.14.6",
   "tifffile>=2026.3.3",
   "torch>=2.10.0",
-  "torch-vision>=0.1.6.dev0",
+  "torchvision>=0.29.0",
 ]
 
 [project.optional-dependencies]
@@ -86,4 +86,9 @@ docs=[
 notebooks = [
     "ipykernel>=6.31.0",
     "nbstripout>=0.9.1",
+]
+
+pipeline = [
+    "snakemake>=9",
+    "snakemake-executor-plugin-slurm>=1",
 ]

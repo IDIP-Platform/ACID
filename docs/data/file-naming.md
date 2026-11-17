@@ -43,6 +43,10 @@ Metadata files are saved as CSV files under `metadata`:
 [date]_ACID_metadata_part[notebook_progressive_number].csv
 ```
 
+The [Snakemake pipeline](../workflows/snakemake.md) saves them without the date
+prefix, `ACID_metadata_part_<N>.csv`, because its output names must not change
+from day to day.
+
 ## Measurement Files
 
 Global measurement tables are saved at the output-data root:

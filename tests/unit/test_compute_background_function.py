@@ -109,6 +109,31 @@ def test_calculate_backgrounds_well_strategy_gives_one_background_per_well(
     assert list(backgrounds) == ["well1", "well2"]
 
 
+@pytest.mark.parametrize("n_threads, expected", [(3, 3), (None, "available")])
+def test_calculate_backgrounds_reads_and_averages_with_given_threads(
+    background_config, fov_metadata, monkeypatch, n_threads, expected
+):
+    from acid.image_processing.background import compute_background_function
+
+    calls = []
+    for name in ("import_fov", "calculate_background_function"):
+        original = getattr(compute_background_function, name)
+
+        def spy(*args, _original=original, **kwargs):
+            calls.append(kwargs["n_workers"])
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(compute_background_function, name, spy)
+    monkeypatch.setattr(compute_background_function, "_available_cpus", lambda: 7)
+    background_config.processing.background_function_strategy = 1
+
+    calculate_backgrounds(
+        fov_metadata, (5, 32, 32), background_config, n_threads=n_threads
+    )
+
+    assert calls == [7 if expected == "available" else expected] * 2
+
+
 def test_calculate_backgrounds_rejects_unknown_strategy(background_config):
     background_config.processing.background_function_strategy = 4
 
@@ -128,7 +153,9 @@ def test_calculate_backgrounds_rejects_missing_well_for_well_strategy(
         )
 
 
-def test_save_backgrounds_writes_fitted_background_per_group(background_config, tmp_path):
+def test_save_backgrounds_writes_fitted_background_per_group(
+    background_config, tmp_path
+):
     background_config.processing.background_function_strategy = 2
     backgrounds = {"well1": average_background(), "well2": average_background()}
 

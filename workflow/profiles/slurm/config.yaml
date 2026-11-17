@@ -1,0 +1,99 @@
+# Template for a SLURM cluster. Copy this folder, replace
+# every YOUR_... value with your cluster's account and partitions, and run the
+# Snakemake main process on a login node inside tmux/screen:
+#
+#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#       --profile workflow/profiles/<your profile> --config acid_config=configs/<id>.yaml
+#
+# The YOUR_... values are invalid on purpose: until they are replaced, sbatch
+# rejects the first job and nothing runs under a wrong account. This file sets
+# compute resources only; scientific parameters are in the ACID config, and
+# the number of FOVs per job in workflow/config.yaml (batch_sizes). The
+# resources below were measured on one SLURM cluster (205 FOVs of
+# 5 x 1024 x 1024); a batch rule's runtime must cover a whole
+# batch. Check partition limits with `sinfo`, and adjust memory and runtimes
+# with `sacct`/`seff` after the first run.
+executor: slurm
+# Jobs submitted at the same time; keep it below your cluster's job limit.
+jobs: 100
+printshellcmds: true
+rerun-incomplete: true
+keep-going: true
+# A failed job (e.g. out of memory) is submitted once more.
+retries: 1
+# Seconds to wait for output files on a shared file system.
+latency-wait: 60
+
+# Fallback for anything not listed below; every rule is listed explicitly.
+# No cpus_per_task here: it would override the rules' threads.
+default-resources:
+  slurm_account: "YOUR_ACCOUNT"
+  slurm_partition: "YOUR_CPU_PARTITION"
+  runtime: 5                     # minutes
+  mem_mb: 4000
+
+# Threads of every rule. Inside a job they set the number of threads the
+# rule uses; the SLURM CPU request is cpus_per_task below, kept equal.
+set-threads:
+  # part0 / part1
+  extract_acquisition: 16        # reading and decoding one ND2 file
+  merge_extraction: 1            # local rule (Snakemake main process)
+  split: 1                       # local rule
+  # part2
+  measure_quality: 1             # single-threaded per FOV
+  flag_quality: 1                # local rule
+  # part3 / part4
+  background_function: 16        # reading + median in threads; fit: one thread per channel (5)
+  correct_background: 1          # single-threaded per FOV
+  merge_background_correction: 1 # local rule
+  # part5
+  segment: 4                     # Cellpose pre/post-processing next to the GPU
+  merge_segmentation: 1          # local rule
+  # part6
+  extract_features: 1            # single-threaded per FOV
+  merge_features: 1              # local rule
+  all: 1                         # local rule (target only)
+
+# SLURM resources of every rule submitted as a job. Runtime in minutes,
+# memory in MB. Local rules run in the Snakemake main process and get none.
+set-resources:
+  # one job per raw .nd2 file (~1.5 min with 16 CPUs)
+  extract_acquisition:
+    cpus_per_task: 16
+    mem_mb: 32000
+    runtime: 30
+  # one job per batch of batch_sizes.measure_quality FOVs (~5.6 s per FOV)
+  measure_quality:
+    cpus_per_task: 1
+    mem_mb: 4000
+    runtime: 15
+  # one job; reads all unflagged training FOVs (~2 GB for 205 FOVs) and fits
+  # 5 channels side by side. The rolling-ball fit is single-threaded, so the
+  # job takes as long as one channel and depends on the CPU's single-core
+  # speed (per channel ~70 s on a recent CPU, ~200 s on an old one). If your
+  # cluster has node features, pick fast nodes with `constraint: "<node feature>"`.
+  background_function:
+    slurm_partition: "YOUR_LONG_CPU_PARTITION"
+    cpus_per_task: 16
+    mem_mb: 64000
+    runtime: 120
+  # one job per batch of batch_sizes.correct_background FOVs (~2.2 s per FOV)
+  correct_background:
+    cpus_per_task: 1
+    mem_mb: 4000
+    runtime: 10
+  # one job per batch of batch_sizes.segment FOVs (~0.3 s per FOV on an L40;
+  # the first job on a node also loads torch/CUDA, ~1-2 min)
+  segment:
+    slurm_partition: "YOUR_GPU_PARTITION"
+    # One whole GPU per job. `gres` works on most clusters; some
+    # reject --gpus=N, which the plugin's `gpu` resource would produce.
+    gres: "gpu:1"
+    cpus_per_task: 4
+    mem_mb: 16000
+    runtime: 10
+  # one job per batch of batch_sizes.extract_features FOVs (~14 s, up to 24 s per FOV)
+  extract_features:
+    cpus_per_task: 1
+    mem_mb: 16000
+    runtime: 30

@@ -15,6 +15,7 @@ For workflow-level explanations, start with the user guide or notebooks.
 | --- | --- |
 | [Data preparation](data-preparation.md) | Metadata formatting, category mapping, and train/test splitting. |
 | [Image processing](image-processing.md) | Metadata extraction, filtering, resizing, background correction, and image output. |
+| [Segmentation](segmentation.md) | Object segmentation stage: model input preparation, segmentation, mask saving. |
 | [Image quality control](image-quality-control.md) | QC metrics, flags, and display helpers. |
 | [Image measurement](image-measurement.md) | Global and local image statistics. |
 | [Feature extraction](feature-extraction.md) | Haralick, Hessian, structure tensor, intensity, and region-based features. |
@@ -27,7 +28,6 @@ Some experimental, script-like, or import-problematic modules are intentionally
 excluded from this first reference pass:
 
 - `acid.image_quality_control.measure_laplacian_var`
-- `acid.image_processing.segmentation_preprocessing`
 - `acid.main_df`
 - `acid.main_fm`
 - `acid.main_fm_develop`

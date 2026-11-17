@@ -21,3 +21,11 @@ rescaling, and OME-TIFF output.
 ::: acid.image_processing.rescale_intensity
 
 ::: acid.image_processing.resize_image
+
+::: acid.image_processing.segmentation_preprocessing
+
+::: acid.image_processing.fov_extraction
+
+::: acid.image_processing.background.compute_background_function
+
+::: acid.image_processing.background.apply_background_correction

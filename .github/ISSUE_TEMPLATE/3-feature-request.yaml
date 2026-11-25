@@ -34,11 +34,11 @@ body:
 
         **Example**
 
-        **Feature description**  
-        As an HPC user running ACID on large microscopy experiments,  
+        **Feature description**
+        As an HPC user running ACID on large microscopy experiments,
         I want ACID to record fields of view that fail during processing without stopping the full experiment run,
 
-        **Motivation**  
+        **Motivation**
         Large microscopy datasets may contain corrupted ND2 files, missing channels, empty fields of view,
         failed image quality checks, failed segmentations, or images with severe artifacts. One failed field
         of view should not prevent the remaining valid fields of view from being processed. Structured failure

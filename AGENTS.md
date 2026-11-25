@@ -56,6 +56,7 @@ and any checks skipped or blocked. Never claim a check passed unless it ran.
 
 ## Linting/Formatting
 
+- For new or edited Markdown prose, keep each paragraph on one source line and use editor soft wrap for reading. Preserve intentional line breaks in lists, tables, and code blocks; do not hard-wrap prose at 80 characters.
 - Use Ruff as the Python linter and formatter. Check changed Python files with
   `uv run --locked ruff check <paths>` and
   `uv run --locked ruff format --check <paths>`.

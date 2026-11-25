@@ -394,7 +394,9 @@ def make_segmentation_success_result(
             ),
             columns.metadata_df_file_name_clm_name: output_file,
             columns.metadata_df_method_clm_name: config.metadata.segmentation_method_name,
-            columns.metadata_df_method_version_clm_name: getattr(model, "version", None),
+            columns.metadata_df_method_version_clm_name: getattr(
+                model, "version", None
+            ),
             columns.metadata_df_diameter_clm_name: processing.diameter,
             columns.metadata_df_flow_threshold_clm_name: processing.flow_threshold,
             columns.metadata_df_cellprob_threshold_clm_name: processing.cellprob_threshold,

@@ -68,7 +68,9 @@ def get_feature_metadata_columns(dataframe_columns: DictConfig) -> list[str]:
     return [dataframe_columns[key] for key in FEATURE_METADATA_COLUMN_CONFIG_KEYS]
 
 
-def preprocess_field_of_view(field_of_view: np.ndarray, config: DictConfig) -> np.ndarray:
+def preprocess_field_of_view(
+    field_of_view: np.ndarray, config: DictConfig
+) -> np.ndarray:
     """Prepare a field of view for `skimage.measure.regionprops_table`.
 
     Moves the channel axis to the last position (the layout `regionprops`
@@ -456,7 +458,6 @@ def extract_features_for_fov(
         output_file=output_filename,
         config=config,
     )
-
 
 
 def extract_features_batch(

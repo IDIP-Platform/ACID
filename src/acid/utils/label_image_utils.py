@@ -13,15 +13,17 @@ def my_function(input_image):
     return median_functioned_image
 
 
-def label_image_custom_measurement(label_image:np.array,
-                                   intensity_image:np.array,
-                                   function:Callable,
-                                   column_name:str,
-                                   index:int|Sequence|None=None,
-                                   out_dtype:np.dtype|None=None,
-                                   default:int|float|None=None,
-                                   pass_position:bool=False,
-                                   label_clm_name:str|None=None)-> pd.DataFrame:
+def label_image_custom_measurement(
+    label_image: np.array,
+    intensity_image: np.array,
+    function: Callable,
+    column_name: str,
+    index: int | Sequence | None = None,
+    out_dtype: np.dtype | None = None,
+    default: int | float | None = None,
+    pass_position: bool = False,
+    label_clm_name: str | None = None,
+) -> pd.DataFrame:
     """
     Sequentially applies an arbitrary function (that works on array_like input) to subsets of an N-D image
     array specified by labels and index. The option exists to provide the function with positional parameters
@@ -72,17 +74,17 @@ def label_image_custom_measurement(label_image:np.array,
 
     - label_clm_name. str or None. Optional. Default "label". The name of the column where label values of
     measured objects are stored in the output dataframe.
-    
+
     Output. pandas dataframe. Each row is a labelled element present in label_image. By default all the
     labelled elements are present. Index can be used to restrict them to a subset. Two columns are present:
     - label. The value of the element in label_image.
     - column_name. The result function applied to intensity_image only for the pixels specified by label.
-    
+
     """
 
     # set default label column name
     if label_clm_name is None:
-        label_clm_name='label'
+        label_clm_name = "label"
 
     # get label_image's labels (here called indexes) if they are not provided as a function parameter
     if hasattr(index, "__len__"):
@@ -93,16 +95,18 @@ def label_image_custom_measurement(label_image:np.array,
         index = np.arange(1, number_of_index)
 
     # extract measurement per each desired labelled object
-    label_measurement = scipy.ndimage.labeled_comprehension(input=intensity_image,
-                                                            labels=label_image,
-                                                            index=index,
-                                                            func=function,
-                                                            out_dtype=out_dtype,
-                                                            default=default,
-                                                            pass_positions=pass_position)
-    
+    label_measurement = scipy.ndimage.labeled_comprehension(
+        input=intensity_image,
+        labels=label_image,
+        index=index,
+        func=function,
+        out_dtype=out_dtype,
+        default=default,
+        pass_positions=pass_position,
+    )
+
     # store measurements and corresponding labels in a dictionary
-    label_measurement_dict = {label_clm_name:index, column_name:label_measurement}
+    label_measurement_dict = {label_clm_name: index, column_name: label_measurement}
 
     # use the disctionary to form a pandas dataframe
     label_measurement_df = pd.DataFrame.from_dict(label_measurement_dict)
@@ -110,15 +114,17 @@ def label_image_custom_measurement(label_image:np.array,
     return label_measurement_df
 
 
-def get_secondary_object(primary_mask:np.array,
-                         secondary_label_image:np.array,
-                         threshold_overlap_fraction:float=0.7,
-                         properties:str|Sequence|None=None,
-                         extra_properties:Callable|Sequence|None=None,
-                         primary_label:int|None=None,
-                         primary_object_name:str|None=None,
-                         secondary_object_name:str|None=None,
-                         **kwargs)-> tuple:
+def get_secondary_object(
+    primary_mask: np.array,
+    secondary_label_image: np.array,
+    threshold_overlap_fraction: float = 0.7,
+    properties: str | Sequence | None = None,
+    extra_properties: Callable | Sequence | None = None,
+    primary_label: int | None = None,
+    primary_object_name: str | None = None,
+    secondary_object_name: str | None = None,
+    **kwargs,
+) -> tuple:
     """
     Given a primary segmentation mask (primary_mask) and a secondary labelled image (secondary_label_image)
     returns the individual, separated elements (or objects, or connected elements) in the
@@ -133,7 +139,7 @@ def get_secondary_object(primary_mask:np.array,
     assumed to be 0 forground values can be any positive integer. NOTE: make sure that it is intepreted by
     numpy as a boolean mask (e.g. change the dytpe to bool or np.uint8) alternatively it could be interpreted
     as fancy indexing.
-    
+
     - secondary_label_image. Labelled image (it can be obtained using https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.label).
     n-dimensional np.array of the same shape of primary_mask and
     connected region . Background values are spected to be 0s.
@@ -193,9 +199,9 @@ def get_secondary_object(primary_mask:np.array,
         - additional_property_{secondary_object or seconday_object_name}. As many columns as provided through the arguments
         properties and extra_properties. NOTE: the name of the column depend on the additional_property to measure.
         NOTE: the position of these columns could vary.
-    
+
     NOTE: this is an empty dataframe if no secondary object is identified.
-    
+
     - position 1. Numpy array. The identified secondary objects in secondary_label_image. This is secondary_label_image
     after removal of all the elements which have not been identified as secondary objects.
 
@@ -203,39 +209,51 @@ def get_secondary_object(primary_mask:np.array,
     # if custom proporties are passed to properties
     # assure tha 'area', 'label' and 'centroid are not passed as arguments
     # and instead add them (as they are mandatory)
-    if properties!=None:
-        if isinstance(properties,str):
-            assert properties!='area', "don't include 'area' in properties"
-            assert properties!='label', "don't include 'label' in properties"
-            assert properties!='centroid', "don't include 'centroid' in properties"
-            properties=[properties,'area','label','centroid']
+    if properties != None:
+        if isinstance(properties, str):
+            assert properties != "area", "don't include 'area' in properties"
+            assert properties != "label", "don't include 'label' in properties"
+            assert properties != "centroid", "don't include 'centroid' in properties"
+            properties = [properties, "area", "label", "centroid"]
         else:
-            assert 'area' not in properties, "don't include 'area' in properties"
-            assert 'label' not in properties, "don't include 'label' in properties"
-            assert 'centroid' not in properties, "don't include 'centroid' in properties"
-            properties.append('area')
-            properties.append('label')
-            properties.append('centroid')
-    
+            assert "area" not in properties, "don't include 'area' in properties"
+            assert "label" not in properties, "don't include 'label' in properties"
+            assert "centroid" not in properties, (
+                "don't include 'centroid' in properties"
+            )
+            properties.append("area")
+            properties.append("label")
+            properties.append("centroid")
+
     # if no custom proporty is passed to properties, assure that 'area,''label', 'centroid' are still measured
     else:
-        properties=['area','label','centroid']
+        properties = ["area", "label", "centroid"]
 
     # measure the areas of secondary_label_image's individual, separated objects and link them to their
     # respective label value. Further measure the properties and extra_properties of interest
-    properties_all_secondary_object = pd.DataFrame(regionprops_table(secondary_label_image,
-                                                                         properties=properties,
-                                                                         extra_properties=extra_properties,
-                                                                         **kwargs))
+    properties_all_secondary_object = pd.DataFrame(
+        regionprops_table(
+            secondary_label_image,
+            properties=properties,
+            extra_properties=extra_properties,
+            **kwargs,
+        )
+    )
 
     # set all label values in secondary_label_image to 0 if they don't overlap with primary mask.
     # NOTE: maintain the values of the secondary_label_image!
-    primary_filtered_secondary_label_image = np.where(primary_mask>0,secondary_label_image,0)
+    primary_filtered_secondary_label_image = np.where(
+        primary_mask > 0, secondary_label_image, 0
+    )
 
     # re-measure the areas of the secondary_label_image's labelled objects after having removed every pixel
     # which does not overlap with the primary_mask.
     # NOTE: link these new area measurements to their respective label value
-    new_properties_all_secondary_object = pd.DataFrame(regionprops_table(primary_filtered_secondary_label_image, properties=['area', 'label']))
+    new_properties_all_secondary_object = pd.DataFrame(
+        regionprops_table(
+            primary_filtered_secondary_label_image, properties=["area", "label"]
+        )
+    )
 
     # obtain the orginal area measurements and extra measurements for the
     # secondary_label_image's objects overlapping with primary_mask.
@@ -243,82 +261,102 @@ def get_secondary_object(primary_mask:np.array,
     # objects which overlap with primary_mask.
     # Form a dataframe with a column for the original area value (called intial_area), a column with the
     # area overlapping with primary_mask and a extra columns for the extra measurements
-    label_based_merged_secondary_object_properties = new_properties_all_secondary_object.merge(properties_all_secondary_object.rename(columns={'area':'initial_area'}),
-                                                                                               on='label', how='left')
+    label_based_merged_secondary_object_properties = (
+        new_properties_all_secondary_object.merge(
+            properties_all_secondary_object.rename(columns={"area": "initial_area"}),
+            on="label",
+            how="left",
+        )
+    )
 
     # add a column with the fraction between the area of a secondary object overlapping with primary_mask
     # and its original area
-    label_based_merged_secondary_object_properties['area_fraction']=label_based_merged_secondary_object_properties['area']/label_based_merged_secondary_object_properties['initial_area']
+    label_based_merged_secondary_object_properties["area_fraction"] = (
+        label_based_merged_secondary_object_properties["area"]
+        / label_based_merged_secondary_object_properties["initial_area"]
+    )
 
     # select rows (aka objects identified in secondary_label_image) whose area overlaps with primary_mask for
     # a fraction strictly higher than threshold_overlap_fraction
-    properties_true_secondary_objects=label_based_merged_secondary_object_properties[label_based_merged_secondary_object_properties['area_fraction']>threshold_overlap_fraction]
+    properties_true_secondary_objects = label_based_merged_secondary_object_properties[
+        label_based_merged_secondary_object_properties["area_fraction"]
+        > threshold_overlap_fraction
+    ]
 
     # get the labels of the identified secondary objects
-    secondary_object_labels = properties_true_secondary_objects['label'].to_numpy()
+    secondary_object_labels = properties_true_secondary_objects["label"].to_numpy()
 
     # only select identified secondary objects in secondary_label_image
-    secondary_object_label_array = np.where(np.isin(secondary_label_image, secondary_object_labels), secondary_label_image,0)
+    secondary_object_label_array = np.where(
+        np.isin(secondary_label_image, secondary_object_labels),
+        secondary_label_image,
+        0,
+    )
 
     # instantiate a dictionary to collect the column names and map them to their new names
     new_clm_mapper = {}
 
     # iterate through the columnss
     for clm in label_based_merged_secondary_object_properties.columns:
-        
-        if clm=='area':
-            if secondary_object_name!=None:
-                new_clm=f"area_overlap_{secondary_object_name}"
+        if clm == "area":
+            if secondary_object_name != None:
+                new_clm = f"area_overlap_{secondary_object_name}"
             else:
-                new_clm="area_overlap_secondary_object"
+                new_clm = "area_overlap_secondary_object"
 
         # rename the initial_area column (corresponding to the area of the secondary_object)
         # to 'area_secondary_object' or 'area_{secondary_object_name}'
         # if secondary_object_name argument is provided
-        elif clm=='initial_area':
-            if secondary_object_name!=None:
-                new_clm=f"area_{secondary_object_name}"
+        elif clm == "initial_area":
+            if secondary_object_name != None:
+                new_clm = f"area_{secondary_object_name}"
             else:
-                new_clm="area_secondary_object"
-            
+                new_clm = "area_secondary_object"
+
         # rename the rest of the columns to '{column}_secondary_object' or
         # '{column}_{secondary_object_name}' if secondary_object_name argument is provided
         else:
-            if secondary_object_name!=None:
-                new_clm=f"{clm}_{secondary_object_name}"
+            if secondary_object_name != None:
+                new_clm = f"{clm}_{secondary_object_name}"
             else:
-                new_clm=f"{clm}_secondary_object"
-            
+                new_clm = f"{clm}_secondary_object"
+
         # map old and new column name in the mapping dictionary
-        new_clm_mapper[clm]=new_clm
-        
+        new_clm_mapper[clm] = new_clm
+
     # rename measured properties columns
-    properties_secondary_objects_df = properties_true_secondary_objects.rename(mapper=new_clm_mapper, axis=1, copy=True)
-    
+    properties_secondary_objects_df = properties_true_secondary_objects.rename(
+        mapper=new_clm_mapper, axis=1, copy=True
+    )
+
     # get primary label if not provided
-    if primary_label==None:
-        primary_label=np.unique(primary_mask)
-        primary_label=primary_label[primary_label!=0][0]
-    
+    if primary_label == None:
+        primary_label = np.unique(primary_mask)
+        primary_label = primary_label[primary_label != 0][0]
+
     # add a column with the primary label call the column 'label_primary_object' or 'label_{primary_object_name}'
     # if primary_object_name is provided
-    if primary_object_name!=None:
+    if primary_object_name != None:
         primary_label_clm_name = f"label_{primary_object_name}"
     else:
-        primary_label_clm_name="label_primary_object"
-    properties_secondary_objects_df[primary_label_clm_name]=[primary_label for i in range(properties_secondary_objects_df.shape[0])]
+        primary_label_clm_name = "label_primary_object"
+    properties_secondary_objects_df[primary_label_clm_name] = [
+        primary_label for i in range(properties_secondary_objects_df.shape[0])
+    ]
 
     return properties_secondary_objects_df, secondary_object_label_array
 
 
-def measure_label_object_overlap(label_image_1:np.array,
-                                 label_image_2:np.array,
-                                 combined_dtype:np.dtype=np.uint32,
-                                 include_background:bool=False,
-                                 check_dtype_safety:bool=False,
-                                 label_1_clm:str|None=None,
-                                 label_2_clm:str|None=None,
-                                 counts_clm:str|None=None)-> pd.DataFrame:
+def measure_label_object_overlap(
+    label_image_1: np.array,
+    label_image_2: np.array,
+    combined_dtype: np.dtype = np.uint32,
+    include_background: bool = False,
+    check_dtype_safety: bool = False,
+    label_1_clm: str | None = None,
+    label_2_clm: str | None = None,
+    counts_clm: str | None = None,
+) -> pd.DataFrame:
     """
     Return a data frame where each row is every possible pair of overlapping labels in label_image_1 and label_image_2,
     (with the exclusion of pairs involving label_image_1 value 0 if include_background=False). Columns are the label value in
@@ -358,20 +396,24 @@ def measure_label_object_overlap(label_image_1:np.array,
     """
     # set default names for output dataframe columns
     if label_1_clm is None:
-        label_1_clm="label_1"
-    
+        label_1_clm = "label_1"
+
     if label_2_clm is None:
-        label_2_clm="label_2"
-    
+        label_2_clm = "label_2"
+
     if counts_clm is None:
-        counts_clm="counts"
+        counts_clm = "counts"
 
     if check_dtype_safety:
-        max_combined = (label_image_1.max() * (label_image_2.max() + 1)) + label_image_2.max()
+        max_combined = (
+            label_image_1.max() * (label_image_2.max() + 1)
+        ) + label_image_2.max()
         dtype_limit = np.iinfo(combined_dtype).max
         if max_combined >= dtype_limit:
-            raise ValueError(f"combined_dtype {combined_dtype} too small. Max required: {max_combined}, dtype can hold: {dtype_limit}")
-    
+            raise ValueError(
+                f"combined_dtype {combined_dtype} too small. Max required: {max_combined}, dtype can hold: {dtype_limit}"
+            )
+
     # Flatten both images
     labels1 = label_image_1.ravel().astype(combined_dtype)
     labels2 = label_image_2.ravel().astype(combined_dtype)
@@ -394,30 +436,34 @@ def measure_label_object_overlap(label_image_1:np.array,
     # Split back into label1 and label2
     label1_ids = unique_pairs // max_label2
     label2_ids = unique_pairs % max_label2
-    
+
     # Create a data frame
-    labels_overlap_count_dict = {label_1_clm:label1_ids,
-                                label_2_clm: label2_ids,
-                                counts_clm: unique_pairs_counts}
+    labels_overlap_count_dict = {
+        label_1_clm: label1_ids,
+        label_2_clm: label2_ids,
+        counts_clm: unique_pairs_counts,
+    }
     labels_overlap_counts_df = pd.DataFrame.from_dict(labels_overlap_count_dict)
 
     return labels_overlap_counts_df
 
 
-def measure_label_stack_overlap(label_image_stack,
-                                axis:int=0,
-                                combined_dtype:np.dtype=np.uint32,
-                                include_background:bool=True,
-                                check_dtype_safety:bool=False,
-                                label_clm:str|None=None,
-                                overlap_clm:str|None=None,
-                                sep:str|None=None)-> pd.DataFrame:
+def measure_label_stack_overlap(
+    label_image_stack,
+    axis: int = 0,
+    combined_dtype: np.dtype = np.uint32,
+    include_background: bool = True,
+    check_dtype_safety: bool = False,
+    label_clm: str | None = None,
+    overlap_clm: str | None = None,
+    sep: str | None = None,
+) -> pd.DataFrame:
     """
     Measure and collect the overlap between all the labels of all pairs of label images in a stack.
     The label_image_stack is expected to be a 2D or higher dimensional array where each sub-array along the specified axis
     is a labelled image. The function measures the overlap between all pairs of sub-arrays along the specified axis
     and returns a dataframe with the results.
-    
+
     Inputs:
     - label_image_stack. n-dimensional np.array. Must have at least 2 dimensions. A stack of labelled images. Each sub-array along the specified axis is a labelled image.
     - axis. int. Optional. Default 0. The axis along which to split the label_image_stack into sub-arrays.
@@ -441,17 +487,17 @@ def measure_label_stack_overlap(label_image_stack,
     resulting by splitting label_image_stack on the specified axis). All and only existing pairs of labels are present in the output dataframe.
 
     The columns are:
-    
+
     - {label_clm}{sep}0, {label_clm}{sep}1, ...: the label values from the label images in the label_image_stack. The final number indicates the index of the label image
     in the label_image_stack along the indicated axis.
 
     - {overlap_clm}{sep}0{sep}1, {overlap_clm}{sep}0{sep}2, ...: the area of overlap between the labels from the label images in the label_image_stack. The final numbers
     indicate the indices of the label image pair in the label_image_stack along the indicated axis.
     For example, area_overlap_0_1 is the area of overlap between label_0 and label_1.
-    
+
     - area{sep}0, area{sep}1, ...: the area of the labels from the label images in the label_image_stack. The final number indicates the index of the label image
     in the label_image_stack along the indicated axis.
-    
+
     - centroid-y{sep}0, centroid-x{sep}0, ...: the coordinates of the centroids of the labels from the label images in the label_image_stack. The
     second last number indicates the axis along which the centroid is measured, the last number indicates the index of the label image in the
     label_image_stack along the indicated axis.
@@ -460,12 +506,12 @@ def measure_label_stack_overlap(label_image_stack,
     The function can be used for selecting labeled regions of different sub-arrays based on their overlap.
     Here is an example for selecting tertiary objects (from label_image_3) that overlap with secondary objects (from label_image_2)
     which themselves overlap with a specific primary object (target_label) in label_image_1:
-    
+
     1) select only the rows containing the target_label of the primary object: df_1 = output_df[output_df['label_0']==target_label]
-    
+
     2) calculate what fraction of each secondary object's area overlaps with the primary object (not vice versa):
     df_1['overlap_fraction_1_0'] = df_1['area_overlap_0_1'] / df_1['area_1']
-    
+
     3) further select the rows of the secondary objects overlapping more than 70% with the primary object:
     df_2 = df_1[df_1['overlap_fraction_1_0']>0.7]
 
@@ -481,7 +527,7 @@ def measure_label_stack_overlap(label_image_stack,
     7) further select the rows of the tertiary objects overlapping more than 70% with the secondary object:
     df_4 = df_3[df_3['overlap_fraction_2_1']>0.7]
     NOTE that the tertiary object might overlap with the primary object less than 70%.
-    
+
     6 - optional) To strictly restrict to only those tertiary objects that overlap with both the secondary and the primary object,
     you can further calculate the fraction of the area of the tertiary objects which overlap with the primary object, and then filter:
     tertiary_object_labels = df_4['label_2'].to_numpy()
@@ -492,22 +538,33 @@ def measure_label_stack_overlap(label_image_stack,
 
     # set default variables for column naming
     if label_clm is None:
-        label_clm="label"
-    
+        label_clm = "label"
+
     if overlap_clm is None:
-        overlap_clm="areaoverlap"
-    
+        overlap_clm = "areaoverlap"
+
     if sep is None:
-        sep="_"
+        sep = "_"
 
     # check that label_image_stack is at least 2D and that the axis is valid
     assert label_image_stack.ndim > 1, "label_image_stack must be at least 2D"
-    assert axis < label_image_stack.ndim, f"axis {axis} is out of bounds for label_image_stack with {label_image_stack.ndim} dimensions"
+    assert axis < label_image_stack.ndim, (
+        f"axis {axis} is out of bounds for label_image_stack with {label_image_stack.ndim} dimensions"
+    )
     assert axis >= 0, f"axis {axis} must be non-negative"
-    assert label_image_stack.shape[axis] > 1, f"label_image_stack must have more than one label image along axis {axis}"
+    assert label_image_stack.shape[axis] > 1, (
+        f"label_image_stack must have more than one label image along axis {axis}"
+    )
 
     # split the label_image_stack along the specified axis
-    label_image_list = [np.squeeze(a, axis=axis) for a in np.split(label_image_stack, indices_or_sections=label_image_stack.shape[axis], axis=axis)]
+    label_image_list = [
+        np.squeeze(a, axis=axis)
+        for a in np.split(
+            label_image_stack,
+            indices_or_sections=label_image_stack.shape[axis],
+            axis=axis,
+        )
+    ]
 
     # initialize a list to collect the overlap dataframes
     overlap_df_collection = []
@@ -515,33 +572,38 @@ def measure_label_stack_overlap(label_image_stack,
     # collect the expected columns in the output dataframe
     expected_columns = [f"{label_clm}{sep}{i}" for i in range(len(label_image_list))]
     for i in range(len(label_image_list)):
-        for j in range(i+1, len(label_image_list)):
+        for j in range(i + 1, len(label_image_list)):
             expected_column = f"{overlap_clm}{sep}{i}{sep}{j}"
             expected_columns.append(expected_column)
 
     # iterate through the pairs of label images and measure overlaps
     for label_image_index_1, label_image_1 in enumerate(label_image_list):
-        label_image_index_2 = label_image_index_1+1
+        label_image_index_2 = label_image_index_1 + 1
         for label_image_2 in label_image_list[label_image_index_2:]:
-
             # measure the overlap between the two label images - NOTE: the default naming of the output columns is used
-            overlap_df_i = measure_label_object_overlap(label_image_1=label_image_1,
-                                                            label_image_2=label_image_2,
-                                                            combined_dtype=combined_dtype,
-                                                            include_background=include_background,
-                                                            check_dtype_safety=check_dtype_safety)
-                
+            overlap_df_i = measure_label_object_overlap(
+                label_image_1=label_image_1,
+                label_image_2=label_image_2,
+                combined_dtype=combined_dtype,
+                include_background=include_background,
+                check_dtype_safety=check_dtype_safety,
+            )
+
             # rename the columns of the overlap dataframe to match the label image indices
             # NOTE: the remapping is based on the default column naming from measure_label_object_overlap
-            overlap_df = overlap_df_i.rename(columns={'label_1': f"{label_clm}{sep}{label_image_index_1}",
-                                                          'label_2': f"{label_clm}{sep}{label_image_index_2}",
-                                                          'counts': f"{overlap_clm}{sep}{label_image_index_1}{sep}{label_image_index_2}"})
-            
+            overlap_df = overlap_df_i.rename(
+                columns={
+                    "label_1": f"{label_clm}{sep}{label_image_index_1}",
+                    "label_2": f"{label_clm}{sep}{label_image_index_2}",
+                    "counts": f"{overlap_clm}{sep}{label_image_index_1}{sep}{label_image_index_2}",
+                }
+            )
+
             # add the label columns for the other label images
             for clumn in expected_columns:
                 if clumn not in overlap_df.columns:
                     overlap_df[clumn] = np.nan
-                
+
             # append the overlap dataframe to the collection
             overlap_df_collection.append(overlap_df)
 
@@ -554,29 +616,36 @@ def measure_label_stack_overlap(label_image_stack,
     # iterate through the label images and measure the area and centroid of each label
     # NOTE: properties are fixed in this case, it is not possible to choose them ad hoc
     for label_image_index, label_image in enumerate(label_image_list):
+        label_image_area_coord_df_i = pd.DataFrame(
+            regionprops_table(label_image, properties=["area", "label", "centroid"])
+        )
 
-        label_image_area_coord_df_i = pd.DataFrame(regionprops_table(label_image, properties=['area', 'label', 'centroid']))
-        
         # rename the columns of the area dataframe to match the label image index
         column_mapper = {}
         for clm in label_image_area_coord_df_i.columns:
             new_clm = f"{clm}{sep}{label_image_index}"
             column_mapper[clm] = new_clm
 
-        label_image_area_coord_df = label_image_area_coord_df_i.rename(columns=column_mapper)
+        label_image_area_coord_df = label_image_area_coord_df_i.rename(
+            columns=column_mapper
+        )
 
         # merge the area and centroid information with the output dataframe
-        output_overlap_df_i = pd.merge(output_overlap_df,
-                                        label_image_area_coord_df,
-                                        how='left', on=f"{label_clm}{sep}{label_image_index}", copy=True)
-        
+        output_overlap_df_i = pd.merge(
+            output_overlap_df,
+            label_image_area_coord_df,
+            how="left",
+            on=f"{label_clm}{sep}{label_image_index}",
+            copy=True,
+        )
+
         # update the output dataframe with the new area and centroid information
         output_overlap_df = output_overlap_df_i
 
     # reorder the columns of the output dataframe
     # to have label columns first, then overlap columns, then area columns and finally centroid columns
     # this is done to make the output dataframe more readable and easier to interpret
-    
+
     # collect the column names in the desired order
     label_clm_collection = []
     overlap_clm_collection = []
@@ -588,22 +657,27 @@ def measure_label_stack_overlap(label_image_stack,
     for clm in output_overlap_df.columns:
         if f"{label_clm}{sep}" in clm:
             label_clm_collection.append(clm)
-        
+
         elif "label" in clm:
             label_clm_collection.append(clm)
-        
+
         elif overlap_clm in clm:
             overlap_clm_collection.append(clm)
-        
-        elif "area" in clm :
+
+        elif "area" in clm:
             area_clm_collection.append(clm)
-        
+
         else:
             centroid_clm_collection.append(clm)
-    
+
     # create the new column order
     # first label columns, then overlap columns, then area columns and finally centroid columns
-    new_clm_order = label_clm_collection + overlap_clm_collection + area_clm_collection + centroid_clm_collection
+    new_clm_order = (
+        label_clm_collection
+        + overlap_clm_collection
+        + area_clm_collection
+        + centroid_clm_collection
+    )
 
     # reorder columns
     output_overlap_df = output_overlap_df[new_clm_order]
@@ -611,8 +685,7 @@ def measure_label_stack_overlap(label_image_stack,
     return output_overlap_df
 
 
-def extract_value_per_label(intensity_image:np.array,
-                            label_image:np.array)-> dict:
+def extract_value_per_label(intensity_image: np.array, label_image: np.array) -> dict:
     """
     Extract the values from an image based on labelled objects.
 
@@ -639,19 +712,21 @@ def extract_value_per_label(intensity_image:np.array,
 
     # Create a DataFrame to hold the values and labels
     # This allows us to group the values by label easily
-    df = pd.DataFrame({'value': flat_intensity, 'label': flat_labels})
+    df = pd.DataFrame({"value": flat_intensity, "label": flat_labels})
 
     # Group values by label and apply a function to convert them to numpy arrays, finally convert to a dictionary
-    value_per_label_dict = df.groupby('label')['value'].apply(np.array).to_dict()
+    value_per_label_dict = df.groupby("label")["value"].apply(np.array).to_dict()
 
     return value_per_label_dict
 
 
-def permute_values_per_label(intensity_image_stack:np.array,
-                             label_image:np.array,
-                             axis:int=0,
-                             replace:bool=False,
-                             **kwargs)-> pd.DataFrame:
+def permute_values_per_label(
+    intensity_image_stack: np.array,
+    label_image: np.array,
+    axis: int = 0,
+    replace: bool = False,
+    **kwargs,
+) -> pd.DataFrame:
     """
     Permute the values in a stack of images based on labels in a label image. Values are independently permuted per each image of the
     stack. Values are permuted within each labelled object. The function preserves the link between the values and the labelled object.
@@ -661,7 +736,7 @@ def permute_values_per_label(intensity_image_stack:np.array,
     associated to the labelled object which are in the image, and permutes their position. The link between the pixel value and the label value is preserved.
 
     The function can be used to generate object-specific, channel-independed pixel value permutations, to be used as control measurements.
-    
+
     Example: one has a stack of two images. The images are the same field of view, but each containing a staining of a different protein. Individual cells are identified
     in the field of view by a segmentation mask transformed in label image, so that each cell is associated to a unique label value.
     The function allows to generate random purmutations of the pixels of each individual cell, and the permutation (aka, random repositining of the pixels)
@@ -699,25 +774,38 @@ def permute_values_per_label(intensity_image_stack:np.array,
     3) Randomly permute the order of the intensity values while keeping links to their labels.
     """
 
-    assert replace not in kwargs, "replace can't be passed to kwargs. Use the replace argument instead."
-    assert len(intensity_image_stack.shape)>1, "intensity_image_stack must have more than 2 dimensions."
+    assert replace not in kwargs, (
+        "replace can't be passed to kwargs. Use the replace argument instead."
+    )
+    assert len(intensity_image_stack.shape) > 1, (
+        "intensity_image_stack must have more than 2 dimensions."
+    )
 
     # split the intensity_image_stack along the specified axis
-    intensity_image_list = [np.squeeze(a, axis=axis) for a in np.split(intensity_image_stack, indices_or_sections=intensity_image_stack.shape[axis], axis=axis)]
-    
+    intensity_image_list = [
+        np.squeeze(a, axis=axis)
+        for a in np.split(
+            intensity_image_stack,
+            indices_or_sections=intensity_image_stack.shape[axis],
+            axis=axis,
+        )
+    ]
+
     # flatten the intensity sub-arrays and the label image
     flat_intensity_0 = intensity_image_list[0].ravel()
     flat_labels = label_image.ravel()
 
     # Link the flattened intensity values of the first intensity image to their labels in different dataframes
-    df_0 = pd.DataFrame({'label': flat_labels, 'value_0': flat_intensity_0})
-    
+    df_0 = pd.DataFrame({"label": flat_labels, "value_0": flat_intensity_0})
+
     # permute the intensity values of the first intensity image while keeping links to their labels
-    permutation_df_0 = df_0.sample(frac=1, replace=replace, **kwargs).reset_index(drop=True)
-    
+    permutation_df_0 = df_0.sample(frac=1, replace=replace, **kwargs).reset_index(
+        drop=True
+    )
+
     # sort the dataframe by label to ensure that the labels are aligned
-    permutation_df_0.sort_values(by='label', inplace=True)
-    
+    permutation_df_0.sort_values(by="label", inplace=True)
+
     # reset the index of the dataframe
     permutation_df_0.reset_index(drop=True, inplace=True)
 
@@ -728,26 +816,28 @@ def permute_values_per_label(intensity_image_stack:np.array,
         flat_intensity = intensity_image.ravel()
 
         # permute the intensity values while keeping links to their labels
-        df_i = pd.DataFrame({'label': flat_labels, f'value_{c+1}': flat_intensity})
+        df_i = pd.DataFrame({"label": flat_labels, f"value_{c + 1}": flat_intensity})
 
-        permutation_df_i = df_i.sample(frac=1, replace=replace,**kwargs).reset_index(drop=True)
-        
+        permutation_df_i = df_i.sample(frac=1, replace=replace, **kwargs).reset_index(
+            drop=True
+        )
+
         # sort the dataframes by label to ensure that the labels are aligned
-        permutation_df_i.sort_values(by='label', inplace=True)
-        
+        permutation_df_i.sort_values(by="label", inplace=True)
+
         # reset the index of the dataframes
         permutation_df_i.reset_index(drop=True, inplace=True)
 
         # add the permuted values from df_1 to df_0
         # this ensures that the values are aligned by label
-        permutation_df_0[f'value_{c+1}'] = permutation_df_i[f'value_{c+1}']
+        permutation_df_0[f"value_{c + 1}"] = permutation_df_i[f"value_{c + 1}"]
 
     return permutation_df_0
 
 
 def match_labels(container_labels, contained_labels, strict=True, verbose=True):
     """
-    Relabels a 'contained' label image so that each object inside it 
+    Relabels a 'contained' label image so that each object inside it
     inherits the label of the 'container' object it lies within.
 
     Includes validation for:
@@ -770,7 +860,7 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
     Returns
     -------
     contained_labels_matched : ndarray of int
-        New label image where each contained object has the same label 
+        New label image where each contained object has the same label
         as its corresponding container object.
     mapping : dict
         Dictionary mapping {old_contained_label: new_container_label}.
@@ -780,7 +870,7 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
     AssertionError
         If container_labels and contained_labels have different shapes.
     ValueError
-        If containment or one-to-one mapping assumptions are violated 
+        If containment or one-to-one mapping assumptions are violated
         and `strict=True`.
     """
 
@@ -793,7 +883,9 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
 
     # Initialize a new label image that will hold the remapped contained labels.
     # It starts filled with zeros (background).
-    contained_labels_matched = np.zeros_like(contained_labels, dtype=container_labels.dtype)
+    contained_labels_matched = np.zeros_like(
+        contained_labels, dtype=container_labels.dtype
+    )
 
     # Dictionary mapping old contained labels → new container labels.
     mapping = {}
@@ -804,13 +896,17 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
     # Iterate over each labeled object in the 'contained' image.
     for region in regionprops(contained_labels):
         contained_label = region.label  # The integer label of this contained region.
-        coords = region.coords          # Array of pixel/voxel coordinates belonging to this region.
+        coords = (
+            region.coords
+        )  # Array of pixel/voxel coordinates belonging to this region.
 
         # Determine which container labels these coordinates overlap with.
         overlapping_container_labels = np.unique(container_labels[tuple(coords.T)])
 
         # Remove any zeros (background) from the list of overlapping container labels.
-        overlapping_container_labels = overlapping_container_labels[overlapping_container_labels != 0]
+        overlapping_container_labels = overlapping_container_labels[
+            overlapping_container_labels != 0
+        ]
 
         # --- Validation #1: Each contained object must overlap exactly one container ---
         if len(overlapping_container_labels) == 0:
@@ -819,22 +915,30 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
             if strict:
                 raise ValueError(msg)  # Stop execution if strict mode is on.
             if verbose:
-                print(f"WARNING: {msg}")  # Otherwise, print a warning and skip this region.
+                print(
+                    f"WARNING: {msg}"
+                )  # Otherwise, print a warning and skip this region.
             continue
 
         if len(overlapping_container_labels) > 1:
             # This contained region overlaps more than one container.
-            msg = (f"Contained label {contained_label} overlaps multiple containers: "
-                   f"{list(overlapping_container_labels)}")
+            msg = (
+                f"Contained label {contained_label} overlaps multiple containers: "
+                f"{list(overlapping_container_labels)}"
+            )
             if strict:
                 raise ValueError(msg)
             if verbose:
                 print(f"WARNING: {msg}")
 
             # Non-strict mode: choose the container with the largest area of overlap.
-            counts = [(c, np.sum(container_labels[tuple(coords.T)] == c))
-                      for c in overlapping_container_labels]
-            container_label = max(counts, key=lambda x: x[1])[0]  # Container with max overlap.
+            counts = [
+                (c, np.sum(container_labels[tuple(coords.T)] == c))
+                for c in overlapping_container_labels
+            ]
+            container_label = max(counts, key=lambda x: x[1])[
+                0
+            ]  # Container with max overlap.
         else:
             # Exactly one overlapping container — ideal case.
             container_label = overlapping_container_labels[0]
@@ -842,13 +946,15 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
         # --- Validation #2: One-to-one mapping between contained and container ---
         # Ensure each container has at most one contained region assigned.
         if container_label in reverse_mapping:
-            msg = (f"Multiple contained labels map to container {container_label}: "
-                   f"{reverse_mapping[container_label]} and {contained_label}")
+            msg = (
+                f"Multiple contained labels map to container {container_label}: "
+                f"{reverse_mapping[container_label]} and {contained_label}"
+            )
             if strict:
                 raise ValueError(msg)
             if verbose:
                 print(f"WARNING: {msg}")
-                
+
             continue  # Skip this region to avoid overwriting.
 
         # Record the mapping (for reporting or reproducibility).
@@ -862,14 +968,15 @@ def match_labels(container_labels, contained_labels, strict=True, verbose=True):
     # Return the remapped label image and the mapping dictionary.
     return contained_labels_matched, mapping
 
-def exclude_label_on_edge(label_image:np.array)->np.array:
+
+def exclude_label_on_edge(label_image: np.array) -> np.array:
     """
     Remove labels touching the edges of the image.
     Parameters:
         label_image (ndarray): 2D or 3D label image (int).
     Returns:
         ndarray: New label image with edge-touching labels set to 0.
-    
+
     NOTE: the function defines "edges" as: labels that touch the first or last index in any dimension.
     Consequently, the function works on 2D and 3D arrays as the intuitive definition of "edge" for these situations
     matches the above definition. For higher dimensional arrays, the function will exclude labels which touch their
@@ -877,20 +984,19 @@ def exclude_label_on_edge(label_image:np.array)->np.array:
     """
     # copy input image
     label_image = label_image.copy()
-    
+
     # Get image shape
     img_shape = label_image.shape
 
     # Initialize a set to collect unique labels on the edges
     edge_labels = set()
-    
+
     # Iterate through the dimensions of the label_image
     for dim in range(label_image.ndim):
-
         # initialize place-holders for slicing the array on the first and last indexes of the dimension
         slc_start = [slice(None)] * label_image.ndim
         slc_end = [slice(None)] * label_image.ndim
-        
+
         # set 0 and -1 as indexes for the dim under iteration in the above initialized place-holders
         slc_start[dim] = 0
         slc_end[dim] = -1
@@ -905,6 +1011,5 @@ def exclude_label_on_edge(label_image:np.array)->np.array:
     # Zero out edge-touching labels
     mask = np.isin(label_image, list(edge_labels))
     label_image[mask] = 0
-    
-    return label_image
 
+    return label_image

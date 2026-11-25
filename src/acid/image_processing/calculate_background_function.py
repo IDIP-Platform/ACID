@@ -11,16 +11,18 @@ from concurrent.futures import ThreadPoolExecutor
 # import time
 
 
-def import_fov(df: pd.DataFrame,
-                fov_dir: str,
-                fov_clm: str,
-                fov_shape: tuple,
-                verbose: bool = True,
-                np_zero_kwargs: dict | None = None,
-                sample_df: bool = False,
-                sample_fraction: float = 0.5,
-                sample_kwargs: dict | None = None,
-                n_workers: int | None = None)-> np.ndarray:
+def import_fov(
+    df: pd.DataFrame,
+    fov_dir: str,
+    fov_clm: str,
+    fov_shape: tuple,
+    verbose: bool = True,
+    np_zero_kwargs: dict | None = None,
+    sample_df: bool = False,
+    sample_fraction: float = 0.5,
+    sample_kwargs: dict | None = None,
+    n_workers: int | None = None,
+) -> np.ndarray:
     """Stack the fields of view of `df` along a new last axis.
 
     `n_workers` > 1 reads the files in that many threads (tifffile releases
@@ -34,24 +36,31 @@ def import_fov(df: pd.DataFrame,
     if sample_df:
         if sample_kwargs is None:
             sample_kwargs = {"random_state": 42}
-        assert "frac" not in sample_kwargs, "sample_kwargs cannot contain 'frac' as it is passed separately via sample_fraction"
+        assert "frac" not in sample_kwargs, (
+            "sample_kwargs cannot contain 'frac' as it is passed separately via sample_fraction"
+        )
         df_copy = df_copy.sample(frac=sample_fraction, **sample_kwargs)
 
     # use default kwargs
     if np_zero_kwargs is None:
-        np_zero_kwargs = {'dtype':np.float32}
+        np_zero_kwargs = {"dtype": np.float32}
     else:
         # use float32 as default data type for container array
-        if 'dtype' not in np_zero_kwargs:
+        if "dtype" not in np_zero_kwargs:
             np_zero_kwargs["dtype"] = np.float32
 
     # Initialize an array container to store the fields of view for background function calculation
     # NOTE: the axis along which the fields of view are stored is hard coded to be the last one (i.e. -1)
-    container_arr_shape = tuple([a for a in fov_shape] + [df_copy.shape[0]]) # the shape of the container array is the shape of the fields of view + the number of fields of view (aka number of rows in the metadata dataframe)
+    container_arr_shape = tuple(
+        [a for a in fov_shape] + [df_copy.shape[0]]
+    )  # the shape of the container array is the shape of the fields of view + the number of fields of view (aka number of rows in the metadata dataframe)
     container_arr = np.zeros(container_arr_shape, **np_zero_kwargs)
 
     # read each field of view into its position along the last axis
-    fov_paths = [os.path.join(fov_dir, df_copy.loc[scene_idx, fov_clm]) for scene_idx in df_copy.index]
+    fov_paths = [
+        os.path.join(fov_dir, df_copy.loc[scene_idx, fov_clm])
+        for scene_idx in df_copy.index
+    ]
 
     def _read_into(position):
         container_arr[..., position] = tifffile.imread(fov_paths[position])
@@ -65,15 +74,17 @@ def import_fov(df: pd.DataFrame,
 
     if verbose:
         print(f"container_arr shape: {container_arr.shape}")
-    
+
     return container_arr
 
 
-def calculate_background_function(container_arr: np.ndarray,
-                                  method: str = "median",
-                                  axis: int = -1,
-                                  verbose: bool = True,
-                                  n_workers: int | None = None)-> np.ndarray:
+def calculate_background_function(
+    container_arr: np.ndarray,
+    method: str = "median",
+    axis: int = -1,
+    verbose: bool = True,
+    n_workers: int | None = None,
+) -> np.ndarray:
     """Average the stacked fields of view pixel-wise along `axis`.
 
     `n_workers` > 1 splits the pixels into that many chunks computed in
@@ -85,7 +96,9 @@ def calculate_background_function(container_arr: np.ndarray,
     elif method == "mean":
         reduce = np.mean
     else:
-        raise ValueError(f"method {method} not recognized. Please use 'median' or 'mean'.")
+        raise ValueError(
+            f"method {method} not recognized. Please use 'median' or 'mean'."
+        )
 
     # NOTE: the axis along which the fields of view are stored was hard coded to be the last one (i.e. -1). See container_arr initialization and population above.
     if n_workers is None or n_workers <= 1:
@@ -96,29 +109,35 @@ def calculate_background_function(container_arr: np.ndarray,
         pixels = stack.reshape(-1, stack.shape[-1])
         bounds = np.linspace(0, pixels.shape[0], n_workers + 1, dtype=int)
         with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            chunks = list(executor.map(lambda a, b: reduce(pixels[a:b], axis=-1), bounds[:-1], bounds[1:]))
+            chunks = list(
+                executor.map(
+                    lambda a, b: reduce(pixels[a:b], axis=-1), bounds[:-1], bounds[1:]
+                )
+            )
         background_function = np.concatenate(chunks).reshape(stack.shape[:-1])
 
     if verbose:
         print(f"background_function shape: {background_function.shape}")
-    
+
     return background_function
 
-def calculate_bg_funct_per_condition(df: pd.DataFrame,
-                                     condition_clm:str,
-                                     fov_dir:str,
-                                     fov_clm: str,
-                                     fov_shape:tuple,
-                                     method:str='median',
-                                     stack_axis:int=-1,
-                                     verbose:bool=True,
-                                     )->dict:
+
+def calculate_bg_funct_per_condition(
+    df: pd.DataFrame,
+    condition_clm: str,
+    fov_dir: str,
+    fov_clm: str,
+    fov_shape: tuple,
+    method: str = "median",
+    stack_axis: int = -1,
+    verbose: bool = True,
+) -> dict:
 
     # copy df to avoid modification
     df_copy = df.copy()
 
     # Get all unique conditions in the input dataframe for the condition target column
-    unique_conditions= df_copy[condition_clm].unique()
+    unique_conditions = df_copy[condition_clm].unique()
     print(f"unique conditions: {unique_conditions}")
     print("--- --- ---")
 
@@ -127,34 +146,33 @@ def calculate_bg_funct_per_condition(df: pd.DataFrame,
 
     # iterate over the unique conditions
     for uni_cond in unique_conditions:
-
         if verbose:
             print("--- --- ---", uni_cond)
-        
+
         # filter the input dataframe to select only the rows corresponding to the current condition
         df_condition = df_copy[df_copy[condition_clm] == uni_cond]
 
         # initialize a container array for the current condition
-        container_arr_condition = import_fov(df=df_condition,
-                                             fov_dir=fov_dir,
-                                             fov_clm=fov_clm,
-                                             fov_shape=fov_shape)
+        container_arr_condition = import_fov(
+            df=df_condition, fov_dir=fov_dir, fov_clm=fov_clm, fov_shape=fov_shape
+        )
 
         # calculate the background function for the current condition
-        background_function_condition = calculate_background_function(container_arr=container_arr_condition,
-                                                                      method=method,
-                                                                      axis=stack_axis,
-                                                                      verbose=verbose)
+        background_function_condition = calculate_background_function(
+            container_arr=container_arr_condition,
+            method=method,
+            axis=stack_axis,
+            verbose=verbose,
+        )
 
         # add the calculated background function to the dictionary
         background_functions_per_condition[uni_cond] = background_function_condition
-    
+
     return background_functions_per_condition
 
 
-
 def polyfit2d(x, y, z, kx=3, ky=3, order=None):
-    '''
+    """
     === === ===
     Source - https://stackoverflow.com/a/57923405
     Posted by Paddy Harrison, modified by community. See post 'Timeline' for change history
@@ -191,12 +209,12 @@ def polyfit2d(x, y, z, kx=3, ky=3, order=None):
     rank: int
     s: np.ndarray
 
-    '''
+    """
 
     # grid coords
     x, y = np.meshgrid(x, y)
     # coefficient array, up to x^kx, y^ky
-    coeffs = np.ones((kx+1, ky+1))
+    coeffs = np.ones((kx + 1, ky + 1))
 
     # solve array
     a = np.zeros((coeffs.size, x.size))
@@ -214,37 +232,39 @@ def polyfit2d(x, y, z, kx=3, ky=3, order=None):
     return np.linalg.lstsq(a.T, np.ravel(z), rcond=None)
 
 
-def get_polyfit_background_function(background_function: np.ndarray,
-                                kx: int = 3,
-                                ky: int = 3,
-                                order: int = None,
-                                verbose: bool = True)-> np.ndarray:
+def get_polyfit_background_function(
+    background_function: np.ndarray,
+    kx: int = 3,
+    ky: int = 3,
+    order: int = None,
+    verbose: bool = True,
+) -> np.ndarray:
     """
     Fit a 2d polynomial to the background function and return the fitted polynomial as a 2d array.
-    
+
     Parameters
     ----------
     background_function: np.ndarray
         The background function to fit the polynomial to.
-    
+
     kx: int, default is 3
         The order of the polynomial in the x direction.
-    
+
     ky: int, default is 3
         The order of the polynomial in the y direction.
-    
+
     order: int or None, default is None
         If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
         If int, coefficients up to a maximum of kx+ky <= order are considered.
-    
+
     verbose: bool, default is True
         If True, print the shape of the fitted polynomial background function.
-    
+
     Returns
     -------
     np.ndarray
         The fitted polynomial background function as a 2d array.
-     
+
     """
     # copy the background function to avoid modifying the original one
     background_function_copy = background_function.copy()
@@ -254,83 +274,95 @@ def get_polyfit_background_function(background_function: np.ndarray,
     y = np.arange(background_function_copy.shape[0])
 
     # fit a 2d polynomial to the background function
-    soln, residuals, rank, s = polyfit2d(x, y, background_function_copy, kx=kx, ky=ky, order=order)
+    soln, residuals, rank, s = polyfit2d(
+        x, y, background_function_copy, kx=kx, ky=ky, order=order
+    )
 
     # reshape the solution to get the polynomial coefficients in a 2d array
-    poly_coeffs = soln.reshape((kx+1, ky+1))
+    poly_coeffs = soln.reshape((kx + 1, ky + 1))
 
     # evaluate the fitted polynomial on the grid defined by x and y
     polyfit_background_function = np.polynomial.polynomial.polygrid2d(x, y, poly_coeffs)
 
     if verbose:
         print(f"polyfit_background_function shape: {polyfit_background_function.shape}")
-    
+
     return polyfit_background_function
 
-def get_polyfit_bg_funct_channel(background_function: np.ndarray,
-                                    channel_axis: int,
-                                    kx: int | tuple = 3,
-                                    ky: int | tuple = 3,
-                                    order: int | tuple | None = None,
-                                    verbose: bool = True)-> np.ndarray:
+
+def get_polyfit_bg_funct_channel(
+    background_function: np.ndarray,
+    channel_axis: int,
+    kx: int | tuple = 3,
+    ky: int | tuple = 3,
+    order: int | tuple | None = None,
+    verbose: bool = True,
+) -> np.ndarray:
     """
     Fit a 2d polynomial to the background function for each channel and return the fitted polynomial background functions as a 3d array.
-    
+
     Parameters
     ----------
     background_function: np.ndarray
         The background function to fit the polynomial to. The background function is expected to have a channel axis along which the different channels are organized.
-    
+
     channel_axis: int
         The axis along which the channels are organized in the background function array.
-    
+
     kx: int or tuple of ints, default is 3
         The order of the polynomial in the x direction.
         If tuple of ints, the order of the polynomial in the x direction can be different for each channel.
         The length of the tuple should be equal to the number of channels.
         A tuple of ints must be passed also to ky and order (if not None) in this case.
-    
+
     ky: int or tuple of ints, default is 3
         The order of the polynomial in the y direction.
         If tuple of ints, the order of the polynomial in the y direction can be different for each channel.
         The length of the tuple should be equal to the number of channels.
         A tuple of ints must be passed also to kx and order (if not None) in this case.
-    
+
     order: int or tuple of ints or None, default is None
         If None, all coefficients up to maxiumum kx, ky, ie. up to and including x^kx*y^ky, are considered.
         If int, coefficients up to a maximum of kx+ky <= order are considered.
         If tuple of ints, the maximum order of the polynomial coefficients to consider can be different for each channel.
         The length of the tuple should be equal to the number of channels.
         A tuple of ints must be passed also to kx and ky in this case.
-    
+
     verbose: bool, default is True
         If True, print the shape of the fitted polynomial background function for each channel.
-    
+
     Returns
     -------
     np.ndarray
         The fitted polynomial background functions for each channel as a 3d array.
         The channel axis is the same as the input background function.
     """
-    
+
     # if kx, ky and order are ints, convert them to tuples of ints with length equal to the number of channels in the background function
     if isinstance(kx, int):
         kx = tuple([kx] * background_function.shape[channel_axis])
-    
+
     if isinstance(ky, int):
         ky = tuple([ky] * background_function.shape[channel_axis])
-    
+
     if isinstance(order, int) or order is None:
         order = tuple([order] * background_function.shape[channel_axis])
-    
+
     # check if kx, ky and order are tuples and if their length is equal to the number of channels
     # in the background function
     if isinstance(kx, tuple) or isinstance(ky, tuple) or isinstance(order, tuple):
-        if not (isinstance(kx, tuple) and isinstance(ky, tuple) and isinstance(order, tuple)):
-            raise ValueError("If kx, ky or order is a tuple, all of them must be tuples.")
-        if not (len(kx) == len(ky) == len(order) == background_function.shape[channel_axis]):
-            raise ValueError("If kx, ky or order is a tuple, their length must be equal to the number of channels in the background function.")
-    
+        if not (
+            isinstance(kx, tuple) and isinstance(ky, tuple) and isinstance(order, tuple)
+        ):
+            raise ValueError(
+                "If kx, ky or order is a tuple, all of them must be tuples."
+            )
+        if not (
+            len(kx) == len(ky) == len(order) == background_function.shape[channel_axis]
+        ):
+            raise ValueError(
+                "If kx, ky or order is a tuple, their length must be equal to the number of channels in the background function."
+            )
 
     # copy the background function to avoid modifying the original one
     background_function_copy = background_function.copy()
@@ -346,21 +378,21 @@ def get_polyfit_bg_funct_channel(background_function: np.ndarray,
 
     # for each channel, fit a 2d polynomial to the background function and store the result
     for ch, bg_funct_ch in enumerate(unstacked_bg_funct):
-
         if verbose:
             print(f"Processing channel {ch}...")
-        
+
         # fit a 2d polynomial to the background function for this channel
-        polyfit_bg_funct_ch = get_polyfit_background_function(bg_funct_ch, kx=kx[ch], ky=ky[ch], order=order[ch], verbose=verbose)
+        polyfit_bg_funct_ch = get_polyfit_background_function(
+            bg_funct_ch, kx=kx[ch], ky=ky[ch], order=order[ch], verbose=verbose
+        )
 
         # store the fitted polynomial background function for this channel
         polyfit_bg_funct_channel[..., ch] = polyfit_bg_funct_ch
-    
+
     # move the channel axis back to its original position
     polyfit_bg_funct_channel = np.moveaxis(polyfit_bg_funct_channel, -1, channel_axis)
 
     return polyfit_bg_funct_channel
-
 
 
 def compute_simple_background_2d(
@@ -445,8 +477,12 @@ def compute_simple_background_2d(
         convolve_kwargs = {}
 
     # Prevent accidental overriding of core parameters
-    assert "radius" not in _rb_kwargs, "Do not pass 'radius' in _rb_kwargs; use ball_radius."
-    assert "sigma" not in gaussian_kwargs, "Do not pass 'sigma' in gaussian_kwargs; use gau_smooth."
+    assert "radius" not in _rb_kwargs, (
+        "Do not pass 'radius' in _rb_kwargs; use ball_radius."
+    )
+    assert "sigma" not in gaussian_kwargs, (
+        "Do not pass 'sigma' in gaussian_kwargs; use gau_smooth."
+    )
 
     # Set default convolution behavior if not overridden
     convolve_defaults = {"mode": "same", "boundary": "symm"}
@@ -468,7 +504,9 @@ def compute_simple_background_2d(
     if gau_smooth is not None:
         if isinstance(gau_smooth, int):
             # Apply Gaussian smoothing with sigma equal to the provided integer
-            background = gaussian_filter(background, sigma=gau_smooth, **gaussian_kwargs)
+            background = gaussian_filter(
+                background, sigma=gau_smooth, **gaussian_kwargs
+            )
         else:
             # Apply convolution with a user-provided kernel
             kernel = np.asarray(gau_smooth)
@@ -544,7 +582,10 @@ def compute_simple_background_2d_stack(
         if image.ndim > 2:
             raise ValueError("axis=None requires a 2D input image.")
         # Compute background using compute_simple_background_2d
-        from __main__ import compute_simple_background_2d  # Avoid circular import if in the same module
+        from __main__ import (
+            compute_simple_background_2d,
+        )  # Avoid circular import if in the same module
+
         return compute_simple_background_2d(
             image=image,
             ball_radius=ball_radius,
@@ -561,11 +602,15 @@ def compute_simple_background_2d_stack(
         if image.ndim != 3:
             raise ValueError("axis specified requires a 3D input image.")
         if axis < 0 or axis >= image.ndim:
-            raise ValueError(f"axis {axis} is out of bounds for image with shape {image.shape}.")
+            raise ValueError(
+                f"axis {axis} is out of bounds for image with shape {image.shape}."
+            )
 
         # Prepare output array of the same shape as input
         output_shape = list(image.shape)
-        backgrounds = np.empty_like(image, dtype=dtype if dtype is not None else image.dtype)
+        backgrounds = np.empty_like(
+            image, dtype=dtype if dtype is not None else image.dtype
+        )
 
         # Iterate over the slices along the specified axis
         for idx in range(image.shape[axis]):
@@ -599,7 +644,6 @@ def compute_simple_background_2d_stack(
                 backgrounds[:, :, idx] = bg_slice
 
         return backgrounds
-
 
 
 def compute_simple_background_nd(
@@ -644,7 +688,7 @@ def compute_simple_background_nd(
     -------
     background : np.ndarray
         Estimated background.
-    
+
     Edge Cases
     ----------
     - Empty input:
@@ -701,8 +745,12 @@ def compute_simple_background_nd(
     convolve_kwargs = convolve_kwargs or {}
 
     # Prevent overriding key params
-    assert "radius" not in _rb_kwargs, "Do not pass 'radius' in _rb_kwargs; use ball_radius."
-    assert "sigma" not in gaussian_kwargs, "Do not pass 'sigma' in gaussian_kwargs; use gau_smooth."
+    assert "radius" not in _rb_kwargs, (
+        "Do not pass 'radius' in _rb_kwargs; use ball_radius."
+    )
+    assert "sigma" not in gaussian_kwargs, (
+        "Do not pass 'sigma' in gaussian_kwargs; use gau_smooth."
+    )
 
     # Copy input image
     img = np.copy(image)
@@ -719,7 +767,9 @@ def compute_simple_background_nd(
     if gau_smooth is not None:
         if isinstance(gau_smooth, int):
             # Gaussian filter supports n-dimensional data
-            background = gaussian_filter(background, sigma=gau_smooth, **gaussian_kwargs)
+            background = gaussian_filter(
+                background, sigma=gau_smooth, **gaussian_kwargs
+            )
         else:
             # Use n-dimensional convolution
             kernel = np.asarray(gau_smooth)
@@ -732,16 +782,25 @@ def compute_simple_background_nd(
     return background
 
 
-
 def compute_simple_background(
     image: np.ndarray,
     ball_radius: Union[int, Sequence[int]] = 50,
     white_background: Union[bool, Sequence[bool]] = False,
-    _rb_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
-    invert_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
-    gau_smooth: Optional[Union[int, np.ndarray, Sequence[Optional[Union[int, np.ndarray]]]]] = None,
-    gaussian_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
-    convolve_kwargs: Optional[Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]] = None,
+    _rb_kwargs: Optional[
+        Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]
+    ] = None,
+    invert_kwargs: Optional[
+        Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]
+    ] = None,
+    gau_smooth: Optional[
+        Union[int, np.ndarray, Sequence[Optional[Union[int, np.ndarray]]]]
+    ] = None,
+    gaussian_kwargs: Optional[
+        Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]
+    ] = None,
+    convolve_kwargs: Optional[
+        Union[Dict[str, Any], Sequence[Optional[Dict[str, Any]]]]
+    ] = None,
     dtype: Optional[np.dtype] = None,
     axis: Optional[int] = None,
     n_workers: Optional[int] = None,
@@ -821,36 +880,40 @@ def compute_simple_background(
     # Case 1: axis is None → process full image using the original function
     if axis is None:
         return compute_simple_background_nd(
-            image=image,                      # pass image
-            ball_radius=ball_radius,          # rolling ball radius
-            white_background=white_background, # invert if needed
-            _rb_kwargs=_rb_kwargs,            # extra rolling-ball options
-            invert_kwargs=invert_kwargs,      # extra inversion options
-            gau_smooth=gau_smooth,            # smoothing parameter
+            image=image,  # pass image
+            ball_radius=ball_radius,  # rolling ball radius
+            white_background=white_background,  # invert if needed
+            _rb_kwargs=_rb_kwargs,  # extra rolling-ball options
+            invert_kwargs=invert_kwargs,  # extra inversion options
+            gau_smooth=gau_smooth,  # smoothing parameter
             gaussian_kwargs=gaussian_kwargs,  # extra gaussian options
             convolve_kwargs=convolve_kwargs,  # extra convolution options
-            dtype=dtype,                      # desired output type
+            dtype=dtype,  # desired output type
         )
 
     # Normalize axis to always be positive
-    axis = int(axis)                         # ensure axis is an integer
-    if axis < 0:                             # negative axis support
-        axis += image.ndim                   # convert to positive
-    if axis < 0 or axis >= image.ndim:       # check valid axis
+    axis = int(axis)  # ensure axis is an integer
+    if axis < 0:  # negative axis support
+        axis += image.ndim  # convert to positive
+    if axis < 0 or axis >= image.ndim:  # check valid axis
         raise ValueError(f"Invalid axis {axis} for image with ndim {image.ndim}")
 
     # Move the processing axis to the front for easy iteration
-    moved = np.moveaxis(image, axis, 0)      # shape now: (slices, ...)
-    n_slices = moved.shape[0]                # number of slices along this axis
+    moved = np.moveaxis(image, axis, 0)  # shape now: (slices, ...)
+    n_slices = moved.shape[0]  # number of slices along this axis
 
     # Helper to expand single value to a list or validate a sequence
     def _expand_param(param, name):
-        if isinstance(param, Sequence) and not isinstance(param, (str, bytes, np.ndarray)):
-            if len(param) != n_slices:       # check sequence length matches slices
-                raise ValueError(f"{name} must have length {n_slices}, got {len(param)}")
-            return list(param)               # already a valid sequence
+        if isinstance(param, Sequence) and not isinstance(
+            param, (str, bytes, np.ndarray)
+        ):
+            if len(param) != n_slices:  # check sequence length matches slices
+                raise ValueError(
+                    f"{name} must have length {n_slices}, got {len(param)}"
+                )
+            return list(param)  # already a valid sequence
         else:
-            return [param] * n_slices       # broadcast single value to all slices
+            return [param] * n_slices  # broadcast single value to all slices
 
     # Expand all slice-dependent parameters
     ball_radius_list = _expand_param(ball_radius, "ball_radius")
@@ -862,7 +925,7 @@ def compute_simple_background(
     convolve_kwargs_list = _expand_param(convolve_kwargs, "convolve_kwargs")
 
     # Validate map_kwargs
-    if map_kwargs is None:                    # if None, make empty dict
+    if map_kwargs is None:  # if None, make empty dict
         map_kwargs = {}
     else:
         allowed_keys = {"timeout", "chunksize"}  # only these keys allowed
@@ -875,33 +938,38 @@ def compute_simple_background(
     # Worker function to process a single slice
     def _process_slice(i):
         return compute_simple_background_nd(
-            image=moved[i],                       # i-th slice
-            ball_radius=ball_radius_list[i],      # slice-specific radius
-            white_background=white_background_list[i], # slice-specific inversion
-            _rb_kwargs=rb_kwargs_list[i],         # slice-specific rolling-ball kwargs
+            image=moved[i],  # i-th slice
+            ball_radius=ball_radius_list[i],  # slice-specific radius
+            white_background=white_background_list[i],  # slice-specific inversion
+            _rb_kwargs=rb_kwargs_list[i],  # slice-specific rolling-ball kwargs
             invert_kwargs=invert_kwargs_list[i],  # slice-specific invert kwargs
-            gau_smooth=gau_smooth_list[i],        # slice-specific smoothing
-            gaussian_kwargs=gaussian_kwargs_list[i], # slice-specific Gaussian kwargs
-            convolve_kwargs=convolve_kwargs_list[i], # slice-specific convolution kwargs
-            dtype=dtype,                           # final data type
+            gau_smooth=gau_smooth_list[i],  # slice-specific smoothing
+            gaussian_kwargs=gaussian_kwargs_list[i],  # slice-specific Gaussian kwargs
+            convolve_kwargs=convolve_kwargs_list[
+                i
+            ],  # slice-specific convolution kwargs
+            dtype=dtype,  # final data type
         )
 
     # Decide whether to run in parallel or sequentially
-    if n_workers is None or n_workers == 1:     # sequential execution
+    if n_workers is None or n_workers == 1:  # sequential execution
         backgrounds = [_process_slice(i) for i in range(n_slices)]
-    else:                                       # parallel execution using threads
+    else:  # parallel execution using threads
         advice_n_workers = min(moved.shape[0], os.cpu_count())  # slices vs CPU cores
-        print(f"Running in parallel with n_workers={n_workers}."
-              f"Consider setting n_workers={advice_n_workers} for optimal performance.")
+        print(
+            f"Running in parallel with n_workers={n_workers}."
+            f"Consider setting n_workers={advice_n_workers} for optimal performance."
+        )
         with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            backgrounds = list(executor.map(_process_slice, range(n_slices), **map_kwargs))
+            backgrounds = list(
+                executor.map(_process_slice, range(n_slices), **map_kwargs)
+            )
 
     # Stack the processed slices back along axis 0
-    stacked = np.stack(backgrounds, axis=0)     # shape (slices, ...)
+    stacked = np.stack(backgrounds, axis=0)  # shape (slices, ...)
 
     # Move axis back to original position
-    return np.moveaxis(stacked, 0, axis)        # final image with original shape
-
+    return np.moveaxis(stacked, 0, axis)  # final image with original shape
 
 
 # def compute_simple_background(
@@ -1018,5 +1086,3 @@ def compute_simple_background(
 #         print(f"[compute_simple_background] Total time: {elapsed:.3f} s")
 
 #     return result
-
-

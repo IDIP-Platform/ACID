@@ -90,7 +90,6 @@ def discover_acquisitions(cfg: DictConfig) -> list[Path]:
     return acquisitions
 
 
-
 def extract_acquisition(acquisition: Path, cfg: DictConfig) -> list[pd.Series]:
     """Split one raw acquisition into one OME-TIFF per scene (field of view).
 
@@ -200,7 +199,6 @@ def extract_acquisition(acquisition: Path, cfg: DictConfig) -> list[pd.Series]:
     return scenes_metadata_collection
 
 
-
 def extract_fields_of_view(acquisitions: list[Path], cfg: DictConfig) -> pd.DataFrame:
     """Extract every scene of every acquisition and collect their metadata.
 
@@ -228,4 +226,3 @@ def extract_fields_of_view(acquisitions: list[Path], cfg: DictConfig) -> pd.Data
     if not scenes:
         raise ValueError("No fields of view were extracted")
     return pd.concat(scenes, axis=1).T
-

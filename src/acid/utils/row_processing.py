@@ -153,7 +153,9 @@ def update_metadata_with_results(
         column for column in metadata_columns if column not in results_df.columns
     ]
     if missing_result_columns:
-        raise KeyError(f"Results are missing metadata columns: {missing_result_columns}")
+        raise KeyError(
+            f"Results are missing metadata columns: {missing_result_columns}"
+        )
 
     missing_metadata_columns = [
         column for column in metadata_columns if column not in metadata_df.columns

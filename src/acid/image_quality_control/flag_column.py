@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Sequence, Optional, Any
 
+
 def add_flag_column(
     df: pd.DataFrame,
     lowpass_thres: Sequence[float],
@@ -97,7 +98,7 @@ def add_flag_column(
 
     # set default flag_column name
     if flag_col is None:
-        flag_col="flag"
+        flag_col = "flag"
 
     # --------------------------------------------------
     # 1. Select columns to apply threshold logic
@@ -107,10 +108,11 @@ def add_flag_column(
     # --------------------------------------------------
     # 2. Validate threshold dimensions
     # --------------------------------------------------
-    if len(df_sel.columns) != len(lowpass_thres) or len(df_sel.columns) != len(highpass_thres):
+    if len(df_sel.columns) != len(lowpass_thres) or len(df_sel.columns) != len(
+        highpass_thres
+    ):
         raise ValueError(
-            "lowpass_thres and highpass_thres must match the number "
-            "of selected columns"
+            "lowpass_thres and highpass_thres must match the number of selected columns"
         )
 
     # --------------------------------------------------

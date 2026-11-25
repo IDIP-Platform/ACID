@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------
 
 
-def update_background_metadata(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd.DataFrame:
+def update_background_metadata(
+    metadata_df: pd.DataFrame, cfg: DictConfig
+) -> pd.DataFrame:
     """Record the background-function settings in every metadata row.
 
     Adds the processing date, the averaging method and the fit parameters.
@@ -61,9 +63,7 @@ def update_background_metadata(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd
     updated = metadata_df.copy()
     proc, columns = cfg.processing, cfg.metadata.dataframe_columns
     updated[columns.background_df_date_clm_name] = (
-        datetime.now()
-        .astimezone()
-        .strftime(columns.background_df_meta_date_format)
+        datetime.now().astimezone().strftime(columns.background_df_meta_date_format)
     )
     updated[columns.background_df_avg_method_clm_name] = (
         proc.background_function_avg_method
@@ -87,7 +87,6 @@ def update_background_metadata(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd
         else:
             updated[name] = value
     return updated
-
 
 
 def fit_background(background: np.ndarray, cfg: DictConfig) -> np.ndarray:
@@ -143,7 +142,6 @@ def fit_background(background: np.ndarray, cfg: DictConfig) -> np.ndarray:
         n_workers=proc.n_workers,
         map_kwargs=params["map_kwargs"],
     )
-
 
 
 def calculate_backgrounds(
@@ -231,7 +229,6 @@ def calculate_backgrounds(
             n_workers=n_threads,
         )
     return backgrounds
-
 
 
 def save_backgrounds(

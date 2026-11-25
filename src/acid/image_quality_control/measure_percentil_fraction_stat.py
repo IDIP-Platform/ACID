@@ -3,7 +3,7 @@ from scipy import stats
 from skimage.filters import median
 
 
-def compute_pixel_stat(image, mask, stat='mean'):
+def compute_pixel_stat(image, mask, stat="mean"):
     """
     Compute a statistic over image pixels selected by a mask.
 
@@ -43,7 +43,7 @@ def compute_pixel_stat(image, mask, stat='mean'):
             f"got {image.shape} and {mask.shape}."
         )
 
-    valid_stats = {'mean', 'median', 'mode', 'max', 'min'}
+    valid_stats = {"mean", "median", "mode", "max", "min"}
     if stat not in valid_stats:
         raise ValueError(f"stat must be one of {valid_stats}, got '{stat}'.")
 
@@ -52,19 +52,19 @@ def compute_pixel_stat(image, mask, stat='mean'):
     if selected.size == 0:
         raise ValueError("No pixels selected — mask has no values >= 0.")
 
-    if stat == 'mean':
+    if stat == "mean":
         return np.mean(selected)
-    elif stat == 'median':
+    elif stat == "median":
         return np.median(selected)
-    elif stat == 'mode':
+    elif stat == "mode":
         return stats.mode(selected, keepdims=False).mode
-    elif stat == 'max':
+    elif stat == "max":
         return np.max(selected)
-    elif stat == 'min':
+    elif stat == "min":
         return np.min(selected)
 
 
-def measure_percentile_stat(image, perc, stat='mean', below=True):
+def measure_percentile_stat(image, perc, stat="mean", below=True):
     """
     Compute a statistic over image pixels that fall below or above a given percentile.
 
@@ -121,7 +121,7 @@ def measure_percentile_stat(image, perc, stat='mean', below=True):
     return compute_pixel_stat(image, mask, stat=stat)
 
 
-def measure_low_high_perc_stat(image, percentiles, stat='mean'):
+def measure_low_high_perc_stat(image, percentiles, stat="mean"):
     """
     Compute a statistic separately over the low and high tails of the image distribution.
 
@@ -188,8 +188,9 @@ def measure_low_high_perc_stat(image, percentiles, stat='mean'):
     return stat_low, stat_high
 
 
-def high_low_percentiles_stat_ch(image, percentiles, stat='mean', smooth=True,
-                                  footprint=None, median_kwargs=None):
+def high_low_percentiles_stat_ch(
+    image, percentiles, stat="mean", smooth=True, footprint=None, median_kwargs=None
+):
     """
     Optionally smooth an image before computing low and high percentile statistics.
 
@@ -249,9 +250,15 @@ def high_low_percentiles_stat_ch(image, percentiles, stat='mean', smooth=True,
     return measure_low_high_perc_stat(smoothed, percentiles, stat=stat)
 
 
-def high_low_percentiles_stat(image, percentiles, stat='mean', smooth=True,
-                               footprint=None, median_kwargs=None,
-                               channel_axis=None):
+def high_low_percentiles_stat(
+    image,
+    percentiles,
+    stat="mean",
+    smooth=True,
+    footprint=None,
+    median_kwargs=None,
+    channel_axis=None,
+):
     """
     Compute low and high percentile statistics, optionally per channel.
 
@@ -308,8 +315,13 @@ def high_low_percentiles_stat(image, percentiles, stat='mean', smooth=True,
         If percentiles are invalid, stat is unrecognised, channel_axis is out
         of bounds, or no pixels fall within either tail for any channel.
     """
-    kwargs = dict(percentiles=percentiles, stat=stat, smooth=smooth,
-                  footprint=footprint, median_kwargs=median_kwargs)
+    kwargs = dict(
+        percentiles=percentiles,
+        stat=stat,
+        smooth=smooth,
+        footprint=footprint,
+        median_kwargs=median_kwargs,
+    )
 
     if channel_axis is None:
         return high_low_percentiles_stat_ch(image, **kwargs)

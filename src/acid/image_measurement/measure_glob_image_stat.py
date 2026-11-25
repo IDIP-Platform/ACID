@@ -2,6 +2,7 @@ import numpy as np
 from typing import Union
 from scipy.stats import skew
 
+
 def _validate_image(image: np.ndarray) -> None:
     """
     Validate that the input is a proper image array.
@@ -23,9 +24,7 @@ def _validate_image(image: np.ndarray) -> None:
             f"image must be a NumPy ndarray, got {type(image).__name__} instead."
         )
     if image.ndim < 2:
-        raise ValueError(
-            f"image must have at least 2 dimensions, got {image.ndim}."
-        )
+        raise ValueError(f"image must have at least 2 dimensions, got {image.ndim}.")
 
 
 def image_stat(image: np.ndarray, stat: callable, **kwargs) -> float:
@@ -58,10 +57,7 @@ def image_stat(image: np.ndarray, stat: callable, **kwargs) -> float:
 
 
 def masked_image_stat(
-    image: np.ndarray,
-    stat: callable,
-    mask: np.ndarray = None,
-    **kwargs
+    image: np.ndarray, stat: callable, mask: np.ndarray = None, **kwargs
 ) -> float:
     """
     Apply a scalar-valued statistical function to an image array,
@@ -101,8 +97,10 @@ def masked_image_stat(
     >>> masked_image_stat(img, np.percentile, mask=roi_mask, q=95)
     221.0
     """
-    assert 'mask' not in kwargs, "mask can't be passed to kwargs, use the dedicated paramenter instead"
-    
+    assert "mask" not in kwargs, (
+        "mask can't be passed to kwargs, use the dedicated paramenter instead"
+    )
+
     if mask is None:
         return image_stat(image, stat, **kwargs)
 
@@ -121,7 +119,7 @@ def axis_image_stat(
     stat: callable,
     axis: int = None,
     mask: np.ndarray = None,
-    **kwargs
+    **kwargs,
 ) -> Union[float, np.ndarray]:
     """
     Apply a scalar-valued statistical function along an axis of an image array,
@@ -175,15 +173,21 @@ def axis_image_stat(
                 f"Mask shape {mask.shape} does not match image shape {image.shape}."
             )
         if np.any(mask < 0):
-            raise ValueError("Mask contains negative values. All mask values must be >= 0.")
+            raise ValueError(
+                "Mask contains negative values. All mask values must be >= 0."
+            )
 
-    slices      = np.moveaxis(image, axis, 0)
-    mask_slices = np.moveaxis(mask, axis, 0) if mask is not None else [None] * image.shape[axis]
+    slices = np.moveaxis(image, axis, 0)
+    mask_slices = (
+        np.moveaxis(mask, axis, 0) if mask is not None else [None] * image.shape[axis]
+    )
 
-    return np.array([
-        masked_image_stat(sub_image, stat, mask=sub_mask, **kwargs)
-        for sub_image, sub_mask in zip(slices, mask_slices)
-    ])
+    return np.array(
+        [
+            masked_image_stat(sub_image, stat, mask=sub_mask, **kwargs)
+            for sub_image, sub_mask in zip(slices, mask_slices)
+        ]
+    )
 
 
 def broadcast_mask_image_stat(
@@ -191,7 +195,7 @@ def broadcast_mask_image_stat(
     stat: callable,
     axis: int = None,
     mask: np.ndarray = None,
-    **kwargs
+    **kwargs,
 ) -> Union[float, np.ndarray]:
     """
     Apply a scalar-valued statistical function along an axis of an image array,
@@ -259,10 +263,12 @@ def broadcast_mask_image_stat(
     if np.any(mask < 0):
         raise ValueError("Mask contains negative values. All mask values must be >= 0.")
 
-    return np.array([
-        masked_image_stat(sub_image, stat, mask=mask, **kwargs)
-        for sub_image in slices
-    ])
+    return np.array(
+        [
+            masked_image_stat(sub_image, stat, mask=mask, **kwargs)
+            for sub_image in slices
+        ]
+    )
 
 
 def aggregated_axis_image_stat(
@@ -272,7 +278,7 @@ def aggregated_axis_image_stat(
     mask: np.ndarray = None,
     agg: callable = None,
     agg_kwargs: dict = None,
-    **kwargs
+    **kwargs,
 ) -> Union[float, np.ndarray]:
     """
     Apply axis_image_stat and optionally aggregate the resulting values.
@@ -359,10 +365,7 @@ def intensity_skewness(image: np.ndarray, ravel_kwargs: dict = None, **kwargs) -
 
 
 def normalized_intensity_skewness(
-    image: np.ndarray,
-    normalize: bool = True,
-    ravel_kwargs: dict = None,
-    **kwargs
+    image: np.ndarray, normalize: bool = True, ravel_kwargs: dict = None, **kwargs
 ) -> float:
     """
     Compute the skewness of the image intensity histogram,

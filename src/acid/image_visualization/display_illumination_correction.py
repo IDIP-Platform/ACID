@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def plot_image_channels_and_diagonals(
     image,
     corrected_image,
@@ -12,7 +13,7 @@ def plot_image_channels_and_diagonals(
     title_4="Anti Diagonal",
     x_axis="Pixel index",
     y_axis="Intensity",
-    normalize=False
+    normalize=False,
 ):
     """
     Visualize channels and diagonal intensity profiles.
@@ -46,9 +47,13 @@ def plot_image_channels_and_diagonals(
         channel_img = img[c]
         channel_corr = corr[c]
         print(f"--- channel {c}")
-        print(f"before correction. min value: {np.min(channel_img)}. max value: {np.max(channel_img)}")
-        print(f"after correction. min value: {np.min(channel_corr)}. max value: {np.max(channel_corr)}")
-        
+        print(
+            f"before correction. min value: {np.min(channel_img)}. max value: {np.max(channel_img)}"
+        )
+        print(
+            f"after correction. min value: {np.min(channel_corr)}. max value: {np.max(channel_corr)}"
+        )
+
         # --- Column 1: Original ---
         ax_img.imshow(channel_img, cmap="gray")
         ax_img.axis("off")
@@ -97,4 +102,3 @@ def plot_image_channels_and_diagonals(
     axes[0, 3].set_title(title_4)
 
     plt.tight_layout()
-

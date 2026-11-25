@@ -1,10 +1,11 @@
 import numpy as np
 
+
 def mean_over_std(
-    image: np.ndarray, 
-    axis: int | None = None, 
-    null_val: float | int = np.nan, 
-    inf_val: float | int = np.nan
+    image: np.ndarray,
+    axis: int | None = None,
+    null_val: float | int = np.nan,
+    inf_val: float | int = np.nan,
 ) -> float | np.ndarray:
     """
     Computes the mean intensity divided by the standard deviation of an n-dimensional image,
@@ -68,7 +69,7 @@ def mean_over_std(
     # Compute the mean along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures that calculations are performed in float64
     mean_val = np.nanmean(img, axis=axes_to_reduce, dtype=np.float64)
-    
+
     # Compute the standard deviation along the specified axis, ignoring NaN values
     # dtype=np.float64 ensures numerical stability
     std_val = np.nanstd(img, axis=axes_to_reduce, dtype=np.float64)
@@ -85,7 +86,9 @@ def mean_over_std(
         # If any of these positions exist along the axis, replace them with null_val
         if np.any(std_zero_mask):
             # Print a warning indicating the axis along which std was zero or NaN
-            print(f"Warning: Standard deviation is zero or NaN along axis {axis}, replacing with null_val.")
+            print(
+                f"Warning: Standard deviation is zero or NaN along axis {axis}, replacing with null_val."
+            )
             # Convert mean_val to float to allow assignment of null_val (in case null_val is np.nan)
             mean_val = mean_val.astype(float)
             # Replace mean values at positions where std is zero/NaN with null_val

@@ -2,51 +2,57 @@ import numpy as np
 from skimage.transform import resize_local_mean
 
 
-def downsample_local_mean(image:np.array,
-                          factor:int|None=None,
-                          channel_axis:int|None=None,
-                          kwargs:dict|None=None)->np.array:
+def downsample_local_mean(
+    image: np.array,
+    factor: int | None = None,
+    channel_axis: int | None = None,
+    kwargs: dict | None = None,
+) -> np.array:
     # use default empty dict for kwargs if None is passed
     if kwargs is None:
         kwargs = {}
-    
+
     # check that kwargs does not contain keys that are already passed as dedicated arguments
-    assert 'channel_axis' not in kwargs, "channel_axis can't be passed to kwargs, please use the dedicated argument"
-    
+    assert "channel_axis" not in kwargs, (
+        "channel_axis can't be passed to kwargs, please use the dedicated argument"
+    )
+
     # check that kwargs does not contain output_shape key, as the output shape is
     # determined by the factor argument and the input image shape
-    assert 'output_shape' not in kwargs, "output_shape can't be passed to kwargs"
+    assert "output_shape" not in kwargs, "output_shape can't be passed to kwargs"
 
     # intialize a list to collect the new shape of the image after resizing
     output_shape = []
-    
+
     # iterate through the image shape
-    for p,s in enumerate(image.shape):
-        
+    for p, s in enumerate(image.shape):
         # avoid including the channel axis in the new shape if channel_axis is specified
-        if isinstance(channel_axis, int) and p==channel_axis:
+        if isinstance(channel_axis, int) and p == channel_axis:
             continue
-        
+
         # downsize the axes and collect them to the axes to be downsized
         else:
-            output_shape.append(s//factor)
-    
+            output_shape.append(s // factor)
+
     # convert output_shape to tuple
     output_shape = tuple(output_shape)
-    
+
     # resize image
-    resized_img = resize_local_mean(image, output_shape, channel_axis=channel_axis, **kwargs)
-    
+    resized_img = resize_local_mean(
+        image, output_shape, channel_axis=channel_axis, **kwargs
+    )
+
     # return dtype_image
     return resized_img
 
 
-
-def match_image_shape_2d(image:np.array,
-                         target_image:np.array,
-                         pad_mode:str='constant',
-                         pad_value:int=0,
-                         kwargs:dict={})-> np.array:
+def match_image_shape_2d(
+    image: np.array,
+    target_image: np.array,
+    pad_mode: str = "constant",
+    pad_value: int = 0,
+    kwargs: dict = {},
+) -> np.array:
     """
     Match the size of a 2d image to the size of a second 2d target_image. The match is made either by cropping or
     padding image. In either cases, image is centered on target_image when doing the matching.
@@ -59,8 +65,12 @@ def match_image_shape_2d(image:np.array,
 
     Outputs: np.array. The cropped or padded image with the same shape as the target_image.
     """
-    assert 'pad_mode' not in kwargs, "pad_mode can't be passed to kwargs, please use the dedicated argument"
-    assert 'pad_value' not in kwargs, "pad_value can't be passed to kwargs, please use the dedicated argument"
+    assert "pad_mode" not in kwargs, (
+        "pad_mode can't be passed to kwargs, please use the dedicated argument"
+    )
+    assert "pad_value" not in kwargs, (
+        "pad_value can't be passed to kwargs, please use the dedicated argument"
+    )
 
     # Copy the image to avoid modifying the original
     image = np.copy(image)
@@ -84,12 +94,18 @@ def match_image_shape_2d(image:np.array,
         end_y = start_y + target_image_shape[1] if diff_y > 0 else target_image_shape[1]
         # Crop the image
         image = image[start_x:end_x, start_y:end_y]
-    
+
     # If the image is smaller than the target_image, pad it
     elif diff_x < 0 or diff_y < 0:
         pad_x = abs(diff_x) // 2
         pad_y = abs(diff_y) // 2
-        image = np.pad(image, ((pad_x, pad_x), (pad_y, pad_y)), mode=pad_mode, constant_values=pad_value, **kwargs)
+        image = np.pad(
+            image,
+            ((pad_x, pad_x), (pad_y, pad_y)),
+            mode=pad_mode,
+            constant_values=pad_value,
+            **kwargs,
+        )
 
     # Return the cropped or padded image
     return image

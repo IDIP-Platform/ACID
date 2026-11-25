@@ -391,7 +391,9 @@ def apply_background_correction_for_fov(
         )
 
     try:
-        field_of_view_file = get_required_filename(metadata_row, columns.fov_column_name)
+        field_of_view_file = get_required_filename(
+            metadata_row, columns.fov_column_name
+        )
     except Exception as error:
         return failure("get_field_of_view_file", error)
 

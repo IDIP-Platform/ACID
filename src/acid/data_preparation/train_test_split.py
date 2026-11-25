@@ -67,13 +67,13 @@ def add_train_test_split_clm(
     # ----------------------------------------------
     # Safety checks for arguments and existing column
     # ----------------------------------------------
-    assert (
-        "test_size" not in train_test_split_kwargs
-    ), "test_size can't be passed in train_test_split_kwargs. Use the dedicated argument instead."
+    assert "test_size" not in train_test_split_kwargs, (
+        "test_size can't be passed in train_test_split_kwargs. Use the dedicated argument instead."
+    )
 
-    assert (
-        is_train_column not in df.columns
-    ), f"Column '{is_train_column}' already exists in dataframe."
+    assert is_train_column not in df.columns, (
+        f"Column '{is_train_column}' already exists in dataframe."
+    )
 
     # ------------------------
     # Copy input dataframe
@@ -108,15 +108,16 @@ def add_train_test_split_clm(
     assert set(result.index) == set(df_original.index), "Index values differ."
 
     # Same index order?
-    assert result.index.equals(
-        df_original.index
-    ), "Index order differs — result is not aligned to original."
+    assert result.index.equals(df_original.index), (
+        "Index order differs — result is not aligned to original."
+    )
 
     return result
 
 
-
-def split_dataset_train_test(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd.DataFrame:
+def split_dataset_train_test(
+    metadata_df: pd.DataFrame, cfg: DictConfig
+) -> pd.DataFrame:
     """Add a reproducible train/test split column to the metadata.
 
     Each metadata row (field of view) is assigned to train or test with
@@ -158,4 +159,3 @@ def split_dataset_train_test(metadata_df: pd.DataFrame, cfg: DictConfig) -> pd.D
             cfg.processing.concat_kwargs, resolve=True
         ),
     )
-

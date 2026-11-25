@@ -4,7 +4,6 @@ from scipy.fft import fft2, fftshift
 from scipy.stats import linregress
 
 
-
 """
 The Power Spectral Density (PSD) of image intensity reveals how image brightness
 (power) is distributed across different spatial frequencies, indicating patterns,
@@ -53,8 +52,6 @@ Blurry or out-of-focus images have suppressed high frequencies, so the slope is 
 """
 
 
-
-
 # ---------------------------------------------------------------------
 # Utility: Determine which plots user wants (Option C API)
 # ---------------------------------------------------------------------
@@ -72,8 +69,15 @@ def _normalize_plot_arg(plot):
 # ---------------------------------------------------------------------
 # Main public function
 # ---------------------------------------------------------------------
-def compute_plls(image, axis=None, mask_zero=True, verbose=0,
-                 plot=False, plot_slices="first", return_details=False):
+def compute_plls(
+    image,
+    axis=None,
+    mask_zero=True,
+    verbose=0,
+    plot=False,
+    plot_slices="first",
+    return_details=False,
+):
     """
     Compute the Power Log-Log Slope (PLLS) for image sharpness assessment,
     with optional debugging plots.
@@ -88,7 +92,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
 
     This means one can use PLLS as a focus score: higher plls → better focus, lower plls → blurry.
 
-    
+
     Parameters
     ----------
     image : ndarray
@@ -117,7 +121,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
     freqs_out : ndarray or list
     powers_out : ndarray or list
     """
-    
+
     # Interpret plotting selection
     plots = _normalize_plot_arg(plot)
 
@@ -125,7 +129,6 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
     # Case A: No axis → single 2D image
     # ===============================
     if axis is None:
-
         if verbose >= 1:
             print("[PLLS] Computing PLLS for single 2D image.")
 
@@ -135,10 +138,10 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         slope, intercept, freqs, power = _plls_2d(
             image, mask_zero, verbose, plots, title="Image"
         )
-        
+
         if return_details:
             return np.array(slope), np.array(intercept), freqs, power
-        
+
         else:
             return np.array(slope)
 
@@ -167,19 +170,16 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
         plot_indices = set(plot_slices)
     else:
         raise ValueError("Invalid value for plot_slices")
-    
+
     # Loop over slices
     for i in range(num_slices):
-
         if verbose >= 2:
-            print(f"[PLLS] Processing slice {i}/{num_slices-1}")
+            print(f"[PLLS] Processing slice {i}/{num_slices - 1}")
 
         sl = np.take(image, i, axis=axis)
 
         if sl.ndim != 2:
-            raise ValueError(
-                f"Slice along axis {axis} is not 2D; got shape {sl.shape}"
-            )
+            raise ValueError(f"Slice along axis {axis} is not 2D; got shape {sl.shape}")
 
         # Decide which plots to display for this slice
         active_plots = plots if i in plot_indices else set()
@@ -195,10 +195,11 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
 
     if return_details:
         return np.array(slopes), np.array(intercepts), freqs_out, powers_out
-        
+
     else:
         return np.array(slopes)
-        
+
+
 # # GEMINI IMPLEMENTATION
 # # ---------------------------------------------------------------------
 # # Internal: Compute PLLS for a single 2D image + optional plots
@@ -242,7 +243,7 @@ def compute_plls(image, axis=None, mask_zero=True, verbose=0,
 #     # Avoid division by zero and keep frequencies within valid bounds
 #     valid_indices = np.where((radial_count > 0) & (np.arange(len(radial_sum)) > 0))[0]
 #     valid_indices = valid_indices[valid_indices < max_r]
-    
+
 #     radial_power_fit = radial_sum[valid_indices] / radial_count[valid_indices]
 #     freqs_fit = valid_indices.astype(float)
 
@@ -299,7 +300,7 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
 
     # ----- FFT -----
     fft_img = fftshift(fft2(image))
-    power = np.abs(fft_img)**2
+    power = np.abs(fft_img) ** 2
 
     # ----- FFT plot -----
     if "fft" in plots:
@@ -313,7 +314,7 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
     h, w = image.shape
     cy, cx = h // 2, w // 2
     y, x = np.ogrid[:h, :w]
-    r = np.sqrt((x - cx)**2 + (y - cy)**2)
+    r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
     r_int = r.astype(np.int32)
 
     # ----- Radial binning -----
@@ -323,7 +324,7 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
     radial_count = np.bincount(r_int.ravel())
 
     radial_power = radial_sum / np.maximum(radial_count, 1)
-    
+
     # this seems to be the difference with, for example, CellProfiler,
     # and the reason why the present implementation has a higher
     # plls (milder slope) when images are blurried
@@ -339,7 +340,7 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
     valid_mask = (radial_power > 0) if mask_zero else np.ones_like(radial_power, bool)
 
     # Exclude zero frequency (DC component)
-    valid_mask &= (freqs > 0)
+    valid_mask &= freqs > 0
 
     # Apply mask
     freqs_fit = freqs[valid_mask]
@@ -386,4 +387,3 @@ def _plls_2d(image, mask_zero, verbose, plots, title=""):
         plt.show()
 
     return slope, intercept, freqs_fit, radial_power_fit
-

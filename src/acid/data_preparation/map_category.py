@@ -177,4 +177,3 @@ def map_treatments(
         experiment__column=columns.experiment_column_name,
         treatment__column=columns.treatment_column_name,
     )
-

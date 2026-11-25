@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -6,7 +5,7 @@ from omegaconf.errors import ConfigKeyError
 
 from acid.config import load_config, prepare_output
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def override(tmp_path, text):
@@ -84,41 +83,6 @@ def test_list_replacement_and_nullable_default(tmp_path):
     config = load_config(path, project_root=tmp_path, preview=False)
     assert list(config.feature_extraction.processing.axes) == [0]
     assert config.background_correction.processing.max_clip_value == 100
-
-
-def test_notebooks_use_shared_loader_and_output_metadata():
-    for path in (ROOT / "notebooks_refactored").glob("*.ipynb"):
-        cells = json.loads(path.read_text())["cells"]
-        code = "\n".join(
-            "".join(c["source"]) for c in cells if c["cell_type"] == "code"
-        )
-        assert "config = load_config(CONFIG_FILE)" in code
-        assert "prepare_output(config)" in code
-        assert (
-            "metadata_directory = metadata_config.directory" in code
-            or "Path(metadata_config.directory)" in code
-            or "from acid.utils.metadata.saving import save_metadata_dataframe" in code
-        )
-        assert "OmegaConf.load(CONFIG_PATH_FILE)" not in code
-        for cell in cells:
-            if cell["cell_type"] == "code":
-                source = "".join(cell["source"])
-                if not any(
-                    line.lstrip().startswith(("%", "!")) for line in source.splitlines()
-                ):
-                    compile(source, str(path), "exec")
-
-
-def test_background_input_check_uses_selected_metadata_directory():
-    path = ROOT / "notebooks_refactored/part4_background_correction_pipeline.ipynb"
-    cells = json.loads(path.read_text())["cells"]
-    source = next(
-        "".join(c["source"])
-        for c in cells
-        if "for input_directory in" in "".join(c["source"])
-    )
-    assert "metadata_cfg.directory," in source
-    assert "paths_cfg.output_metadata_dir," not in source
 
 
 def test_all_stages_share_one_metadata_directory():

@@ -29,13 +29,13 @@ def fov_stack_files(tmp_path):
 
 def test_import_fov_with_threads_matches_sequential_reading(fov_stack_files):
     directory, metadata_df = fov_stack_files
-    kwargs = dict(
-        df=metadata_df,
-        fov_dir=str(directory),
-        fov_clm="fov",
-        fov_shape=(5, 32, 24),
-        verbose=False,
-    )
+    kwargs = {
+        "df": metadata_df,
+        "fov_dir": str(directory),
+        "fov_clm": "fov",
+        "fov_shape": (5, 32, 24),
+        "verbose": False,
+    }
 
     sequential = import_fov(**kwargs)
     threaded = import_fov(**kwargs, n_workers=4)

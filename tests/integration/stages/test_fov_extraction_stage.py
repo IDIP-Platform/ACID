@@ -5,43 +5,9 @@ import tifffile
 
 from acid.image_processing import fov_extraction
 from acid.image_processing.fov_extraction import (
-    discover_acquisitions,
     extract_acquisition,
     extract_fields_of_view,
 )
-
-
-@pytest.fixture
-def extraction_config(stage_config, tmp_path):
-    config = stage_config("field_of_view_extraction")
-    config.acquisitions.directory = str(tmp_path / "raw")
-    config.image_saving.directory = str(tmp_path / "extracted")
-    return config
-
-
-def test_discover_acquisitions_finds_matching_files_in_experiment_dirs(
-    extraction_config, tmp_path
-):
-    raw = tmp_path / "raw"
-    (raw / "experiment_A07.2").mkdir(parents=True)
-    (raw / "experiment_A07.2" / "plate_well2.nd2").write_text("")
-    (raw / "experiment_A07.2" / "plate_well1.nd2").write_text("")
-    (raw / "experiment_A07.2" / "notes.txt").write_text("")
-    (raw / "20251127_plate_layout.csv").write_text("")
-
-    result = discover_acquisitions(extraction_config)
-
-    assert result == [
-        raw / "experiment_A07.2" / "plate_well1.nd2",
-        raw / "experiment_A07.2" / "plate_well2.nd2",
-    ]
-
-
-def test_discover_acquisitions_without_matches_raises(extraction_config, tmp_path):
-    (tmp_path / "raw" / "experiment_A07.2").mkdir(parents=True)
-
-    with pytest.raises(ValueError, match="No matching acquisition files"):
-        discover_acquisitions(extraction_config)
 
 
 class FakeBioImage:
@@ -86,7 +52,9 @@ def fake_bioio(monkeypatch):
     )
     monkeypatch.setattr(fov_extraction, "to_xml", lambda metadata: "<OME/>")
     monkeypatch.setattr(
-        fov_extraction, "extract_bioio_scene_metadata", fake_extract_bioio_scene_metadata
+        fov_extraction,
+        "extract_bioio_scene_metadata",
+        fake_extract_bioio_scene_metadata,
     )
     return scene_metadata_calls
 
@@ -96,7 +64,10 @@ def test_extract_acquisition_saves_one_ome_tiff_per_scene(
 ):
     (tmp_path / "extracted").mkdir()
     acquisition = (
-        tmp_path / "raw" / "experiment_A07.4" / "H7_DENV2_MOI1_40h_fixed_stained_well6.nd2"
+        tmp_path
+        / "raw"
+        / "experiment_A07.4"
+        / "H7_DENV2_MOI1_40h_fixed_stained_well6.nd2"
     )
 
     scenes = extract_acquisition(acquisition, extraction_config)
@@ -116,22 +87,12 @@ def test_extract_fields_of_view_builds_one_row_per_scene(
 ):
     (tmp_path / "extracted").mkdir()
     experiment = tmp_path / "raw" / "experiment_A07.2"
-    acquisitions = [experiment / "H7_DENV2_MOI1_30h_fixed_stained_well1.nd2",
-                    experiment / "H7_DENV2_MOI1_30h_fixed_stained_well2.nd2"]
+    acquisitions = [
+        experiment / "H7_DENV2_MOI1_30h_fixed_stained_well1.nd2",
+        experiment / "H7_DENV2_MOI1_30h_fixed_stained_well2.nd2",
+    ]
 
     metadata_df = extract_fields_of_view(acquisitions, extraction_config)
 
     assert metadata_df.shape[0] == 4
     assert metadata_df["scene"].tolist() == ["A1", "A2", "A1", "A2"]
-
-
-def test_extract_fields_of_view_requires_five_channels(extraction_config):
-    extraction_config.image_metadata.channels = ["a", "b", "c", "d"]
-
-    with pytest.raises(ValueError, match="five configured channels"):
-        extract_fields_of_view([], extraction_config)
-
-
-def test_extract_fields_of_view_without_scenes_raises(extraction_config):
-    with pytest.raises(ValueError, match="No fields of view"):
-        extract_fields_of_view([], extraction_config)

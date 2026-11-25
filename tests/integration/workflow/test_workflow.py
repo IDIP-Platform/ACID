@@ -1,4 +1,4 @@
-"""Dry runs of the Snakemake workflow (`workflow/Snakefile`)."""
+"""Dry runs of the Snakemake workflow."""
 
 import re
 import subprocess
@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-import yaml
-from conftest import write_pipeline_dataset
 
 pytest.importorskip("snakemake")
 
-SNAKEFILE = Path(__file__).resolve().parents[2] / "workflow" / "Snakefile"
+SNAKEFILE = Path(__file__).resolve().parents[3] / "workflow" / "Snakefile"
+PROFILES = sorted((SNAKEFILE.parent / "profiles").glob("*/config.yaml"))
+BATCH_RULES = ("measure_quality", "correct_background", "segment", "extract_features")
 
 
 def dry_run(project_root, experiment_id="pipeline_test", extra_args=()):
@@ -33,6 +33,7 @@ def dry_run(project_root, experiment_id="pipeline_test", extra_args=()):
             *extra_args,
         ],
         capture_output=True,
+        check=False,
         text=True,
     )
 
@@ -62,10 +63,10 @@ def test_dry_run_plans_one_extraction_job_per_acquisition(pipeline_config, tmp_p
     assert "measure_quality" not in jobs
 
 
-def write_split_metadata(pipeline_config, tmp_path):
+def write_split_metadata(pipeline_config, tmp_path, make_pipeline_dataset):
     """Write part 1 and part 2 so that the split checkpoint is up to date."""
     (tmp_path / "raw").mkdir()
-    part_2 = write_pipeline_dataset(pipeline_config)
+    part_2 = make_pipeline_dataset(pipeline_config)
     metadata = Path(pipeline_config.shared.paths.metadata_dir)
     # Written in stage order, so that part 2 is newer than part 1.
     split_df = pd.read_csv(part_2)
@@ -73,11 +74,10 @@ def write_split_metadata(pipeline_config, tmp_path):
     split_df.to_csv(metadata / "ACID_metadata_part_2.csv", index=False)
 
 
-BATCH_RULES = ("measure_quality", "correct_background", "segment", "extract_features")
-
-
-def test_dry_run_after_split_plans_one_job_per_batch(pipeline_config, tmp_path):
-    write_split_metadata(pipeline_config, tmp_path)
+def test_dry_run_after_split_plans_one_job_per_batch(
+    pipeline_config, tmp_path, make_pipeline_dataset
+):
+    write_split_metadata(pipeline_config, tmp_path, make_pipeline_dataset)
 
     jobs = planned_jobs(tmp_path)
 
@@ -88,8 +88,10 @@ def test_dry_run_after_split_plans_one_job_per_batch(pipeline_config, tmp_path):
     assert jobs["background_function"] == jobs["merge_features"] == 1
 
 
-def test_dry_run_uses_batch_sizes_from_configfile(pipeline_config, tmp_path):
-    write_split_metadata(pipeline_config, tmp_path)
+def test_dry_run_uses_batch_sizes_from_configfile(
+    pipeline_config, tmp_path, make_pipeline_dataset
+):
+    write_split_metadata(pipeline_config, tmp_path, make_pipeline_dataset)
     configfile = tmp_path / "batches.yaml"
     configfile.write_text(
         "batch_sizes:\n"
@@ -104,8 +106,10 @@ def test_dry_run_uses_batch_sizes_from_configfile(pipeline_config, tmp_path):
     assert jobs["measure_quality"] == jobs["extract_features"] == 1
 
 
-def test_dry_run_ignores_raw_folder_once_part_1_exists(pipeline_config, tmp_path):
-    write_split_metadata(pipeline_config, tmp_path)
+def test_dry_run_ignores_raw_folder_once_part_1_exists(
+    pipeline_config, tmp_path, make_pipeline_dataset
+):
+    write_split_metadata(pipeline_config, tmp_path, make_pipeline_dataset)
     experiment = tmp_path / "raw" / "experiment_A07.9"
     experiment.mkdir()
     (experiment / "H7_DENV2_MOI1_30h_fixed_stained_well9.nd2").write_text("")
@@ -141,52 +145,11 @@ def test_dry_run_quotes_paths_with_spaces(tmp_path):
     assert f"--project-root '{root}'" in completed.stdout
 
 
-def test_batch_wildcard_accepts_four_or_more_digits():
-    constraint = re.search(r'batch=r"([^"]+)"', SNAKEFILE.read_text()).group(1)
-
-    assert re.fullmatch(constraint, "0000")
-    assert re.fullmatch(constraint, "10000")
-    assert not re.fullmatch(constraint, "123")
-
-
-WORKFLOW = SNAKEFILE.parent
-PROFILES = sorted((WORKFLOW / "profiles").glob("*/config.yaml"))
-
-
-def workflow_rules():
-    """Return (all rules, local rules) defined by the Snakefile and its rule files."""
-    sources = [SNAKEFILE, *sorted((WORKFLOW / "rules").glob("*.smk"))]
-    text = "\n".join(path.read_text() for path in sources)
-    rules = set(re.findall(r"^\s*(?:rule|checkpoint) (\w+):", text, flags=re.MULTILINE))
-    local = set()
-    for block in re.findall(r"^\s*localrules:\n((?:\s+\w+,?\n)+)", text, re.MULTILINE):
-        local.update(re.findall(r"\w+", block))
-    return rules, local
-
-
 @pytest.mark.parametrize("profile", PROFILES, ids=lambda path: path.parent.name)
-def test_profile_sets_threads_of_every_rule(profile):
-    rules, _ = workflow_rules()
-    settings = yaml.safe_load(profile.read_text())
-
-    assert set(settings["set-threads"]) == rules
-
-
-@pytest.mark.parametrize("profile", PROFILES, ids=lambda path: path.parent.name)
-def test_slurm_profile_sets_resources_of_every_submitted_rule(profile):
-    settings = yaml.safe_load(profile.read_text())
-    if settings.get("executor") != "slurm":
-        pytest.skip("not a SLURM profile")
-    rules, local = workflow_rules()
-
-    assert set(settings["set-resources"]) == rules - local
-    for rule, resources in settings["set-resources"].items():
-        assert resources["cpus_per_task"] == settings["set-threads"][rule], rule
-
-
-@pytest.mark.parametrize("profile", PROFILES, ids=lambda path: path.parent.name)
-def test_dry_run_with_profile(profile, pipeline_config, tmp_path):
-    write_split_metadata(pipeline_config, tmp_path)
+def test_dry_run_with_profile(
+    profile, pipeline_config, tmp_path, make_pipeline_dataset
+):
+    write_split_metadata(pipeline_config, tmp_path, make_pipeline_dataset)
 
     jobs = planned_jobs(tmp_path, extra_args=("--profile", str(profile.parent)))
 

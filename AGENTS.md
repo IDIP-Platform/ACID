@@ -27,7 +27,7 @@ and any checks skipped or blocked. Never claim a check passed unless it ran.
 - Run affected tests first with `uv run --locked pytest <test_path>`. For code
   changes, then run `uv run --locked pytest tests`; if it cannot run, report why
   and which tests did run. Run Snakemake workflow tests with
-  `uv run --locked --group pipeline pytest tests/unit/test_workflow.py` so they
+  `uv run --locked --group pipeline pytest tests/integration/workflow` so they
   do not silently skip for lack of Snakemake. Report skipped tests.
 - When a change can alter scientific measurements or segmentation, validate
   representative real images when available and document the data, expected

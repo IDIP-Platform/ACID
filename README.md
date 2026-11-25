@@ -7,7 +7,7 @@ Creation (yyyy/mm/dd): 2025/11/21
 Status: ongoing (2026/09/07)
 
 # Run the project (Windows):
-## Start - One-time setup 
+## Start - One-time setup
 
 #### Using PowerShell
 Navigate to project root
@@ -299,21 +299,21 @@ NOTE: from here one the 'metadata_df' table is used to link field of views (also
         2.1.2) The nuclear channel and the f-actin channel are selected and stacked together in and individual array. The order of the signal on the stacked axis is: nuclear_channel, f-actin_channel. Output name: cell_arr.
         2.1.1) Median filtering. A 3x3 pixel kernel is used, independtly, for the nuclear and f-actin channels in the cell_arr. A 10x10 kernel is used for the nucleus_arr.
         2.1.2) downsampling. A factor of 2 is used. This means that images are downsampled at half of their original size. The downsampling method is local_mean (see https://scikit-image.org/docs/0.25.x/api/skimage.transform.html#skimage.transform.resize_local_mean). Note: for cell_arr, the axis onto which nucleus and f-actin channels are stacked, it is not down-sampled.
-    
+
     2.2) IMAGE SEGMENTATION
         2.2.2) Cell segmentation (based on CellPoseSAM - version 4.0.6) using cell_arr.
         2.2.3) Cell segmentation mask upsampling (method nearest neightbour) to their original size. Note: the axis onto which nucleus and f-actin channels are stacked, it is not up-sampled.
         2.2.4) Nucleus segmentation (based on CellPoseSAM - version 4.0.6) using nucleus_arr.
         2.2.5) Nucleus segmentation mask upsampling (method nearest neightbour) to its original size.
         2.2.6) Saving of segmentation masks in the output_data_directory->seg directory as ome.tif file. Note that each ome.tif file contains the relative metadata.
-    
+
     2.3) UPDATING AND SAVING OF THE METADATA
     The 'metadata_df' formed in step 1.2 is updated with the segmentation mask information and it is saved in the output_data_directory->metadata->proc_file_info directory as [date]_nef_translocation_metadata.csv file.
 
     2.4) SAVING OF HYPERPARAMETERS (in the repository->secondary_output directory)
 
 3) EXTRACTION OF INTENSITY MEASUREMENTS
-    
+
     3.1) IMAGE AND SEGMENTATION MASKS PREPROCESSING
         3.1.1) Fields of view channel axis reordering -> the channel axis is move to position -1, for compatibility with skimage.measure.regionprops.
         3.1.2) Filtering of labels:
@@ -326,17 +326,17 @@ NOTE: from here one the 'metadata_df' table is used to link field of views (also
                 3.1.2.7) Pixels whose intensity value correspond to the min or the max value of the raw image data type are removed.
                 3.1.2.8) The matching of the label values for cells and corresponding nuclei is double-checked.
         3.1.3) Invidual channels are independently smoothed using a gaussian kernel (by default of sigma size 0.6)
-    
+
     3.2) CYTOSOL SEGMENTATION
         3.2.1) The cytosol segmentation mask is obtained by subtracting the filterd nuclei segmentation mask from the filered cell segmentation mask. This ensures that cytosol label values match the values of their corresponding nuclei.
         3.2.2) Saving of cytosol segmentation masks in the output_data_directory->seg directory as ome.tif file. Note that each ome.tif file contains the relative metadata.
-    
+
     3.3) (optional) SAVING OF THE NUCLEUS AND CELL SEGMENTATION MASKS AFTER PREPROCESSING (point 3.1)
-    
+
     3.4) UPDATING AND SAVING OF THE METADATA
     The 'metadata_df' formed in step 1.2 is updated with the cytosol segmentation mask information and it is saved in the output_data_directory->metadata->proc_file_info directory as [date]_nef_translocation_metadata.csv file. If date correspond in this step and step 2.3, the former metadata_df saved file is overwritten.
     NOTE: the metadata dataframe is not updated for the nucleu and cell segmentation masks saved in point 3.3.
-    
+
     3.5) FEATURE EXTRACTION
     Features are calculated per each cell of each field of view. By default the following measurements are calculated: intensity mean, intensity max, intensity min, area. Features are collected in a single, global measurements file called 'glob_measurements_df' in the following steps.
 
@@ -435,6 +435,3 @@ As of 2026/02/02 the acid_neo environment hasn't been tested yet.
 
 
 # To do list:
-
-
-

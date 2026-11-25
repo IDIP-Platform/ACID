@@ -84,5 +84,3 @@
 | `graph_savingword` | `str` | `f"illumination{save_file_name_separator}correction"` | Parameters for displaying the results – graph saving word. | |
 | `secondary_output_directory` | `str` | `"secondary_output"` | Parameters for saving secondary information – indicate the name of the directory for saving secondary outputs. This directory is used to store the hyperparameters used per each run of the pipeline. | |
 | `exist_ok` | `bool` | `True` | Parameters for saving secondary information – if `True`, does not raise an error when a directory already exists. | |
-
-

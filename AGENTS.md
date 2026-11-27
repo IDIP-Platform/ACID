@@ -24,11 +24,7 @@ and any checks skipped or blocked. Never claim a check passed unless it ran.
 - Keep automated tests independent of private or ignored ND2 data, network
   access, and GPU availability. Use `tmp_path` for generated files and do not
   modify files under `data/raw`.
-- Run affected tests first with `uv run --locked pytest <test_path>`. For code
-  changes, then run `uv run --locked pytest tests`; if it cannot run, report why
-  and which tests did run. Run Snakemake workflow tests with
-  `uv run --locked --group pipeline pytest tests/integration/workflow` so they
-  do not silently skip for lack of Snakemake. Report skipped tests.
+- Run affected tests first with `uv run --locked pytest <test_path>`. For code changes, then run `uv run --locked pytest tests`; if it cannot run, report why and which tests did run. Run Snakemake workflow tests with `uv run --locked --extra pipeline pytest tests/integration/workflow` so they do not silently skip for lack of Snakemake. Report skipped tests.
 - When a change can alter scientific measurements or segmentation, validate
   representative real images when available and document the data, expected
   behavior, observed result, and any manual image review.
@@ -39,13 +35,7 @@ and any checks skipped or blocked. Never claim a check passed unless it ran.
   dependencies, and keep matching `uv.lock` changes in the same change set.
   Preserve the supported Python range (`>=3.11,<3.13`) unless changing support
   deliberately.
-- Use `uv add` and `uv remove` to change dependencies. Place a dependency
-  according to how it is used: installed package runtime requirements in
-  `[project].dependencies`, optional installed features in extras, and tools
-  used only for development, pipelines, or notebooks in their existing groups.
-  Keep documentation build dependencies available through the `docs` extra
-  used by `.github/workflows/docs.yml`. If consolidating the duplicate `docs`
-  group, update its callers and `uv.lock` in the same change.
+- Use `uv add` and `uv remove` to change dependencies. Place a dependency according to how it is used: installed package runtime requirements in `[project].dependencies`, optional installed features such as `pipeline` and `notebooks` in extras, and contributor tools in their existing dependency groups. Keep documentation build dependencies available through the `docs` group used by `.github/workflows/docs.yml`. If changing an extra or group, update its callers and `uv.lock` in the same change.
 - Use `uv sync --locked` for reproducible setup and `uv run --locked` for
   project commands. Do not use ad hoc `pip` or `uv pip` installs to record a
   project dependency, and do not edit `uv.lock` by hand. Check lock consistency

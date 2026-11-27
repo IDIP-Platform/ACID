@@ -68,6 +68,7 @@ dev = [
     "pre-commit>=4.0.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "mypy>=2.4.1",
 ]
 docs = [
     "mkdocstrings-python>=2.0.5",
@@ -83,11 +84,38 @@ packages = ["src/acid"]
 
 
 [tool.pytest.ini_options]
-addopts = ["-p", "no:napari"]
+addopts = ["-p", "no:napari", "--strict-config", "--strict-markers"]
 testpaths = ["tests"]
+xfail_strict = true
+
+[tool.coverage.run]
+branch = true
+source = ["acid"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+show_error_codes = true
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py311"
+src = ["src"]
+line-length = 88
 
 [tool.ruff.lint]
-extend-select = ["D"]
+extend-select = ["D", "I", "ANN", "B", "BLE", "UP", "PLC0415"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

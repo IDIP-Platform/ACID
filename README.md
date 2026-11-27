@@ -32,7 +32,7 @@ python -m ipykernel install --user --name acid-env
 3. Creat a virtual environment: uv venv
 4. Activate the virtual environment: .venv\Scripts\activate
 5. Install the package in editable mode: uv pip install -e .
-6. Install Jupyter support: uv pip install ipykernel.
+6. Install Jupyter support: uv sync --locked --extra notebooks.
 7. Select the interpreter for VS Code: Press Ctrl + Shift + P → Python: Select Interpreter → choose .venv\Scripts\python.exe
 8. For notebooks, select kernel: Click the kernel selector in the top-right → choose acid-env
 
@@ -350,8 +350,8 @@ NOTE: from here one the 'metadata_df' table is used to link field of views (also
 **Whole pipeline with Snakemake.** `workflow/Snakefile` runs all stages (raw ND2 files to feature tables), one job per raw file or field of view, with the same configuration as the notebooks in `notebooks_refactored/`:
 
 ```bash
-uv sync --frozen --group pipeline
-uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+uv sync --locked --extra pipeline
+uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/local --config acid_config=configs/exp_001.yaml
 ```
 

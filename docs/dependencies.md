@@ -6,7 +6,7 @@ ACID uses `pyproject.toml` and `uv.lock` for dependency management.
 
 Use these files as the current dependency source of truth:
 
-- `pyproject.toml`: declared package dependencies and optional dependency groups
+- `pyproject.toml`: declared package dependencies, project optional dependencies and dependency groups
 - `uv.lock`: resolved dependency versions
 
 Install the core environment with:
@@ -18,31 +18,28 @@ uv sync
 Install documentation dependencies with:
 
 ```bash
-uv sync --extra docs
+uv sync --locked --group docs
 ```
 
-Install every optional dependency group with:
+Install all project optional dependencies with:
 
 ```bash
-uv sync --all-extras
+uv sync --locked --all-extras
 ```
 
-## Optional Groups
+## Project Optional Dependencies and Dependency Groups
 
-The current documentation tooling belongs to the `docs` optional dependency
-group. This group includes tools such as Zensical and mkdocstrings support.
+Project optional dependencies are installable choices for users of ACID:
 
-Documentation-only dependencies should stay out of the core package dependency
-list unless package code imports them at runtime.
+- `notebooks`: JupyterLab, the Jupyter kernel, widgets and `nbstripout` for the repository notebooks; install with `uv sync --locked --extra notebooks`.
+- `pipeline`: Snakemake and its SLURM executor plugin for the repository workflow; install with `uv sync --locked --extra pipeline`.
 
-Tools that are needed only to run or develop ACID, not to import it, are
-dependency groups (`[dependency-groups]` in `pyproject.toml`), installed with
-`uv sync --frozen --group <name>`:
+These optional dependencies provide the software environment; the notebook and Snakemake workflow files are in this repository, not in the installed wheel.
 
-- `dev`: tests, linting and pre-commit (installed by `uv sync` by default)
-- `notebooks`: the Jupyter kernel and `nbstripout`
-- `pipeline`: Snakemake and `snakemake-executor-plugin-slurm`, used by the
-  [Snakemake pipeline](workflows/snakemake.md)
+Dependency groups are for contributors and documentation builders:
+
+- `dev`: tests, linting and pre-commit; installed by `uv sync` by default.
+- `docs`: Zensical and mkdocstrings support; install with `uv sync --locked --group docs`.
 
 ## Legacy Environment Files
 
@@ -62,10 +59,10 @@ preferred installation path for the repository is now `uv`.
 When adding dependencies, keep them scoped to where they are needed:
 
 - runtime imports used by `src/acid`: core dependencies
-- documentation tooling: `docs` optional group
-- test and lint tools: development optional group
-- notebook-only or visualization-only tools: optional group unless imported by
-  package code at runtime
+- documentation tooling: `docs` dependency group
+- test and lint tools: `dev` dependency group
+- Jupyter tools used to run the repository notebooks: `notebooks` project optional dependencies
+- Snakemake and its executor plugin: `pipeline` project optional dependencies
 
 This keeps the core ACID installation smaller and makes optional workflows
 clearer.

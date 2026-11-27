@@ -63,8 +63,8 @@ and any checks skipped or blocked. Never claim a check passed unless it ran.
 - Apply `uv run --locked ruff format <paths>` only to files in the current
   change. Do not reformat unrelated modules as part of a functional change.
 - Fix reported issues instead of adding broad ignores. If a suppression is
-  necessary, scope it narrowly and explain why. Follow the repository's
-  Google-style docstring convention for public APIs.
+  necessary, scope it narrowly and explain why.
+- Write Python docstrings in Google style.
 
 ## Pre-commit
 

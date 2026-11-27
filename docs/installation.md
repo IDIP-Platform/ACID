@@ -59,11 +59,10 @@ Install ACID with `uv` from a local checkout.
     uv pip install -e .
     ```
 
-To run the whole pipeline with Snakemake, also install the `pipeline`
-dependency group (Snakemake and its SLURM executor plugin):
+To run the whole pipeline with Snakemake, install the `pipeline` project optional dependencies (Snakemake and its SLURM executor plugin):
 
 ```bash
-uv sync --frozen --group pipeline
+uv sync --locked --extra pipeline
 ```
 
 See [Snakemake pipeline](workflows/snakemake.md).
@@ -86,26 +85,26 @@ Open the repository folder, then select the project interpreter:
 
 ## Notebooks
 
-Install a Jupyter kernel:
+Install JupyterLab, widgets and a Jupyter kernel from the `notebooks` project optional dependencies:
 
 === "Linux"
 
     ```bash
-    uv pip install ipykernel
+    uv sync --locked --extra notebooks
     python -m ipykernel install --user --name acid-env --display-name "ACID"
     ```
 
 === "macOS"
 
     ```bash
-    uv pip install ipykernel
+    uv sync --locked --extra notebooks
     python -m ipykernel install --user --name acid-env --display-name "ACID"
     ```
 
 === "Windows PowerShell"
 
     ```powershell
-    uv pip install ipykernel
+    uv sync --locked --extra notebooks
     python -m ipykernel install --user --name acid-env --display-name "ACID"
     ```
 
@@ -116,22 +115,22 @@ Select the `ACID` kernel in VS Code or Jupyter.
 === "Linux"
 
     ```bash
-    uv sync --extra docs
-    uv run zensical serve
+    uv sync --locked --group docs
+    uv run --locked --group docs zensical serve
     ```
 
 === "macOS"
 
     ```bash
-    uv sync --extra docs
-    uv run zensical serve
+    uv sync --locked --group docs
+    uv run --locked --group docs zensical serve
     ```
 
 === "Windows PowerShell"
 
     ```powershell
-    uv sync --extra docs
-    uv run zensical serve
+    uv sync --locked --group docs
+    uv run --locked --group docs zensical serve
     ```
 
 Run `uv sync` again whenever `pyproject.toml` or `uv.lock` changes.

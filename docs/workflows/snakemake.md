@@ -8,16 +8,16 @@ parallel. After an interruption it only repeats what is missing.
 
 ## Running
 
-Install the `pipeline` dependency group once:
+Install the `pipeline` project optional dependencies once:
 
 ```bash
-uv sync --frozen --group pipeline
+uv sync --locked --extra pipeline
 ```
 
 Run on the local machine:
 
 ```bash
-uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/local --config acid_config=configs/exp_001.yaml
 ```
 
@@ -27,7 +27,7 @@ from the template `workflow/profiles/slurm` (see
 [SLURM clusters](#slurm-clusters)):
 
 ```bash
-uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/<cluster> --config acid_config=configs/exp_001.yaml
 ```
 
@@ -142,7 +142,7 @@ A first run on a new SLURM cluster, step by step.
     ```bash
     git clone https://github.com/IDIP-Platform/ACID.git
     cd ACID
-    uv sync --frozen --group pipeline
+    uv sync --locked --extra pipeline
     ```
 
     Always start Snakemake with `uv run`: the jobs inherit its environment,
@@ -189,9 +189,9 @@ A first run on a new SLURM cluster, step by step.
    `metadata/ACID_metadata_part_2.csv` before starting the rest:
 
     ```bash
-    uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+    uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
         --profile workflow/profiles/<cluster> --config acid_config=configs/my_run.yaml -n
-    uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+    uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
         --profile workflow/profiles/<cluster> --config acid_config=configs/my_run.yaml \
         --until split
     ```

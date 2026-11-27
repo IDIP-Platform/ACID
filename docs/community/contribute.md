@@ -67,7 +67,7 @@ uv pip install -e .
 For documentation work, install the documentation dependencies:
 
 ```bash
-uv sync --extra docs
+uv sync --locked --group docs
 ```
 
 ## Branches and Commits
@@ -123,13 +123,13 @@ Markdown patterns used in this site.
 Run the docs locally with:
 
 ```bash
-uv run zensical serve
+uv run --locked --group docs zensical serve
 ```
 
 Build the docs with:
 
 ```bash
-uv run zensical build --clean
+uv run --locked --group docs zensical build --clean
 ```
 
 For documentation-only PRs, runtime data validation is usually not required.

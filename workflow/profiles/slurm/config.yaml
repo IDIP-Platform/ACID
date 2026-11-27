@@ -2,7 +2,7 @@
 # every YOUR_... value with your cluster's account and partitions, and run the
 # Snakemake main process on a login node inside tmux/screen:
 #
-#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#   uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
 #       --profile workflow/profiles/<your profile> --config acid_config=configs/<id>.yaml
 #
 # The YOUR_... values are invalid on purpose: until they are replaced, sbatch

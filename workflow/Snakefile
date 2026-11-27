@@ -2,7 +2,7 @@
 #
 # Usage (from the repository root):
 #
-#   uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+#   uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
 #       --config acid_config=configs/exp_001.yaml --profile workflow/profiles/local
 #
 # Add -n for a dry run; run the same command again to continue after a failure.

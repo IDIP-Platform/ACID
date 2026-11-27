@@ -13,8 +13,8 @@ number of FOVs per job in `workflow/config.yaml` (`batch_sizes`).
 | `slurm` | as SLURM jobs; a template with `YOUR_...` placeholders | full runs on a SLURM cluster, after copying and filling it in |
 
 ```bash
-uv sync --frozen --group pipeline
-uv run --frozen --group pipeline snakemake -s workflow/Snakefile \
+uv sync --locked --extra pipeline
+uv run --locked --extra pipeline snakemake -s workflow/Snakefile \
     --profile workflow/profiles/local --config acid_config=configs/<id>.yaml
 ```
 
